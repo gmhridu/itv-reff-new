@@ -21,6 +21,7 @@
     "setup:user-plans": "bun run scripts/setup-user-plans.ts",
     "test:user-plan-api": "bun run scripts/test-user-plan-api.ts",
     "test:analytics": "bun scripts/test-analytics-actual.ts",
+    "test:analytics-service": "tsx scripts/test-analytics-service.ts",
     "validate:analytics": "bun scripts/validate-analytics.ts",
     "validate:user-management": "bun scripts/validate-user-management.ts",
     "test:user-service": "bun scripts/test-user-service.ts",

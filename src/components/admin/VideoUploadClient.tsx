@@ -20,7 +20,7 @@
  * - Responsive design with modern UI
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -185,6 +185,8 @@ export function VideoUploadClient() {
 
   // Use the simple progress tracking hook
   const progressTracker = useSimpleUploadProgress();
+  const progressTrackerRef = useRef(progressTracker);
+  progressTrackerRef.current = progressTracker;
 
   const { toast } = useToast();
 
@@ -195,20 +197,20 @@ export function VideoUploadClient() {
       maxRetries: 3,
       retryDelay: 1000,
       onProgress: (progress) => {
-        progressTracker.updateProgress(Math.round(progress));
+        progressTrackerRef.current.updateProgress(Math.round(progress));
       },
       onChunkProgress: (chunkIndex, totalChunks) => {
         if (totalChunks === -1) {
           // Retry indicator
-          progressTracker.updateProgress(
-            progressTracker.progress,
+          progressTrackerRef.current.updateProgress(
+            progressTrackerRef.current.progress,
             `Retrying chunk ${chunkIndex + 1}...`,
           );
         } else {
           const chunkProgress = Math.round(
             ((chunkIndex + 1) / totalChunks) * 100,
           );
-          progressTracker.updateProgress(
+          progressTrackerRef.current.updateProgress(
             chunkProgress,
             `Uploading chunk ${chunkIndex + 1}/${totalChunks}...`,
           );
@@ -220,11 +222,13 @@ export function VideoUploadClient() {
           description: error.message,
           variant: "destructive",
         });
-        progressTracker.resetUpload();
+        progressTrackerRef.current.resetUpload();
       },
       onComplete: (result) => {
         if (result.success) {
-          progressTracker.completeUpload("Video uploaded successfully!");
+          progressTrackerRef.current.completeUpload(
+            "Video uploaded successfully!",
+          );
           toast({
             title: "Success",
             description: "Video uploaded successfully",
@@ -235,7 +239,64 @@ export function VideoUploadClient() {
     });
 
     setChunkedUploadClient(client);
-  }, [progressTracker]);
+  }, []); // Remove progressTracker dependency
+
+  // Memoized callback for position level change
+  const handlePositionLevelChange = useCallback((value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      positionLevelId: value,
+    }));
+  }, []);
+
+  // Memoized callback for upload method change
+  const handleUploadMethodChange = useCallback((value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      uploadMethod: value as "file" | "youtube",
+    }));
+  }, []);
+
+  // Memoized callbacks for form field changes
+  const handleTitleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        title: e.target.value,
+      }));
+    },
+    [],
+  );
+
+  const handleDescriptionChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        description: e.target.value,
+      }));
+    },
+    [],
+  );
+
+  const handleRewardAmountChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        rewardAmount: parseFloat(e.target.value) || 0,
+      }));
+    },
+    [],
+  );
+
+  const handleDurationChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData((prev) => ({
+        ...prev,
+        duration: parseFloat(e.target.value) || 0,
+      }));
+    },
+    [],
+  );
 
   // Fetch initial data
   useEffect(() => {
@@ -852,12 +913,7 @@ export function VideoUploadClient() {
                   <Label htmlFor="upload-method">Upload Method</Label>
                   <Tabs
                     value={formData.uploadMethod}
-                    onValueChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        uploadMethod: value as "file" | "youtube",
-                      }))
-                    }
+                    onValueChange={handleUploadMethodChange}
                   >
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger
@@ -1030,12 +1086,7 @@ export function VideoUploadClient() {
                           min="1"
                           placeholder="Video duration in seconds"
                           value={formData.duration || ""}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              duration: parseFloat(e.target.value) || 0,
-                            }))
-                          }
+                          onChange={handleDurationChange}
                         />
                       </div>
 
@@ -1064,12 +1115,7 @@ export function VideoUploadClient() {
                       <Input
                         id="title"
                         value={formData.title}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
+                        onChange={handleTitleChange}
                         placeholder="Enter video title (auto-filled from YouTube)"
                         required
                       />
@@ -1080,12 +1126,7 @@ export function VideoUploadClient() {
                       <Textarea
                         id="description"
                         value={formData.description}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
+                        onChange={handleDescriptionChange}
                         placeholder="Enter video description (auto-filled from YouTube)"
                         rows={3}
                       />
@@ -1140,12 +1181,7 @@ export function VideoUploadClient() {
                             placeholder="0.00"
                             className="pl-10"
                             value={formData.rewardAmount || ""}
-                            onChange={(e) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                rewardAmount: parseFloat(e.target.value) || 0,
-                              }))
-                            }
+                            onChange={handleRewardAmountChange}
                             required
                           />
                         </div>
@@ -1156,12 +1192,7 @@ export function VideoUploadClient() {
                       <Label htmlFor="position-level">Position Level</Label>
                       <Select
                         value={formData.positionLevelId}
-                        onValueChange={(value) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            positionLevelId: value,
-                          }))
-                        }
+                        onValueChange={handlePositionLevelChange}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select position level" />
@@ -1664,9 +1695,7 @@ export function VideoUploadClient() {
               <Input
                 id="edit-title"
                 value={formData.title}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, title: e.target.value }))
-                }
+                onChange={handleTitleChange}
                 placeholder="Enter video title"
               />
             </div>
@@ -1677,12 +1706,7 @@ export function VideoUploadClient() {
               <Textarea
                 id="edit-description"
                 value={formData.description}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
+                onChange={handleDescriptionChange}
                 placeholder="Enter video description"
                 rows={3}
               />
@@ -1698,12 +1722,7 @@ export function VideoUploadClient() {
                   step="0.01"
                   min="0"
                   value={formData.rewardAmount}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      rewardAmount: parseFloat(e.target.value) || 0,
-                    }))
-                  }
+                  onChange={handleRewardAmountChange}
                 />
               </div>
 
@@ -1711,9 +1730,7 @@ export function VideoUploadClient() {
                 <Label htmlFor="edit-position">Position Level</Label>
                 <Select
                   value={formData.positionLevelId}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, positionLevelId: value }))
-                  }
+                  onValueChange={handlePositionLevelChange}
                 >
                   <SelectTrigger>
                     <SelectValue />

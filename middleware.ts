@@ -3,7 +3,9 @@ import type { NextRequest } from "next/server";
 import { AdminMiddleware } from "@/lib/admin-middleware";
 import { SecureTokenManager } from "@/lib/token-manager";
 
-async function handleTokenRefresh(req: NextRequest): Promise<NextResponse | null> {
+async function handleTokenRefresh(
+  req: NextRequest,
+): Promise<NextResponse | null> {
   const refreshToken = req.cookies.get("refresh-token")?.value;
   if (!refreshToken) {
     return null;
@@ -27,9 +29,9 @@ async function handleTokenRefresh(req: NextRequest): Promise<NextResponse | null
     const setCookie = response.headers.get("set-cookie");
     if (setCookie) {
       // Manually parse and set cookies because of Next.js limitations
-      const cookies = setCookie.split(', ');
+      const cookies = setCookie.split(", ");
       for (const cookie of cookies) {
-        res.headers.append('Set-Cookie', cookie);
+        res.headers.append("Set-Cookie", cookie);
       }
     }
 
@@ -70,10 +72,13 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/api/auth/getAdmin") ||
     pathname === "/api/auth/admin-test";
 
-  const isProtectedRoute = protectedPaths.some((path) => pathname.startsWith(path));
-  const isProtectedApiRoute = isApiRoute && !pathname.startsWith("/api/auth/") && !isAdminApiRoute;
+  const isProtectedRoute = protectedPaths.some((path) =>
+    pathname.startsWith(path),
+  );
+  const isProtectedApiRoute =
+    isApiRoute && !pathname.startsWith("/api/auth/") && !isAdminApiRoute;
 
-  let userPayload = null;
+  let userPayload: any = null;
   if (token) {
     userPayload = SecureTokenManager.verifyAccessToken(token);
   }
@@ -96,14 +101,17 @@ export async function middleware(req: NextRequest) {
     // If refresh fails, redirect to login
     const loginUrl = new URL("/", req.url);
     if (isProtectedRoute) {
-        loginUrl.searchParams.set("redirect_after_login", pathname);
+      loginUrl.searchParams.set("redirect_after_login", pathname);
     }
     const res = NextResponse.redirect(loginUrl);
     res.cookies.delete("access_token");
     res.cookies.delete("refresh-token");
 
-    if(isProtectedApiRoute) {
-        return NextResponse.json({ error: "Authentication required", redirect: "/" }, { status: 401 });
+    if (isProtectedApiRoute) {
+      return NextResponse.json(
+        { error: "Authentication required", redirect: "/" },
+        { status: 401 },
+      );
     }
 
     return res;
@@ -113,7 +121,9 @@ export async function middleware(req: NextRequest) {
     try {
       const admin = await AdminMiddleware.authenticateAdmin(req);
       if (!admin) {
-        const response = NextResponse.redirect(new URL("/admin/login", req.url));
+        const response = NextResponse.redirect(
+          new URL("/admin/login", req.url),
+        );
         response.cookies.set("admin_redirect_after_login", pathname, {
           path: "/",
           httpOnly: true,
@@ -140,7 +150,9 @@ export async function middleware(req: NextRequest) {
     try {
       const admin = await AdminMiddleware.authenticateAdmin(req);
       if (admin) {
-        const redirectPath = req.cookies.get("admin_redirect_after_login")?.value;
+        const redirectPath = req.cookies.get(
+          "admin_redirect_after_login",
+        )?.value;
         const targetUrl = redirectPath || "/admin/analytics";
         const response = NextResponse.redirect(new URL(targetUrl, req.url));
         response.cookies.delete("admin_redirect_after_login");
