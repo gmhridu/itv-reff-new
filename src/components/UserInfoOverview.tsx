@@ -38,8 +38,25 @@ const UserInfoOverview = () => {
     console.log(`Navigating to ${section} settings`);
   };
 
-  const handleExitLogin = () => {
-    console.log("Logging out...");
+  const handleExitLogin = async () => {
+    try {
+      // Call the logout API endpoint
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        // Redirect to the login page after successful logout
+        window.location.href = '/';
+      } else {
+        console.error("Logout failed");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   const handleEmptyCache = () => {

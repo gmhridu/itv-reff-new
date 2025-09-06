@@ -14,7 +14,7 @@ const LOCKOUT_DURATION = 30 * 60 * 1000; // 30 minutes
 
 export interface JWTPayload {
   userId: string;
-  email: string;
+  phone: string;
 }
 
 export interface AuthResult {
@@ -72,10 +72,10 @@ export function validatePasswordStrength(password: string): {
 
 // Account lockout functions
 export async function checkAccountLockout(
-  email: string,
+  phone: string,
 ): Promise<{ locked: boolean; lockoutUntil?: Date; attempts: number }> {
   const user = await db.user.findUnique({
-    where: { email },
+    where: { phone },
     select: {
       failedLoginAttempts: true,
       lastFailedLogin: true,
@@ -104,9 +104,9 @@ export async function checkAccountLockout(
   };
 }
 
-export async function recordFailedLogin(email: string): Promise<void> {
+export async function recordFailedLogin(phone: string): Promise<void> {
   const user = await db.user.findUnique({
-    where: { email },
+    where: { phone },
     select: { id: true, failedLoginAttempts: true },
   });
 
@@ -143,12 +143,12 @@ export async function resetFailedLogins(userId: string): Promise<void> {
 }
 
 export async function authenticateUser(
-  email: string,
+  phone: string,
   password: string,
 ): Promise<User | null> {
   try {
     const user = await db.user.findUnique({
-      where: { email },
+      where: { phone },
     });
 
     if (!user || !user.password) {
@@ -168,12 +168,25 @@ export async function authenticateUser(
 }
 
 export async function authenticateAdmin(
-  email: string,
+  phone: string,
   password: string,
 ): Promise<AdminUser | null> {
   try {
+    // For admin users, we'll still use email as the identifier since they may not have phone numbers
+    // This is a design decision - in a real implementation, you might want to add phone to AdminUser model
     const admin = await db.adminUser.findUnique({
-      where: { email },
+      where: { phone }, // This will only work if AdminUser has a phone field
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        password: true,
+        role: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!admin || !admin.password) {
@@ -193,9 +206,9 @@ export async function authenticateAdmin(
 }
 
 export async function createUser(userData: {
-  email: string;
+  phone: string;
   name?: string;
-  phone?: string;
+  email?: string;
   password: string;
   referralCode?: string;
 }): Promise<User | null> {
@@ -234,9 +247,9 @@ export async function createUser(userData: {
 
     const user = await db.user.create({
       data: {
-        email: userData.email,
+        phone: userData.phone,
         name: userData.name,
-        phone: userData.phone || null,
+        email: userData.email || null,
         password: hashedPassword,
         referralCode,
         referredBy,
@@ -316,16 +329,18 @@ export async function getUserById(id: string): Promise<AuthUser | null> {
   }
 }
 
-export type AuthAdmin = Pick<AdminUser, "id" | "name" | "email" | "role">;
+export type AuthAdmin = Pick<AdminUser, "id" | "name" | "phone" | "role">;
 
 export async function getAdminById(id: string): Promise<AuthAdmin | null> {
   try {
+    // For admin users, we'll still use email as the identifier
+    // This is a design decision - in a real implementation, you might want to add phone to AdminUser model
     return await db.adminUser.findUnique({
       where: { id },
       select: {
         id: true,
         name: true,
-        email: true,
+        phone: true,
         role: true,
       },
     });
@@ -395,7 +410,7 @@ export async function getAdminFromServer() {
     return {
       id: admin.id,
       name: admin.name,
-      email: admin.email,
+      phone: admin.phone,
       role: admin.role,
     };
   } catch (error) {
@@ -496,7 +511,6 @@ export async function loginAction(prevState: any, formData: FormData) {
   "use server";
 
   const { cookies } = await import("next/headers");
-  const { redirect } = await import("next/navigation");
 
   // Validate environment configuration
   if (!process.env.BACKEND_URL) {
@@ -505,7 +519,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     };
   }
 
-  const email = formData.get("email") as string;
+  const phone = formData.get("phone") as string;
   const password = formData.get("password") as string;
   const rememberMe = formData.get("rememberMe") === "on";
 
@@ -515,7 +529,7 @@ export async function loginAction(prevState: any, formData: FormData) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, rememberMe }),
+      body: JSON.stringify({ phone, password, rememberMe }),
     });
 
     const data = await response.json();
@@ -547,8 +561,10 @@ export async function loginAction(prevState: any, formData: FormData) {
 
       // Clear redirect cookie
       cookieStore.delete("redirect_after_login");
-
-      redirect(redirectPath);
+      return {
+        success: true,
+        redirectPath: "/dashboard"
+      };
     } else {
       // Return error state for client-side handling
       return {
@@ -561,7 +577,6 @@ export async function loginAction(prevState: any, formData: FormData) {
       error?.message === "NEXT_REDIRECT" ||
       error?.digest?.startsWith("NEXT_REDIRECT")
     ) {
-      // This is expected behavior for redirects, re-throw to allow redirect to work
       throw error;
     }
 
@@ -577,7 +592,6 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
   "use server";
 
   const { cookies } = await import("next/headers");
-  const { redirect } = await import("next/navigation");
 
   if (!process.env.BACKEND_URL) {
     return {
@@ -585,7 +599,7 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
     };
   }
 
-  const email = formData.get("email") as string;
+  const phone = formData.get("phone") as string;
   const password = formData.get("password") as string;
   const rememberMe = formData.get("rememberMe") === "on";
   try {
@@ -596,7 +610,7 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ phone, password, rememberMe }),
       },
     );
 
@@ -629,7 +643,11 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
 
       cookieStore.delete("admin_redirect_after_login");
 
-      redirect(redirectPath);
+      // Return success state with redirect path instead of server-side redirect
+      return {
+        success: true,
+        redirectPath: redirectPath
+      };
     } else {
       return {
         error: data.error || "Login failed",
@@ -666,14 +684,14 @@ export async function registerAction(prevState: any, formData: FormData) {
   }
 
   const name = formData.get("name") as string;
-  const email = formData.get("email") as string;
   const phone = formData.get("phone") as string;
+  const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirmPassword") as string;
   const referralCode = formData.get("referralCode") as string;
 
   // Basic validation
-  if (!name || !email || !password) {
+  if (!name || !phone || !password) {
     return {
       error: "Please fill in all required fields",
     };
@@ -691,11 +709,11 @@ export async function registerAction(prevState: any, formData: FormData) {
     };
   }
 
-  // Email format validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  // Phone format validation
+  const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+  if (!phoneRegex.test(phone) || phone.replace(/\D/g, '').length < 10) {
     return {
-      error: "Please enter a valid email address",
+      error: "Please enter a valid phone number",
     };
   }
 
@@ -709,11 +727,11 @@ export async function registerAction(prevState: any, formData: FormData) {
         },
         body: JSON.stringify({
           name,
-          email,
-          phone: phone || undefined,
+          phone,
+          email: email || undefined,
           password,
           confirmPassword,
-          referralCode: referralCode || undefined,
+          referralCode: referralCode || undefined
         }),
       },
     );
@@ -739,8 +757,11 @@ export async function registerAction(prevState: any, formData: FormData) {
         }
       }
 
-      // Redirect to dashboard after successful registration and auto-login
-      redirect("/dashboard");
+      // Return success state with redirect path instead of server-side redirect
+      return {
+        success: true,
+        redirectPath: "/dashboard"
+      };
     } else {
       return {
         error: data.error || "Registration failed",

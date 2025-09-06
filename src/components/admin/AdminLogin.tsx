@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useRef, useEffect, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -9,7 +10,7 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Label } from "../ui/label";
-import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Phone } from "lucide-react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
@@ -19,13 +20,33 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ loginAction }: AdminLoginProps) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const getFullYear = () => {
+    return new Date().getFullYear();
+  };
+
+  // Use useActionState with the loginAction
   const [state, formAction, isPending] = useActionState(loginAction, {
     error: null,
   });
 
-  const getFullYear = () => {
-    return new Date().getFullYear();
+  // Handle redirect on successful login
+  useEffect(() => {
+    if (state?.success && state?.redirectPath) {
+      router.push(state.redirectPath);
+    }
+  }, [state, router]);
+
+  // Handle form submission
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => {
+      formAction(formData);
+    });
   };
 
   return (
@@ -34,9 +55,9 @@ export default function AdminLogin({ loginAction }: AdminLoginProps) {
         {/* Login Card */}
         <Card className="bg-white/10 backdrop-blur-lg border-white/20 text-white">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Welcome back</CardTitle>
+            <CardTitle className="text-2xl text-center">Admin Login</CardTitle>
             <CardDescription className="text-gray-300 text-center">
-              Enter your credentials to access your account
+              Enter your credentials to access the admin panel
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -46,18 +67,18 @@ export default function AdminLogin({ loginAction }: AdminLoginProps) {
               </div>
             )}
 
-            <form action={formAction} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-300">
-                  Email
+                <Label htmlFor="phone" className="text-gray-300">
+                  Phone Number *
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="Enter your phone number"
                     className="bg-white/10 border-white/20 text-white placeholder-gray-400 pl-10"
                     disabled={isPending}
                     required
@@ -67,7 +88,7 @@ export default function AdminLogin({ loginAction }: AdminLoginProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-gray-300">
-                  Password
+                  Password *
                 </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />

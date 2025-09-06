@@ -1,6 +1,4 @@
 "use client";
-
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthErrorHandler } from "@/lib/auth-error-handler";
 import {
@@ -22,7 +20,6 @@ import {
   Play,
   Users,
   TrendingUp,
-  ArrowUpRight,
   Target,
   RefreshCw,
   AlertCircle,

@@ -203,29 +203,8 @@ export default function WithdrawPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="relative w-8 h-8">
-                <img
-                  src="/logo.svg"
-                  alt="VideoTask Rewards"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <span className="ml-2 text-lg font-semibold">VideoTask Rewards</span>
-            </div>
-            <nav className="flex space-x-4">
-              <a href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</a>
-              <a href="/withdraw" className="text-blue-600 font-medium">Withdraw</a>
-            </nav>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 className='text-3xl font-bold mb-4'>Withdraw</h2>
         {/* Withdrawal Info */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>

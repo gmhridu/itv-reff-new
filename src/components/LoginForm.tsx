@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, useRef, startTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Phone, Lock, ArrowRight } from "lucide-react";
 
 interface LoginFormProps {
   loginAction: (prevState: any, formData: FormData) => Promise<any>;
@@ -22,12 +22,31 @@ interface LoginFormProps {
 export default function LoginForm({ loginAction }: LoginFormProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const getFullYear = () => {
+    return new Date().getFullYear();
+  };
+
+  // Use useActionState with the loginAction
   const [state, formAction, isPending] = useActionState(loginAction, {
     error: null,
   });
 
-  const getFullYear = () => {
-    return new Date().getFullYear();
+  // Handle redirect on successful login
+  useEffect(() => {
+    if (state?.success && state?.redirectPath) {
+      router.push(state.redirectPath);
+    }
+  }, [state, router]);
+
+  // Handle form submission
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => {
+      formAction(formData);
+    });
   };
 
   return (
@@ -48,18 +67,18 @@ export default function LoginForm({ loginAction }: LoginFormProps) {
               </div>
             )}
 
-            <form action={formAction} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-300">
-                  Email
+                <Label htmlFor="phone" className="text-gray-300">
+                  Phone Number *
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="Enter your phone number"
                     className="bg-white/10 border-white/20 text-white placeholder-gray-400 pl-10"
                     disabled={isPending}
                     required
@@ -69,7 +88,7 @@ export default function LoginForm({ loginAction }: LoginFormProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-gray-300">
-                  Password
+                  Password *
                 </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
