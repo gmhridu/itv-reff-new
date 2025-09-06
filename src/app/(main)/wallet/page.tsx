@@ -146,31 +146,9 @@ export default function WalletPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="relative w-8 h-8">
-                <img
-                  src="/logo.svg"
-                  alt="VideoTask Rewards"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <span className="ml-2 text-lg font-semibold">VideoTask Rewards</span>
-            </div>
-            <nav className="flex space-x-4">
-              <a href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</a>
-              <a href="/wallet" className="text-blue-600 font-medium">Wallet</a>
-            </nav>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Wallet Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
@@ -197,21 +175,6 @@ export default function WalletPage() {
               </div>
               <p className="text-xs text-muted-foreground">
                 Since joining
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Net Flow</CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                PKR {((walletData?.totalEarnings || 0) - (walletData?.balance || 0)).toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Total withdrawn
               </p>
             </CardContent>
           </Card>
