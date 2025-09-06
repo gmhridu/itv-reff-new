@@ -9,13 +9,66 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { SecureTokenManager } from '@/lib/token-manager';
 import { createUser } from '@/lib/api/auth';
 
+// Store CAPTCHA codes in memory (in production, use Redis or similar)
+const captchaStore = new Map<string, { code: string; expiresAt: number }>();
+
+// Generate a CAPTCHA code and store it
+function generateAndStoreCaptcha(request: NextRequest): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  const clientId = getClientIP(request) + request.headers.get('user-agent');
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+  
+  captchaStore.set(clientId, { code: result, expiresAt });
+  
+  // Clean up expired entries periodically
+  if (Math.random() < 0.1) { // 10% chance to clean up
+    const now = Date.now();
+    for (const [key, value] of captchaStore.entries()) {
+      if (value.expiresAt < now) {
+        captchaStore.delete(key);
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Verify CAPTCHA code
+function verifyCaptcha(request: NextRequest, code: string): boolean {
+  const clientId = getClientIP(request) + request.headers.get('user-agent');
+  const captchaData = captchaStore.get(clientId);
+  
+  if (!captchaData) {
+    return false;
+  }
+  
+  // Check if expired
+  if (Date.now() > captchaData.expiresAt) {
+    captchaStore.delete(clientId);
+    return false;
+  }
+  
+  // Check if code matches
+  const isValid = captchaData.code === code.toUpperCase();
+  
+  // Remove the used CAPTCHA
+  captchaStore.delete(clientId);
+  
+  return isValid;
+}
+
 const registerSchema = z.object({
-  email: z.email('Invalid email address'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().optional(),
+  email: z.string().email('Invalid email address').optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  referralCode: z.string().optional(),
+  referralCode: z.string().optional()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -37,7 +90,7 @@ export async function POST(request: NextRequest) {
     const validatedData = registerSchema.parse(body);
 
     // Additional security validation
-    if (!validateEmail(validatedData.email)) {
+    if (validatedData.email && validatedData.email.trim() && !validateEmail(validatedData.email)) {
       response = NextResponse.json(
         { error: 'Invalid email address' },
         { status: 400 }
@@ -45,7 +98,7 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    if (validatedData.phone && validatedData.phone.trim() && !validatePhone(validatedData.phone)) {
+    if (!validatePhone(validatedData.phone)) {
       response = NextResponse.json(
         {
           success: false,
@@ -66,9 +119,9 @@ export async function POST(request: NextRequest) {
     let user;
     try {
       user = await createUser({
-        email: validatedData.email,
-        name: validatedData.name,
         phone: validatedData.phone,
+        name: validatedData.name,
+        email: validatedData.email,
         password: validatedData.password,
         referralCode: validatedData.referralCode,
       });
@@ -87,25 +140,25 @@ export async function POST(request: NextRequest) {
         const fields = (err.meta?.target as string[]) || [];
         console.log('Extracted fields:', fields);
 
-        if (fields.includes('email')) {
-          console.log('Returning 409 for duplicate email');
+        if (fields.includes('phone')) {
+          console.log('Returning 409 for duplicate phone');
           response = NextResponse.json(
             {
               success: false,
-              error: 'An account with this email address already exists. Please use a different email or try logging in.',
-              field: 'email'
+              error: 'An account with this phone number already exists. Please use a different phone number or try logging in.',
+              field: 'phone'
             },
             { status: 409 }
           );
           return addAPISecurityHeaders(response);
         }
 
-        if (fields.includes('phone')) {
+        if (fields.includes('email')) {
           response = NextResponse.json(
             {
               success: false,
-              error: 'An account with this phone number already exists. Please use a different phone number or try logging in.',
-              field: 'phone'
+              error: 'An account with this email address already exists. Please use a different email or try logging in.',
+              field: 'email'
             },
             { status: 409 }
           );
@@ -156,15 +209,15 @@ export async function POST(request: NextRequest) {
       // Build referral hierarchy for the new user
       try {
         await EnhancedReferralService.buildReferralHierarchy(user.id);
-        console.log(`✅ Referral hierarchy built for user: ${user.email}`);
+        console.log(`✅ Referral hierarchy built for user: ${user.phone}`);
       } catch (error) {
-        console.error(`❌ Failed to build referral hierarchy for user ${user.email}:`, error);
+        console.error(`❌ Failed to build referral hierarchy for user ${user.phone}:`, error);
         // Don't fail registration if hierarchy building fails
       }
     }
 
     // Generate tokens for automatic login
-    const tokens = SecureTokenManager.generateTokenPair(user.id, user.email);
+    const tokens = SecureTokenManager.generateTokenPair(user.id, user.phone);
 
     // Return success response with user data and tokens
     response = NextResponse.json({
@@ -172,6 +225,7 @@ export async function POST(request: NextRequest) {
       message: 'User created successfully',
       user: {
         id: user.id,
+        phone: user.phone,
         email: user.email,
         name: user.name,
         referralCode: user.referralCode,
@@ -230,4 +284,12 @@ export async function POST(request: NextRequest) {
     );
     return addAPISecurityHeaders(response);
   }
+}
+
+// Add a GET endpoint to generate CAPTCHA codes
+export async function GET(request: NextRequest) {
+  const captchaCode = generateAndStoreCaptcha(request);
+  
+  // Return the CAPTCHA code (in a real implementation, you might return an image)
+  return NextResponse.json({ captcha: captchaCode });
 }

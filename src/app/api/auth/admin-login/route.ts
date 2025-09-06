@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 const adminLoginSchema = z.object({
-  email: z.email("Invalid Email Address").max(255),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(1, "Password is required").max(128),
   rememberMe: z.boolean().optional().default(false),
 });
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = adminLoginSchema.parse(body);
 
-    const lockoutStatus = await checkAccountLockout(validatedData.email);
+    const lockoutStatus = await checkAccountLockout(validatedData.phone);
     if (lockoutStatus.locked) {
       response = NextResponse.json(
         {
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       "unknown";
 
     const admin = await authenticateAdmin(
-      validatedData.email,
+      validatedData.phone,
       validatedData.password,
     );
 
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       response = NextResponse.json(
         {
           success: false,
-          error: "Invalid email or password",
+          error: "Invalid phone number or password",
           remainingAttempts: Math.max(0, 5 - (lockoutStatus.attempts + 1)),
         },
         {
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       message: "Login Successfully",
       admin: {
         id: admin.id,
-        email: admin.email,
+        phone: admin.phone,
         name: admin.name,
         role: admin.role,
       },

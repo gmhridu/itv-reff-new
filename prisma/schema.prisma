@@ -9,9 +9,9 @@ datasource db {
 
 model User {
   id            String     @id @default(cuid())
-  email         String     @unique
+  email         String?    @unique
   name          String?
-  phone         String?    @unique
+  phone         String     @unique
   password      String
   emailVerified Boolean    @default(false)
   phoneVerified Boolean    @default(false)
@@ -281,6 +281,7 @@ model ReferralReward {
 model AdminUser {
   id        String    @id @default(cuid())
   name      String
+  phone     String    @unique
   email     String    @unique
   password  String
   role      AdminRole @default(ADMIN)

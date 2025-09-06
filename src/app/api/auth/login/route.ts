@@ -3,12 +3,11 @@ import { z } from 'zod';
 import { SecureTokenManager } from '@/lib/token-manager';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
 import { addAPISecurityHeaders } from '@/lib/security-headers';
-import { validateCSRF } from '@/lib/csrf-protection';
 import { db } from '@/lib/db';
 import { authenticateUser, checkAccountLockout, recordFailedLogin, resetFailedLogins } from '@/lib/api/auth';
 
 const loginSchema = z.object({
-  email: z.string().email('Invalid email address').max(255),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
   password: z.string().min(1, 'Password is required').max(128),
   rememberMe: z.boolean().optional().default(false),
 });
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
     const validatedData = loginSchema.parse(body);
 
     // Check account lockout
-    const lockoutStatus = await checkAccountLockout(validatedData.email);
+    const lockoutStatus = await checkAccountLockout(validatedData.phone);
     if (lockoutStatus.locked) {
       response = NextResponse.json(
         {
@@ -58,16 +57,16 @@ export async function POST(request: NextRequest) {
                      'unknown';
 
     // Authenticate user
-    const user = await authenticateUser(validatedData.email, validatedData.password);
+    const user = await authenticateUser(validatedData.phone, validatedData.password);
 
     if (!user) {
       // Record failed login attempt
-      await recordFailedLogin(validatedData.email);
+      await recordFailedLogin(validatedData.phone);
 
       response = NextResponse.json(
         {
           success: false,
-          error: 'Invalid email or password',
+          error: 'Invalid phone number or password',
           remainingAttempts: Math.max(0, 5 - (lockoutStatus.attempts + 1))
         },
         { status: 401 }
@@ -94,7 +93,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Generate secure token pair
-    const tokens = SecureTokenManager.generateTokenPair(user.id, user.email);
+    const tokens = SecureTokenManager.generateTokenPair(user.id, user.phone);
 
     // Record successful login
     rateLimiter.recordSuccess(request);
@@ -105,6 +104,7 @@ export async function POST(request: NextRequest) {
       message: 'Login successful',
       user: {
         id: user.id,
+        phone: user.phone,
         email: user.email,
         name: user.name,
         referralCode: user.referralCode,

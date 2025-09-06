@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useActionState } from 'react';
+import { useState, useActionState, useRef, useEffect, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Gift } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Gift, Shield } from 'lucide-react';
 
 interface RegisterFormProps {
   registerAction: (prevState: any, formData: FormData) => Promise<any>;
@@ -16,9 +16,61 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [userCaptchaInput, setUserCaptchaInput] = useState('');
+  const [captchaError, setCaptchaError] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Generate a random CAPTCHA code
+  function generateCaptchaCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  // Refresh CAPTCHA code
+  const refreshCaptcha = () => {
+    setCaptchaCode(generateCaptchaCode());
+    setUserCaptchaInput('');
+    setCaptchaError('');
+  };
+
+  // Generate initial CAPTCHA on component mount
+  useEffect(() => {
+    setCaptchaCode(generateCaptchaCode());
+  }, []);
+
+  // Use useActionState with the registerAction
   const [state, formAction, isPending] = useActionState(registerAction, { error: null });
 
+  // Handle redirect on successful registration
+  useEffect(() => {
+    if (state?.success && state?.redirectPath) {
+      router.push(state.redirectPath);
+    }
+  }, [state, router]);
 
+  // Handle form submission
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    
+    // Client-side CAPTCHA validation
+    if (userCaptchaInput !== captchaCode) {
+      setCaptchaError('Invalid CAPTCHA code');
+      return;
+    }
+    
+    // Clear any previous CAPTCHA error
+    setCaptchaError('');
+    
+    const formData = new FormData(event.currentTarget);
+    startTransition(() => {
+      formAction(formData);
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -47,7 +99,7 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
               </div>
             )}
 
-            <form action={formAction} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-300">Full Name</Label>
                 <div className="relative">
@@ -65,23 +117,7 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-300">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    className="bg-white/10 border-white/20 text-white placeholder-gray-400 pl-10"
-                    disabled={isPending}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-gray-300">Phone Number (Optional)</Label>
+                <Label htmlFor="phone" className="text-gray-300">Phone Number *</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -91,12 +127,28 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
                     placeholder="Enter your phone number"
                     className="bg-white/10 border-white/20 text-white placeholder-gray-400 pl-10"
                     disabled={isPending}
+                    required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-300">Password</Label>
+                <Label htmlFor="email" className="text-gray-300">Email (Optional)</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    className="bg-white/10 border-white/20 text-white placeholder-gray-400 pl-10"
+                    disabled={isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-gray-300">Password *</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -122,7 +174,7 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-gray-300">Confirm Password</Label>
+                <Label htmlFor="confirmPassword" className="text-gray-300">Confirm Password *</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -160,6 +212,50 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
                     disabled={isPending}
                   />
                 </div>
+              </div>
+
+              {/* CAPTCHA Section */}
+              <div className="space-y-2">
+                <Label htmlFor="captcha" className="text-gray-300">CAPTCHA *</Label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="captcha"
+                      name="captcha"
+                      type="text"
+                      placeholder="Enter CAPTCHA code"
+                      value={userCaptchaInput}
+                      onChange={(e) => {
+                        setUserCaptchaInput(e.target.value);
+                        if (captchaError) setCaptchaError('');
+                      }}
+                      className="bg-white/10 border-white/20 text-white placeholder-gray-400 pl-10"
+                      disabled={isPending}
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center">
+                    <div className="bg-white/10 border border-white/20 rounded-md px-3 py-2 font-mono font-bold text-lg tracking-widest">
+                      {captchaCode}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="ml-2 px-2 hover:bg-white/10"
+                      onClick={refreshCaptcha}
+                      disabled={isPending}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                      </svg>
+                    </Button>
+                  </div>
+                </div>
+                {captchaError && (
+                  <p className="text-red-400 text-sm">{captchaError}</p>
+                )}
               </div>
 
               <Button
