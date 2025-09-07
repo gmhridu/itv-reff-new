@@ -10,7 +10,9 @@ async function seedAdminUsers() {
     // Check if admin users already exist
     const existingAdminCount = await prisma.adminUser.count();
     if (existingAdminCount > 0) {
-      console.log(`ℹ️  ${existingAdminCount} admin user(s) already exist. Skipping seed.`);
+      console.log(
+        `ℹ️  ${existingAdminCount} admin user(s) already exist. Skipping seed.`,
+      );
       return;
     }
 
@@ -18,12 +20,14 @@ async function seedAdminUsers() {
       {
         name: "Super Admin",
         email: "superadmin@example.com",
+        phone: "015645648487",
         password: "SuperAdmin@123",
         role: AdminRole.SUPER_ADMIN,
       },
       {
         name: "Admin User",
-        email: "admin@example.com",
+        phone: "015645648484",
+        email: "admin@admin.com",
         password: "Admin@123",
         role: AdminRole.ADMIN,
       },
@@ -38,12 +42,15 @@ async function seedAdminUsers() {
         data: {
           name: admin.name,
           email: admin.email,
+          phone: admin.phone,
           password: hashedPassword,
           role: admin.role,
         },
       });
 
-      console.log(`✅ Created admin user: ${createdAdmin.email} (${createdAdmin.role})`);
+      console.log(
+        `✅ Created admin user: ${createdAdmin.email} (${createdAdmin.role})`,
+      );
     }
 
     console.log("🎉 Admin users seeded successfully!");

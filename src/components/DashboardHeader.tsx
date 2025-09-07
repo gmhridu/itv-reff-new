@@ -6,7 +6,7 @@ import { useState } from "react";
 import { NotificationPopover } from "./notification-popover";
 import { Badge } from "./ui/badge";
 
-const DashboardHeader = ({user}) => {
+const DashboardHeader = ({ user }) => {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -123,7 +123,7 @@ const DashboardHeader = ({user}) => {
   ];
 
   const currentLanguage = languages.find(
-    (lang) => lang.name === selectedLanguage
+    (lang) => lang.name === selectedLanguage,
   );
 
   const handleLanguageSelect = (languageName) => {
@@ -134,7 +134,7 @@ const DashboardHeader = ({user}) => {
   return (
     <header className="sticky top-0 z-50 w-full">
       {/* Main Header */}
-      <div className="h-16 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-700/95 backdrop-blur-xl border-b border-emerald-500/20 shadow-lg">
+      <div className="h-16 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 backdrop-blur-xl border-b border-white/20 shadow-lg">
         <div className="flex items-center justify-between h-full px-4 sm:px-6">
           {/* Left Section - Language Dropdown */}
           <div className="relative flex items-center">
@@ -142,7 +142,7 @@ const DashboardHeader = ({user}) => {
               variant="ghost"
               size="sm"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 hover:bg-emerald-500/20 transition-all duration-300 rounded-xl px-3 py-2 text-white/90 hover:text-white shadow-sm hover:shadow-md"
+              className="flex items-center gap-2 hover:bg-white/30 transition-all duration-300 rounded-xl px-3 py-2 text-white hover:text-white shadow-sm hover:shadow-md"
             >
               <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-white/20">
                 {currentLanguage?.flag}
@@ -176,11 +176,7 @@ const DashboardHeader = ({user}) => {
                         selectedLanguage === language.name
                           ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
                           : "text-slate-700 dark:text-slate-300"
-                      } ${
-                        index === 0
-                          ? ""
-                          : "border-t border-slate-200/30 dark:border-slate-600/30"
-                      }`}
+                      } ${index === 0 ? "" : "border-t border-slate-200/30 dark:border-slate-600/30"}`}
                     >
                       <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-slate-200/50">
                         {language.flag}
@@ -205,7 +201,7 @@ const DashboardHeader = ({user}) => {
           {/* Right Section - Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <NotificationPopover user={user}/>
+              <NotificationPopover user={user} />
             </div>
           </div>
         </div>
