@@ -407,6 +407,7 @@ enum NotificationType {
   USER_REGISTRATION
   MAINTENANCE
   SECURITY_ALERT
+  TASK_COMPLETED
 }
 
 enum NotificationSeverity {
