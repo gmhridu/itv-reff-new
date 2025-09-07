@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/lib/api/api-auth';
 import { db } from '@/lib/db';
+import { NotificationService } from '@/lib/notification-service';
+import { NotificationType, NotificationSeverity } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -217,5 +219,48 @@ export async function POST(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+async function sendWithdrawalNotification(
+  userId: string,
+  status: string,
+  amount: number
+) {
+  let title = '';
+  let message = '';
+  let severity: NotificationSeverity = 'INFO';
+
+  switch (status) {
+    case 'APPROVED':
+      title = 'Withdrawal Approved';
+      message = `Your withdrawal request for $${amount.toFixed(2)} has been approved.`;
+      severity = 'SUCCESS';
+      break;
+    case 'REJECTED':
+      title = 'Withdrawal Rejected';
+      message = `Your withdrawal request for $${amount.toFixed(2)} has been rejected.`;
+      severity = 'WARNING';
+      break;
+    case 'PROCESSED':
+      title = 'Withdrawal Processed';
+      message = `Your withdrawal request for $${amount.toFixed(2)} has been processed successfully.`;
+      severity = 'SUCCESS';
+      break;
+    default:
+      title = 'Withdrawal Status Updated';
+      message = `Your withdrawal request status has been updated to ${status}.`;
+  }
+
+  try {
+    await NotificationService.createNotification({
+      type: NotificationType.WITHDRAWAL_REQUEST,
+      title,
+      message,
+      severity,
+      actionUrl: '/dashboard/withdraw',
+    }, userId);
+  } catch (error) {
+    console.error('Error sending withdrawal notification:', error);
   }
 }

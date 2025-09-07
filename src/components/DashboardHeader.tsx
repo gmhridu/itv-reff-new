@@ -3,6 +3,7 @@
 import { ChevronDown, MessageCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
+import { NotificationPopover } from "./notification-popover";
 
 const DashboardHeader = () => {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
@@ -168,10 +169,8 @@ const DashboardHeader = () => {
 
         <h1 className="text-lg font-semibold text-center flex-1">iTV</h1>
 
-        <div>
-          <Button size="icon" variant="ghost">
-            <MessageCircle className="w-5 h-5" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <NotificationPopover userId="user123" />
         </div>
       </div>
     </header>
