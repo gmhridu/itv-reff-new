@@ -1,12 +1,14 @@
-"use client"
+"use client";
 
-import { ChevronDown, MessageCircle } from "lucide-react";
+import { ChevronDown, MessageCircle, Bell, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
+import { Badge } from "./ui/badge";
 
 const DashboardHeader = () => {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(3);
 
   const languages = [
     {
@@ -14,9 +16,10 @@ const DashboardHeader = () => {
       flag: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
+          width="20"
+          height="20"
           viewBox="0 0 32 32"
+          className="rounded-sm"
         >
           <rect
             x="1"
@@ -63,7 +66,7 @@ const DashboardHeader = () => {
             fill="#b92932"
           ></path>
           <path
-            d="M27,4H5c-2.209,0-4,1.791-4,4V24c0,2.209,1.791,4,4,4H27c2.209,0,4-1.791,4-4V8c0-2.209-1.791-4-4-4Zm3,20c0,1.654-1.346,3-3,3H5c-1.654,0-3-1.346-3-3V8c0-1.654,1.346-3,3-3H27c1.654,0,3,1.346,3,3V24Z"
+            d="M27,4H5c-2.209,0-4,1.791-4,4V24c0,2.209,1.791,4,4,4H27c2.209,0,4-1.791,4-4V8c0-2.209-1.791-4-4-4Zm3,20c0,1.654-1.346,3-3,3H5c-1.654,0-3-1.346-3-3V8c0-1.654,1.346-3,3-3H27c1.657,0,3,1.343,3,3V24Z"
             opacity=".15"
           ></path>
           <path
@@ -79,9 +82,10 @@ const DashboardHeader = () => {
       flag: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
+          width="20"
+          height="20"
           viewBox="0 0 32 32"
+          className="rounded-sm"
         >
           <rect
             x="1"
@@ -119,7 +123,7 @@ const DashboardHeader = () => {
   ];
 
   const currentLanguage = languages.find(
-    (lang) => lang.name === selectedLanguage
+    (lang) => lang.name === selectedLanguage,
   );
 
   const handleLanguageSelect = (languageName) => {
@@ -128,52 +132,116 @@ const DashboardHeader = () => {
   };
 
   return (
-    <header className="h-[48px] bg-black/70 text-white">
-      <div className="flex items-center justify-between p-2">
-        {/* Language Dropdown */}
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 hover:bg-white/10"
-          >
-            {currentLanguage?.flag}
-            <span className="text-sm font-medium">{selectedLanguage}</span>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${
-                isDropdownOpen ? "rotate-180" : ""
-              }`}
-            />
-          </Button>
+    <header className="sticky top-0 z-50 w-full">
+      {/* Main Header */}
+      <div className="h-16 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-700/95 backdrop-blur-xl border-b border-emerald-500/20 shadow-lg">
+        <div className="flex items-center justify-between h-full px-4 sm:px-6">
+          {/* Left Section - Language Dropdown */}
+          <div className="relative flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 hover:bg-emerald-500/20 transition-all duration-300 rounded-xl px-3 py-2 text-white/90 hover:text-white shadow-sm hover:shadow-md"
+            >
+              <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-white/20">
+                {currentLanguage?.flag}
+              </div>
+              <span className="text-sm font-medium hidden sm:inline-block">
+                {selectedLanguage}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-300 ${
+                  isDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
+            </Button>
 
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-md shadow-lg z-50 min-w-[120px]">
-              {languages.map((language) => (
-                <button
-                  key={language.name}
-                  onClick={() => handleLanguageSelect(language.name)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-700 transition-colors first:rounded-t-md last:rounded-b-md ${
-                    selectedLanguage === language.name ? "bg-gray-700" : ""
-                  }`}
+            {/* Enhanced Dropdown Menu */}
+            {isDropdownOpen && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setIsDropdownOpen(false)}
+                />
+
+                {/* Dropdown */}
+                <div className="absolute top-full left-0 mt-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200/50 dark:border-slate-600/50 rounded-2xl shadow-2xl z-20 min-w-[140px] overflow-hidden">
+                  {languages.map((language, index) => (
+                    <button
+                      key={language.name}
+                      onClick={() => handleLanguageSelect(language.name)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-emerald-500/10 dark:hover:bg-emerald-500/20 transition-all duration-200 ${
+                        selectedLanguage === language.name
+                          ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                          : "text-slate-700 dark:text-slate-300"
+                      } ${index === 0 ? "" : "border-t border-slate-200/30 dark:border-slate-600/30"}`}
+                    >
+                      <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-slate-200/50">
+                        {language.flag}
+                      </div>
+                      <span className="text-sm font-medium">
+                        {language.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Center Section - Logo */}
+          <div className="flex-1 flex justify-center">
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent tracking-wide">
+              iTV
+            </h1>
+          </div>
+
+          {/* Right Section - Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Notifications */}
+            <div className="relative">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="hover:bg-emerald-500/20 transition-all duration-300 rounded-xl text-white/90 hover:text-white shadow-sm hover:shadow-md w-10 h-10"
+              >
+                <Bell className="w-5 h-5" />
+              </Button>
+              {notificationCount > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-xs font-bold bg-gradient-to-r from-red-500 to-red-600 border-2 border-white/20 shadow-lg"
                 >
-                  {language.flag}
-                  <span className="text-sm">{language.name}</span>
-                </button>
-              ))}
+                  {notificationCount > 9 ? "9+" : notificationCount}
+                </Badge>
+              )}
             </div>
-          )}
-        </div>
 
-        <h1 className="text-lg font-semibold text-center flex-1">iTV</h1>
+            {/* Messages */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="hover:bg-emerald-500/20 transition-all duration-300 rounded-xl text-white/90 hover:text-white shadow-sm hover:shadow-md w-10 h-10"
+            >
+              <MessageCircle className="w-5 h-5" />
+            </Button>
 
-        <div>
-          <Button size="icon" variant="ghost">
-            <MessageCircle className="w-5 h-5" />
-          </Button>
+            {/* Settings - Hidden on mobile */}
+            <Button
+              size="icon"
+              variant="ghost"
+              className="hover:bg-emerald-500/20 transition-all duration-300 rounded-xl text-white/90 hover:text-white shadow-sm hover:shadow-md w-10 h-10 hidden sm:flex"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Decorative bottom border with gradient */}
+      <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
     </header>
   );
 };
