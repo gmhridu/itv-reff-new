@@ -117,7 +117,7 @@ export default function DashboardOverview() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700">
-      <DashboardHeader />
+      <DashboardHeader user={user} />
 
       {/* Hero Slider Section */}
       <div className="h-64 sm:h-80 mb-6 sm:mb-8 mx-4 sm:mx-6 lg:mx-8 mt-4 rounded-2xl overflow-hidden shadow-2xl">
@@ -334,7 +334,7 @@ export default function DashboardOverview() {
                               : `${Math.max(
                                   0,
                                   (todayProgress?.dailyLimit ?? 0) -
-                                    (todayProgress?.videosWatched ?? 0),
+                                    (todayProgress?.videosWatched ?? 0)
                                 )} videos remaining today`}
                           </p>
                         </div>

@@ -4,11 +4,11 @@ import { ChevronDown, MessageCircle, Bell, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { NotificationPopover } from "./notification-popover";
+import { Badge } from "./ui/badge";
 
-const DashboardHeader = () => {
+const DashboardHeader = ({user}) => {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(3);
 
   const languages = [
     {
@@ -123,7 +123,7 @@ const DashboardHeader = () => {
   ];
 
   const currentLanguage = languages.find(
-    (lang) => lang.name === selectedLanguage,
+    (lang) => lang.name === selectedLanguage
   );
 
   const handleLanguageSelect = (languageName) => {
@@ -176,7 +176,11 @@ const DashboardHeader = () => {
                         selectedLanguage === language.name
                           ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
                           : "text-slate-700 dark:text-slate-300"
-                      } ${index === 0 ? "" : "border-t border-slate-200/30 dark:border-slate-600/30"}`}
+                      } ${
+                        index === 0
+                          ? ""
+                          : "border-t border-slate-200/30 dark:border-slate-600/30"
+                      }`}
                     >
                       <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-slate-200/50">
                         {language.flag}
@@ -200,42 +204,15 @@ const DashboardHeader = () => {
 
           {/* Right Section - Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Notifications */}
-            <div className="relative">
-              <Button
-                size="icon"
-                variant="ghost"
-                className="hover:bg-emerald-500/20 transition-all duration-300 rounded-xl text-white/90 hover:text-white shadow-sm hover:shadow-md w-10 h-10"
-              >
-                <Bell className="w-5 h-5" />
-              </Button>
-              {notificationCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-xs font-bold bg-gradient-to-r from-red-500 to-red-600 border-2 border-white/20 shadow-lg"
-                >
-                  {notificationCount > 9 ? "9+" : notificationCount}
-                </Badge>
-              )}
+            <div className="flex items-center gap-2">
+              <NotificationPopover user={user}/>
             </div>
-
-            {/* Messages */}
-            <Button
-              size="icon"
-              variant="ghost"
-              className="hover:bg-emerald-500/20 transition-all duration-300 rounded-xl text-white/90 hover:text-white shadow-sm hover:shadow-md w-10 h-10"
-            >
-              <MessageCircle className="w-5 h-5" />
-            </Button>
-
-
-        <div className="flex items-center gap-2">
-          <NotificationPopover userId="user123" />
+          </div>
         </div>
-      </div>
 
-      {/* Decorative bottom border with gradient */}
-      <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        {/* Decorative bottom border with gradient */}
+        <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+      </div>
     </header>
   );
 };
