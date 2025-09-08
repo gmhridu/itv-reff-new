@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import apiClient from '@/lib/api/client';
+import { useQuery } from "@tanstack/react-query";
+import apiClient from "@/lib/api/client";
 
 export interface DashboardData {
   user: {
@@ -9,6 +9,20 @@ export interface DashboardData {
     walletBalance: number;
     totalEarnings: number;
     referralCode: string;
+    currentPosition?: {
+      id: string;
+      name: string;
+      level: number;
+      tasksPerDay: number;
+      unitPrice: number;
+      isExpired: boolean;
+      daysRemaining: number;
+    };
+    availableLevels?: Array<{
+      name: string;
+      level: number;
+      isUnlocked: boolean;
+    }>;
   };
   todayProgress: {
     videosWatched: number;
@@ -17,7 +31,7 @@ export interface DashboardData {
   };
   recentTransactions: Array<{
     id: string;
-    type: 'CREDIT' | 'DEBIT';
+    type: "CREDIT" | "DEBIT";
     amount: number;
     description: string;
     createdAt: string;
@@ -29,15 +43,15 @@ export interface DashboardData {
 }
 
 export const DASHBOARD_QUERY_KEYS = {
-  all: ['dashboard'] as const,
-  data: () => [...DASHBOARD_QUERY_KEYS.all, 'data'] as const,
+  all: ["dashboard"] as const,
+  data: () => [...DASHBOARD_QUERY_KEYS.all, "data"] as const,
 };
 
 export function useDashboard() {
   return useQuery({
     queryKey: DASHBOARD_QUERY_KEYS.data(),
     queryFn: async (): Promise<DashboardData> => {
-      const response = await apiClient.get<DashboardData>('/api/dashboard');
+      const response = await apiClient.get<DashboardData>("/api/dashboard");
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes

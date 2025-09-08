@@ -8,7 +8,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-700 relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 relative">
       {/* Main Content */}
       <div className="">
         <DashboardOverview />

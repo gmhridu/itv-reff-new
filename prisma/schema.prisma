@@ -8,22 +8,23 @@ datasource db {
 }
 
 model User {
-  id            String     @id @default(cuid())
-  email         String?    @unique
-  name          String?
-  phone         String     @unique
-  password      String
-  emailVerified Boolean    @default(false)
-  phoneVerified Boolean    @default(false)
-  referralCode  String     @unique
-  referredBy    String?
-  referrer      User?      @relation("UserReferrals", fields: [referredBy], references: [id])
-  referrals     User[]     @relation("UserReferrals")
-  status        UserStatus @default(ACTIVE)
-  ipAddress     String?
-  deviceId      String?
-  walletBalance Float      @default(0)
-  totalEarnings Float      @default(0)
+  id                String     @id @default(cuid())
+  email             String?    @unique
+  name              String?
+  phone             String     @unique
+  password          String
+  emailVerified     Boolean    @default(false)
+  phoneVerified     Boolean    @default(false)
+  referralCode      String     @unique
+  referredBy        String?
+  referrer          User?      @relation("UserReferrals", fields: [referredBy], references: [id])
+  referrals         User[]     @relation("UserReferrals")
+  status            UserStatus @default(ACTIVE)
+  ipAddress         String?
+  deviceId          String?
+  walletBalance     Float      @default(0) // Main wallet balance
+  commissionBalance Float      @default(0) // Commission wallet balance
+  totalEarnings     Float      @default(0)
 
   // Position-related fields
   currentPositionId String?
@@ -38,6 +39,7 @@ model User {
   lastFailedLogin     DateTime?
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
+  fundPassword        String? // 6-digit PIN for fund operations
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -54,6 +56,8 @@ model User {
   subordinateBonuses TaskManagementBonus[] @relation("SubordinateBonuses")
   activityLogs       ActivityLog[]
   systemLogs         SystemLog[]
+  userProfile        UserProfile?
+  bankCards          BankCard[]
 
   @@map("users")
 }
@@ -62,6 +66,36 @@ enum UserStatus {
   ACTIVE
   SUSPENDED
   BANNED
+}
+
+model UserProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  realName  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+model BankCard {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardHolderName String
+  bankName       BankType
+  accountNumber  String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("bank_cards")
+}
+
+enum BankType {
+  JAZZCASH
+  EASYPAISA
 }
 
 model PositionLevel {

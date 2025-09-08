@@ -32,6 +32,8 @@ import {
   CreditCard,
   CircleDollarSign,
   Award,
+  ArrowUpCircle,
+  ArrowDownCircle,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade } from "swiper/modules";
@@ -127,10 +129,10 @@ export default function DashboardOverview() {
 
   if (dashboardLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-emerald-200 border-t-emerald-600 mx-auto mb-6"></div>
-          <p className="text-emerald-700 text-lg font-medium">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-emerald-500 mx-auto mb-6"></div>
+          <p className="text-gray-600 text-lg font-medium">
             Loading dashboard...
           </p>
         </div>
@@ -140,7 +142,7 @@ export default function DashboardOverview() {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
         <div className="text-center">
           <p className="text-red-600 mb-4 text-lg font-semibold">
             Failed to load dashboard
@@ -164,7 +166,7 @@ export default function DashboardOverview() {
       : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <DashboardHeader user={user} />
 
       {/* Hero Slider Section - Restored */}
@@ -213,13 +215,13 @@ export default function DashboardOverview() {
       </div>
 
       {/* Announcement Banner */}
-      <div className="flex items-center w-full overflow-hidden bg-white/30 backdrop-blur-sm mx-2 my-4 p-3 rounded-lg border border-emerald-200/50">
-        <div className="text-emerald-700 mr-3">
+      <div className="flex items-center w-full overflow-hidden bg-white border mx-2 my-4 p-3 rounded-lg border-gray-200 shadow-sm">
+        <div className="text-emerald-600 mr-3">
           <Volume2 size={20} />
         </div>
         <div className="flex-1">
           <Marquee speed={50} gradient={false} pauseOnHover={false}>
-            <span className="text-emerald-800 text-sm">
+            <span className="text-gray-700 text-sm">
               We sincerely invite you to join our team! Here you will work with
               passionate and creative people who share the pursuit of
               excellence. We value the unique contribution of each member and
@@ -231,113 +233,53 @@ export default function DashboardOverview() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-        {/* Navigation Grid */}
+        {/* Navigation Grid - Only 4 cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <Link
             href="/top-up"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
+            className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-emerald-200 transition-all shadow-sm"
           >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Image
-                src="/recharge.png"
-                alt="Top up"
-                width={24}
-                height={24}
-                className="opacity-90"
-              />
+            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center">
+              <ArrowUpCircle className="w-6 h-6 text-emerald-600" />
             </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
+            <span className="text-gray-700 text-xs font-medium text-center">
               Top up
             </span>
           </Link>
 
           <Link
             href="/withdraw"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
+            className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-emerald-200 transition-all shadow-sm"
           >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Image
-                src="/withdraw.png"
-                alt="Withdraw"
-                width={24}
-                height={24}
-                className="opacity-90"
-              />
+            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center">
+              <ArrowDownCircle className="w-6 h-6 text-emerald-600" />
             </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
+            <span className="text-gray-700 text-xs font-medium text-center">
               Withdraw money
             </span>
           </Link>
 
           <Link
-            href="/invite"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
+            href="/referral"
+            className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-emerald-200 transition-all shadow-sm"
           >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Users className="w-6 h-6 text-emerald-700" />
+            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center">
+              <Users className="w-6 h-6 text-emerald-600" />
             </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
+            <span className="text-gray-700 text-xs font-medium text-center">
               Invite friends
             </span>
           </Link>
 
           <Link
-            href="/turntable"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
-          >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Award className="w-6 h-6 text-emerald-700" />
-            </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
-              Turntable Of Luck
-            </span>
-          </Link>
-
-          <Link
-            href="/employee-handbook"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
-          >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-emerald-700" />
-            </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
-              Employee Handbook
-            </span>
-          </Link>
-
-          <Link
-            href="/wealth-fund"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
-          >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Coins className="w-6 h-6 text-emerald-700" />
-            </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
-              Wealth fund
-            </span>
-          </Link>
-
-          <Link
             href="/company-profile"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
+            className="flex flex-col items-center gap-2 p-4 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-emerald-200 transition-all shadow-sm"
           >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <Building className="w-6 h-6 text-emerald-700" />
+            <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center">
+              <Building className="w-6 h-6 text-emerald-600" />
             </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
+            <span className="text-gray-700 text-xs font-medium text-center">
               Company Profile
-            </span>
-          </Link>
-
-          <Link
-            href="/company-positions"
-            className="flex flex-col items-center gap-2 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-emerald-100 hover:bg-white/80 transition-all shadow-sm"
-          >
-            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-              <UserCheck className="w-6 h-6 text-emerald-700" />
-            </div>
-            <span className="text-emerald-800 text-xs font-medium text-center">
-              Company positions
             </span>
           </Link>
         </div>
@@ -345,58 +287,61 @@ export default function DashboardOverview() {
         {/* Task Hall Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-emerald-800 text-lg font-semibold">
-              Task hall
-            </h3>
-            <div className="flex items-center gap-2 text-emerald-700">
+            <h3 className="text-gray-800 text-lg font-semibold">Task hall</h3>
+            <div className="flex items-center gap-2 text-gray-600">
               <span className="text-sm">Grade:</span>
-              <span className="bg-blue-600 px-3 py-1 rounded-full text-xs font-medium text-white">
-                Intern
+              <span className="bg-emerald-600 px-3 py-1 rounded-full text-xs font-medium text-white">
+                {user?.currentPosition?.name || "Intern"}
               </span>
             </div>
           </div>
 
           {/* Task Buttons Grid */}
           <div className="grid grid-cols-4 gap-3 mb-4">
-            {[
-              "Intern",
-              "D1",
-              "D2",
-              "D3",
-              "D4",
-              "D5",
-              "D6",
-              "D7",
-              "D8",
-              "D9",
-            ].map((level) => (
+            {(
+              user?.availableLevels || [
+                { name: "Intern", level: 0, isUnlocked: true },
+                { name: "D1", level: 1, isUnlocked: false },
+                { name: "D2", level: 2, isUnlocked: false },
+                { name: "D3", level: 3, isUnlocked: false },
+                { name: "D4", level: 4, isUnlocked: false },
+                { name: "D5", level: 5, isUnlocked: false },
+                { name: "D6", level: 6, isUnlocked: false },
+                { name: "D7", level: 7, isUnlocked: false },
+                { name: "D8", level: 8, isUnlocked: false },
+                { name: "D9", level: 9, isUnlocked: false },
+              ]
+            ).map((level) => (
               <Button
-                key={level}
-                className={`h-12 rounded-xl font-medium ${
-                  level === "Intern"
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-red-500 hover:bg-red-600 text-white"
+                key={level.name}
+                disabled={!level.isUnlocked}
+                className={`h-12 rounded-xl font-medium transition-all ${
+                  level.name === (user?.currentPosition?.name || "Intern")
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+                    : level.isUnlocked
+                      ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                      : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 <Play className="w-4 h-4 mr-1" />
-                {level}
+                {level.name}
               </Button>
             ))}
           </div>
         </div>
 
         {/* Original Video Tasks Section (Updated Styling) */}
-        <Card className="bg-white/60 backdrop-blur-sm border border-emerald-100 rounded-xl overflow-hidden shadow-sm">
-          <CardHeader className="bg-emerald-50/50 border-b border-emerald-100">
-            <CardTitle className="flex items-center gap-3 text-emerald-800">
-              <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+        <Card className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <CardHeader className="bg-gray-50 border-b border-gray-200">
+            <CardTitle className="flex items-center gap-3 text-gray-800">
+              <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
                 <Play className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h3 className="text-xl font-bold">Today's Video Tasks</h3>
               </div>
             </CardTitle>
-            <CardDescription className="text-emerald-700 text-base">
+            <CardDescription className="text-gray-600 text-base">
               Watch videos to earn rewards. Complete all{" "}
               {todayProgress.dailyLimit || 0} videos to maximize your daily
               earnings.
@@ -406,31 +351,31 @@ export default function DashboardOverview() {
             {(todayProgress.videosWatched || 0) >=
             (todayProgress.dailyLimit || 0) ? (
               <div className="text-center py-12">
-                <div className="text-green-600 text-8xl mb-6">🎉</div>
-                <h3 className="text-2xl font-bold text-emerald-600 mb-4">
+                <div className="text-emerald-500 text-8xl mb-6">🎉</div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">
                   Daily Goal Completed!
                 </h3>
-                <p className="text-emerald-700 mb-6 text-lg">
+                <p className="text-gray-600 mb-6 text-lg">
                   Congratulations! You've completed all your video tasks for
                   today.
                 </p>
-                <p className="text-sm text-emerald-600">
+                <p className="text-sm text-gray-500">
                   Come back tomorrow for more videos and rewards.
                 </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Video Status Section */}
-                <div className="flex items-center justify-between p-6 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-xl border border-gray-200">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
                       <Play className="h-8 w-8 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-lg text-emerald-800">
+                      <h4 className="font-bold text-lg text-gray-800">
                         Available Videos
                       </h4>
-                      <p className="text-sm text-emerald-700">
+                      <p className="text-sm text-gray-600">
                         {videosData?.videos
                           ? `${videosData.videos.length} videos available • ${
                               videosData.tasksRemaining ?? 0
@@ -451,15 +396,15 @@ export default function DashboardOverview() {
                     {[1, 2, 3].map((i) => (
                       <Card
                         key={i}
-                        className="animate-pulse bg-emerald-50 border border-emerald-100"
+                        className="animate-pulse bg-gray-50 border border-gray-200"
                       >
-                        <div className="aspect-video bg-emerald-100 rounded-t-xl"></div>
+                        <div className="aspect-video bg-gray-100 rounded-t-xl"></div>
                         <CardContent className="p-4">
-                          <div className="h-4 bg-emerald-100 rounded mb-2"></div>
-                          <div className="h-3 bg-emerald-100 rounded mb-3"></div>
+                          <div className="h-4 bg-gray-100 rounded mb-2"></div>
+                          <div className="h-3 bg-gray-100 rounded mb-3"></div>
                           <div className="flex justify-between">
-                            <div className="h-6 w-16 bg-emerald-100 rounded"></div>
-                            <div className="h-6 w-12 bg-emerald-100 rounded"></div>
+                            <div className="h-6 w-16 bg-gray-100 rounded"></div>
+                            <div className="h-6 w-12 bg-gray-100 rounded"></div>
                           </div>
                         </CardContent>
                       </Card>
@@ -471,14 +416,14 @@ export default function DashboardOverview() {
                     <h3 className="text-xl font-bold text-red-600 mb-4">
                       Failed to Load Videos
                     </h3>
-                    <p className="text-emerald-700 mb-6 text-base">
+                    <p className="text-gray-600 mb-6 text-base">
                       {videosError.message ||
                         "Unable to fetch videos. Please try again."}
                     </p>
                     <Button
                       onClick={() => refetchVideos()}
                       variant="outline"
-                      className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                      className="bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Try Again
@@ -521,14 +466,14 @@ export default function DashboardOverview() {
 
         {/* Membership List Section */}
         <div className="mb-6">
-          <h3 className="text-emerald-800 text-lg font-semibold mb-4">
+          <h3 className="text-gray-800 text-lg font-semibold mb-4">
             Membership list
           </h3>
           <div className="space-y-3">
             {membershipData.map((member, index) => (
               <Card
                 key={member.id}
-                className="bg-white/60 backdrop-blur-sm border border-emerald-100 rounded-xl shadow-sm"
+                className="bg-white border border-gray-200 rounded-xl shadow-sm hover:border-emerald-200 transition-colors"
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -539,18 +484,18 @@ export default function DashboardOverview() {
                         </span>
                       </div>
                       <div>
-                        <h4 className="text-emerald-800 font-medium text-sm">
+                        <h4 className="text-gray-800 font-medium text-sm">
                           {member.name}
                         </h4>
                         {member.subtitle && (
-                          <p className="text-emerald-600 text-xs">
+                          <p className="text-gray-600 text-xs">
                             {member.subtitle}
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-green-600 font-bold text-sm">
+                      <span className="text-emerald-600 font-bold text-sm">
                         {member.amount}
                       </span>
                     </div>
