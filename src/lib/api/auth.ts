@@ -329,7 +329,10 @@ export async function getUserById(id: string): Promise<AuthUser | null> {
   }
 }
 
-export type AuthAdmin = Pick<AdminUser, "id" | "name" | "phone" | "role">;
+export type AuthAdmin = Pick<
+  AdminUser,
+  "id" | "name" | "phone" | "email" | "role"
+>;
 
 export async function getAdminById(id: string): Promise<AuthAdmin | null> {
   try {
@@ -341,6 +344,7 @@ export async function getAdminById(id: string): Promise<AuthAdmin | null> {
         id: true,
         name: true,
         phone: true,
+        email: true,
         role: true,
       },
     });
@@ -411,6 +415,7 @@ export async function getAdminFromServer() {
       id: admin.id,
       name: admin.name,
       phone: admin.phone,
+      email: admin.email,
       role: admin.role,
     };
   } catch (error) {
@@ -563,7 +568,7 @@ export async function loginAction(prevState: any, formData: FormData) {
       cookieStore.delete("redirect_after_login");
       return {
         success: true,
-        redirectPath: "/dashboard"
+        redirectPath: "/dashboard",
       };
     } else {
       // Return error state for client-side handling
@@ -646,7 +651,7 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
       // Return success state with redirect path instead of server-side redirect
       return {
         success: true,
-        redirectPath: redirectPath
+        redirectPath: redirectPath,
       };
     } else {
       return {
@@ -711,7 +716,7 @@ export async function registerAction(prevState: any, formData: FormData) {
 
   // Phone format validation
   const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-  if (!phoneRegex.test(phone) || phone.replace(/\D/g, '').length < 10) {
+  if (!phoneRegex.test(phone) || phone.replace(/\D/g, "").length < 10) {
     return {
       error: "Please enter a valid phone number",
     };
@@ -731,7 +736,7 @@ export async function registerAction(prevState: any, formData: FormData) {
           email: email || undefined,
           password,
           confirmPassword,
-          referralCode: referralCode || undefined
+          referralCode: referralCode || undefined,
         }),
       },
     );
@@ -760,7 +765,7 @@ export async function registerAction(prevState: any, formData: FormData) {
       // Return success state with redirect path instead of server-side redirect
       return {
         success: true,
-        redirectPath: "/dashboard"
+        redirectPath: "/dashboard",
       };
     } else {
       return {

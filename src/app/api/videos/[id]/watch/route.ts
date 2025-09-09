@@ -1,19 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware, validateVideoWatchRequest } from '@/lib/api/api-auth';
-import { db } from '@/lib/db';
-import { ReferralService } from '@/lib/referral-service';
-import { PositionService } from '@/lib/position-service';
-import { TaskManagementBonusService } from '@/lib/task-management-bonus-service';
-import { EnhancedReferralService } from '@/lib/enhanced-referral-service';
+import { NextRequest, NextResponse } from "next/server";
+import { authMiddleware, validateVideoWatchRequest } from "@/lib/api/api-auth";
+import { db } from "@/lib/db";
+import { ReferralService } from "@/lib/referral-service";
+import { PositionService } from "@/lib/position-service";
+import { TaskManagementBonusService } from "@/lib/task-management-bonus-service";
+import { EnhancedReferralService } from "@/lib/enhanced-referral-service";
+import { UserNotificationService } from "@/lib/user-notification-service";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     const user = await authMiddleware(request);
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: "Authentication required" },
+        { status: 401 },
       );
     }
 
@@ -22,41 +26,35 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Security validation
     const isValid = validateVideoWatchRequest(request);
     if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid request' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid request" }, { status: 400 });
     }
 
     // Get video details
     const video = await db.video.findFirst({
-      where: { id: videoId, isActive: true }
+      where: { id: videoId, isActive: true },
     });
 
     if (!video) {
-      return NextResponse.json(
-        { error: 'Video not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
     // Check if user already watched this video (unique constraint: userId + videoId)
     const existingTask = await db.userVideoTask.findFirst({
       where: {
         userId: user.id,
-        videoId: videoId
-      }
+        videoId: videoId,
+      },
     });
 
     if (existingTask) {
       return NextResponse.json(
         {
-          error: 'Video already completed',
-          message: 'You have already watched and completed this video.',
+          error: "Video already completed",
+          message: "You have already watched and completed this video.",
           completedAt: existingTask.watchedAt,
-          rewardEarned: existingTask.rewardEarned
+          rewardEarned: existingTask.rewardEarned,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,7 +64,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!canCompleteTask.canComplete) {
       return NextResponse.json(
         { error: canCompleteTask.reason },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -75,8 +73,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (!userPosition || !userPosition.position) {
       return NextResponse.json(
-        { error: 'No active position found' },
-        { status: 400 }
+        { error: "No active position found" },
+        { status: 400 },
       );
     }
 
@@ -85,18 +83,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const dailyLimit = position.tasksPerDay;
 
     // Count today's watched videos
-    const todayTasksCount = await PositionService.getDailyTasksCompleted(user.id);
+    const todayTasksCount = await PositionService.getDailyTasksCompleted(
+      user.id,
+    );
 
     // Get client IP and device info
-    const ipAddress = request.headers.get('x-forwarded-for') ||
-                     request.headers.get('x-real-ip') ||
-                     'unknown';
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
 
     const body = await request.json();
     const { watchDuration, verificationData, userInteractions = [] } = body;
 
     // Enhanced anti-cheat validation with duration mismatch detection
-    console.log('Video duration debug:', {
+    console.log("Video duration debug:", {
       videoDuration: video.duration,
       videoDurationType: typeof video.duration,
       calculatedMinimum: video.duration * 0.8,
@@ -104,16 +105,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       videoData: {
         id: video.id,
         title: video.title,
-        duration: video.duration
-      }
+        duration: video.duration,
+      },
     });
 
     // Detect duration mismatch between database and actual video
     let actualVideoDuration = video.duration;
-    if (verificationData?.duration && Math.abs(video.duration - verificationData.duration) > 10) {
+    if (
+      verificationData?.duration &&
+      Math.abs(video.duration - verificationData.duration) > 10
+    ) {
       // Use the actual video duration from verification data
       actualVideoDuration = verificationData.duration;
-      console.log('Using actual video duration for validation:', actualVideoDuration);
+      console.log(
+        "Using actual video duration for validation:",
+        actualVideoDuration,
+      );
     }
 
     const minimumWatchTime = actualVideoDuration * 0.8; // 80% of actual video duration
@@ -121,28 +128,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Use verification data as fallback if watchDuration is 0 (new segment-based tracking)
     let actualWatchDuration = watchDuration;
     if (watchDuration === 0 && verificationData?.watchPercentage) {
-        actualWatchDuration = Math.floor((verificationData.watchPercentage / 100) * actualVideoDuration);
+      actualWatchDuration = Math.floor(
+        (verificationData.watchPercentage / 100) * actualVideoDuration,
+      );
     }
 
     if (actualWatchDuration < minimumWatchTime) {
       return NextResponse.json(
         {
-          error: 'Video not watched long enough',
+          error: "Video not watched long enough",
           details: {
             watchDuration: actualWatchDuration,
             minimumRequired: minimumWatchTime,
-            watchPercentage: verificationData?.watchPercentage || 0
-          }
+            watchPercentage: verificationData?.watchPercentage || 0,
+          },
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check for suspicious patterns using actual video duration
     if (actualWatchDuration > actualVideoDuration * 2) {
       return NextResponse.json(
-        { error: 'Invalid watch duration' },
-        { status: 400 }
+        { error: "Invalid watch duration" },
+        { status: 400 },
       );
     }
 
@@ -159,9 +168,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         rewardEarned: rewardEarned,
         positionLevel: position.name,
         ipAddress,
-        deviceId: 'web-client',
-        isVerified: true
-      }
+        deviceId: "web-client",
+        isVerified: true,
+      },
     });
 
     // Update user's wallet balance and total earnings
@@ -169,20 +178,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       where: { id: user.id },
       data: {
         walletBalance: user.walletBalance + rewardEarned,
-        totalEarnings: user.totalEarnings + rewardEarned
-      }
+        totalEarnings: user.totalEarnings + rewardEarned,
+      },
     });
 
     // Create transaction record
     await db.walletTransaction.create({
       data: {
         userId: user.id,
-        type: 'TASK_INCOME',
+        type: "TASK_INCOME",
         amount: rewardEarned,
         balanceAfter: user.walletBalance + rewardEarned,
         description: `Task reward: ${video.title} (${position.name})`,
         referenceId: `TASK_${videoTask.id}`,
-        status: 'COMPLETED',
+        status: "COMPLETED",
         metadata: JSON.stringify({
           videoId: videoId,
           watchDuration: actualWatchDuration, // Use corrected watch duration
@@ -191,56 +200,92 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           verificationData,
           userInteractions,
           ipAddress,
-          securityScore: calculateSecurityScore(actualWatchDuration, actualVideoDuration, userInteractions)
-        })
-      }
+          securityScore: calculateSecurityScore(
+            actualWatchDuration,
+            actualVideoDuration,
+            userInteractions,
+          ),
+        }),
+      },
     });
 
     // Distribute management bonuses to upline
-    const bonusResult = await TaskManagementBonusService.distributeManagementBonuses(
-      user.id,
-      rewardEarned,
-      new Date()
-    );
+    const bonusResult =
+      await TaskManagementBonusService.distributeManagementBonuses(
+        user.id,
+        rewardEarned,
+        new Date(),
+      );
 
     if (bonusResult.success && bonusResult.totalBonusDistributed > 0) {
-      console.log(`Management bonuses distributed: ${bonusResult.totalBonusDistributed} PKR`);
+      console.log(
+        `Management bonuses distributed: ${bonusResult.totalBonusDistributed} PKR`,
+      );
     }
 
     // Process referral rewards
     const totalVideosWatched = await db.userVideoTask.count({
-      where: { userId: user.id }
+      where: { userId: user.id },
     });
 
     // Check for first video referral reward
     if (totalVideosWatched === 1) {
-      const firstVideoResult = await ReferralService.processReferralQualification(
-        user.id,
-        'first_video'
-      );
+      const firstVideoResult =
+        await ReferralService.processReferralQualification(
+          user.id,
+          "first_video",
+        );
 
       if (firstVideoResult.success && firstVideoResult.rewardAmount) {
-        console.log(`First video referral reward: $${firstVideoResult.rewardAmount} awarded`);
+        console.log(
+          `First video referral reward: $${firstVideoResult.rewardAmount} awarded`,
+        );
       }
     }
 
     // Check for weekly activity milestone (7 videos)
     if (totalVideosWatched === 7) {
-      await ReferralService.processReferralQualification(user.id, 'weekly_activity');
+      await ReferralService.processReferralQualification(
+        user.id,
+        "weekly_activity",
+      );
     }
 
     // Check for high earner milestone ($50 total earnings)
     const updatedUser = await db.user.findUnique({
       where: { id: user.id },
-      select: { totalEarnings: true }
+      select: { totalEarnings: true },
     });
 
-    if (updatedUser && updatedUser.totalEarnings >= 50 && (updatedUser.totalEarnings - rewardEarned) < 50) {
-      await ReferralService.processReferralQualification(user.id, 'high_earner');
+    if (
+      updatedUser &&
+      updatedUser.totalEarnings >= 50 &&
+      updatedUser.totalEarnings - rewardEarned < 50
+    ) {
+      await ReferralService.processReferralQualification(
+        user.id,
+        "high_earner",
+      );
+    }
+
+    // Send notification about video completion and earnings
+    try {
+      await UserNotificationService.notifyVideoEarnings(
+        user.id,
+        video.title,
+        rewardEarned,
+        "Main Wallet",
+      );
+    } catch (notificationError) {
+      console.error(
+        "Failed to send video completion notification:",
+        notificationError,
+      );
+      // Don't fail the request if notification fails
     }
 
     return NextResponse.json({
-      message: 'Task completed successfully',
+      message: "Task completed successfully",
       rewardEarned: rewardEarned,
       newBalance: user.walletBalance + rewardEarned,
       tasksCompletedToday: todayTasksCount + 1,
@@ -255,15 +300,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         minimumRequired: minimumWatchTime,
         databaseVideoDuration: video.duration,
         actualVideoDuration: actualVideoDuration,
-        durationMismatchDetected: Math.abs(video.duration - (verificationData?.duration || video.duration)) > 10
-      }
+        durationMismatchDetected:
+          Math.abs(
+            video.duration - (verificationData?.duration || video.duration),
+          ) > 10,
+      },
     });
-
   } catch (error) {
-    console.error('Video watch error:', error);
+    console.error("Video watch error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -272,7 +319,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 function calculateSecurityScore(
   watchDuration: number,
   videoDuration: number,
-  userInteractions: any[]
+  userInteractions: any[],
 ): number {
   let score = 100;
 

@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   BarChart3,
   GalleryVerticalEnd,
   Settings,
@@ -25,7 +27,7 @@ interface SidebarProps extends React.ComponentProps<typeof Sidebar> {
     id: string;
     name: string;
     email: string;
-    role: string;
+    role: "ADMIN" | "SUPER_ADMIN";
     avatar?: string;
   } | null;
 }
@@ -52,6 +54,16 @@ const data = {
       title: "Video Upload",
       url: "/admin/video-upload",
       icon: Upload,
+    },
+    {
+      title: "Topup Management",
+      url: "/admin/topup-management",
+      icon: ArrowUpCircle,
+    },
+    {
+      title: "Withdrawal Management",
+      url: "/admin/withdrawal-management",
+      icon: ArrowDownCircle,
     },
     {
       title: "User Management",

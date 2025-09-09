@@ -134,7 +134,7 @@ const DashboardHeader = ({ user }) => {
   return (
     <header className="sticky top-0 z-50 w-full">
       {/* Main Header */}
-      <div className="h-16 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-600 backdrop-blur-xl border-b border-white/20 shadow-lg">
+      <div className="h-16 bg-white/95 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
         <div className="flex items-center justify-between h-full px-4 sm:px-6">
           {/* Left Section - Language Dropdown */}
           <div className="relative flex items-center">
@@ -142,16 +142,16 @@ const DashboardHeader = ({ user }) => {
               variant="ghost"
               size="sm"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 hover:bg-white/30 transition-all duration-300 rounded-xl px-3 py-2 text-white hover:text-white shadow-sm hover:shadow-md"
+              className="flex items-center gap-2 hover:bg-slate-100 transition-all duration-200 rounded-xl px-3 py-2 text-slate-700 hover:text-slate-900 border border-slate-200/50 hover:border-slate-300/50 shadow-sm hover:shadow-md"
             >
-              <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-white/20">
+              <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-slate-300/50">
                 {currentLanguage?.flag}
               </div>
               <span className="text-sm font-medium hidden sm:inline-block">
                 {selectedLanguage}
               </span>
               <ChevronDown
-                className={`w-4 h-4 transition-transform duration-300 ${
+                className={`w-4 h-4 transition-transform duration-200 ${
                   isDropdownOpen ? "rotate-180" : ""
                 }`}
               />
@@ -167,16 +167,16 @@ const DashboardHeader = ({ user }) => {
                 />
 
                 {/* Dropdown */}
-                <div className="absolute top-full left-0 mt-2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border border-slate-200/50 dark:border-slate-600/50 rounded-2xl shadow-2xl z-20 min-w-[140px] overflow-hidden">
+                <div className="absolute top-full left-0 mt-2 bg-white/98 backdrop-blur-xl border border-slate-200/80 rounded-xl shadow-xl z-20 min-w-[140px] overflow-hidden">
                   {languages.map((language, index) => (
                     <button
                       key={language.name}
                       onClick={() => handleLanguageSelect(language.name)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-emerald-500/10 dark:hover:bg-emerald-500/20 transition-all duration-200 ${
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-blue-50 transition-all duration-200 ${
                         selectedLanguage === language.name
-                          ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
-                          : "text-slate-700 dark:text-slate-300"
-                      } ${index === 0 ? "" : "border-t border-slate-200/30 dark:border-slate-600/30"}`}
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-slate-700"
+                      } ${index === 0 ? "" : "border-t border-slate-200/50"}`}
                     >
                       <div className="w-5 h-5 rounded-sm overflow-hidden ring-1 ring-slate-200/50">
                         {language.flag}
@@ -193,9 +193,14 @@ const DashboardHeader = ({ user }) => {
 
           {/* Center Section - Logo */}
           <div className="flex-1 flex justify-center">
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent tracking-wide">
-              iTV
-            </h1>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">iTV</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-wide">
+                Dashboard
+              </h1>
+            </div>
           </div>
 
           {/* Right Section - Action Buttons */}
@@ -206,8 +211,8 @@ const DashboardHeader = ({ user }) => {
           </div>
         </div>
 
-        {/* Decorative bottom border with gradient */}
-        <div className="h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+        {/* Decorative bottom border */}
+        <div className="h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent"></div>
       </div>
     </header>
   );

@@ -3,6 +3,12 @@ import { authMiddleware } from "@/lib/api/api-auth";
 import { verifyPassword } from "@/lib/api/auth";
 import { db as prisma } from "@/lib/db";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
+import {
+  notificationService,
+  NotificationType,
+  NotificationSeverity,
+} from "@/lib/admin/notification-service";
+import { NotificationService } from "@/lib/notification-service";
 
 export async function POST(request: NextRequest) {
   let response: NextResponse;
@@ -230,9 +236,83 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Get user details for notification
+    const userDetails = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { name: true, phone: true, email: true },
+    });
+
+    // Create admin notification for withdrawal request
+    try {
+      await notificationService.createNotification(
+        NotificationType.WITHDRAWAL_REQUEST,
+        "New Withdrawal Request",
+        `User ${userDetails?.name || userDetails?.phone || user.id} has requested withdrawal of PKR ${withdrawalAmount}`,
+        {
+          severity: NotificationSeverity.INFO,
+          targetType: "admin",
+          targetId: "all",
+          actionUrl: `/admin/withdrawal-management?request=${withdrawalRequest.id}`,
+          metadata: {
+            withdrawalRequestId: withdrawalRequest.id,
+            userId: user.id,
+            userName: userDetails?.name,
+            userPhone: userDetails?.phone,
+            amount: withdrawalAmount,
+            handlingFee: handlingFee,
+            walletType: walletType,
+            paymentMethod: bankCard.bankName,
+            accountNumber: bankCard.accountNumber,
+            status: "PENDING",
+          },
+        },
+      );
+    } catch (notificationError) {
+      console.error("Failed to create admin notification:", notificationError);
+      // Don't fail the withdrawal if notification fails
+    }
+
+    // Create user notification for withdrawal request submission
+    try {
+      await NotificationService.createNotification(
+        {
+          type: "WITHDRAWAL_REQUEST",
+          title: "Withdrawal Request Submitted",
+          message: `Your withdrawal request of PKR ${withdrawalAmount} has been submitted successfully. Processing time: 0-72 hours.`,
+          severity: "SUCCESS",
+          actionUrl: `/withdraw`,
+          metadata: {
+            withdrawalRequestId: withdrawalRequest.id,
+            amount: withdrawalAmount,
+            handlingFee: handlingFee,
+            walletType: walletType,
+            paymentMethod: `${bankCard.bankName} ${bankCard.accountNumber}`,
+            status: "PENDING",
+            estimatedProcessingTime: "0-72 hours",
+          },
+        },
+        user.id,
+      );
+    } catch (userNotificationError) {
+      console.error(
+        "Failed to create user notification:",
+        userNotificationError,
+      );
+      // Don't fail the withdrawal if notification fails
+    }
+
     response = NextResponse.json({
       success: true,
       message: "Withdrawal request submitted successfully",
+      showSuccessModal: true,
+      modalData: {
+        title: "Withdrawal Submitted Successfully!",
+        message:
+          "Your withdrawal application has been submitted and will arrive to your account within 0-72 hours.",
+        amount: withdrawalAmount,
+        paymentMethod: `${bankCard.bankName} ${bankCard.accountNumber}`,
+        estimatedTime: "0-72 hours",
+      },
       data: {
         withdrawalRequestId: withdrawalRequest.id,
         amount: withdrawalAmount,
