@@ -8,73 +8,61 @@ datasource db {
 }
 
 model User {
-  id                String     @id @default(cuid())
-  email             String?    @unique
-  name              String?
-  phone             String     @unique
-  password          String
-  emailVerified     Boolean    @default(false)
-  phoneVerified     Boolean    @default(false)
-  referralCode      String     @unique
-  referredBy        String?
-  referrer          User?      @relation("UserReferrals", fields: [referredBy], references: [id])
-  referrals         User[]     @relation("UserReferrals")
-  status            UserStatus @default(ACTIVE)
-  ipAddress         String?
-  deviceId          String?
-  walletBalance     Float      @default(0) // Main wallet balance
-  commissionBalance Float      @default(0) // Commission wallet balance
-  totalEarnings     Float      @default(0)
-
-  // Position-related fields
-  currentPositionId String?
-  currentPosition   PositionLevel? @relation(fields: [currentPositionId], references: [id])
-  positionStartDate DateTime?
-  positionEndDate   DateTime?
-  depositPaid       Float          @default(0)
-  isIntern          Boolean        @default(true)
-
-  // Security fields
-  failedLoginAttempts Int?      @default(0)
+  id                  String                @id @default(cuid())
+  email               String?               @unique
+  name                String?
+  phone               String                @unique
+  password            String
+  emailVerified       Boolean               @default(false)
+  phoneVerified       Boolean               @default(false)
+  referralCode        String                @unique
+  referredBy          String?
+  status              UserStatus            @default(ACTIVE)
+  ipAddress           String?
+  deviceId            String?
+  walletBalance       Float                 @default(0)
+  totalEarnings       Float                 @default(0)
+  currentPositionId   String?
+  positionStartDate   DateTime?
+  positionEndDate     DateTime?
+  depositPaid         Float                 @default(0)
+  isIntern            Boolean               @default(true)
+  failedLoginAttempts Int?                  @default(0)
   lastFailedLogin     DateTime?
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
-  fundPassword        String? // 6-digit PIN for fund operations
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  userPlan           UserPlan?
-  videoTasks         UserVideoTask[]
-  transactions       WalletTransaction[]
-  withdrawalRequests WithdrawalRequest[]
-  referralActivities ReferralActivity[]
-  referralHierarchy  ReferralHierarchy[]   @relation("UserReferralHierarchy")
-  referrerHierarchy  ReferralHierarchy[]   @relation("ReferrerHierarchy")
-  managementBonuses  TaskManagementBonus[] @relation("UserManagementBonuses")
-  subordinateBonuses TaskManagementBonus[] @relation("SubordinateBonuses")
-  activityLogs       ActivityLog[]
-  systemLogs         SystemLog[]
-  userProfile        UserProfile?
-  bankCards          BankCard[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  commissionBalance   Float                 @default(0)
+  fundPassword        String?
+  activityLogs        ActivityLog[]
+  bankCards           BankCard[]
+  referralActivities  ReferralActivity[]
+  referrerHierarchy   ReferralHierarchy[]   @relation("ReferrerHierarchy")
+  referralHierarchy   ReferralHierarchy[]   @relation("UserReferralHierarchy")
+  systemLogs          SystemLog[]
+  subordinateBonuses  TaskManagementBonus[] @relation("SubordinateBonuses")
+  managementBonuses   TaskManagementBonus[] @relation("UserManagementBonuses")
+  TopupRequest        TopupRequest[]
+  userPlan            UserPlan?
+  userProfile         UserProfile?
+  videoTasks          UserVideoTask[]
+  currentPosition     PositionLevel?        @relation(fields: [currentPositionId], references: [id])
+  referrer            User?                 @relation("UserReferrals", fields: [referredBy], references: [id])
+  referrals           User[]                @relation("UserReferrals")
+  transactions        WalletTransaction[]
+  withdrawalRequests  WithdrawalRequest[]
 
   @@map("users")
-}
-
-enum UserStatus {
-  ACTIVE
-  SUSPENDED
-  BANNED
 }
 
 model UserProfile {
   id        String   @id @default(cuid())
   userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   realName  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
 }
@@ -82,110 +70,87 @@ model UserProfile {
 model BankCard {
   id             String   @id @default(cuid())
   userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardHolderName String
   bankName       BankType
   accountNumber  String
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("bank_cards")
 }
 
-enum BankType {
-  JAZZCASH
-  EASYPAISA
-}
-
 model PositionLevel {
   id           String   @id @default(cuid())
-  name         String   @unique // "Intern", "P1", "P2", etc.
-  level        Int      @unique // 0 for Intern, 1 for P1, 2 for P2, etc.
-  deposit      Float // Security deposit required (0 for Intern)
-  tasksPerDay  Int // Number of tasks allowed per day
-  unitPrice    Float // Price per task in PKR
-  validityDays Int // Validity period (4 for Intern, 365 for P1-P10)
+  name         String   @unique
+  level        Int      @unique
+  deposit      Float
+  tasksPerDay  Int
+  unitPrice    Float
+  validityDays Int
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
-  // Relations
-  users  User[]
-  videos Video[]
+  users        User[]
+  videos       Video[]
 
   @@map("position_levels")
 }
 
 model Plan {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   name            String
   description     String?
   price           Float
   durationDays    Int
   dailyVideoLimit Int
   rewardPerVideo  Float
-  referralBonus   Float    @default(0)
-  isActive        Boolean  @default(false) // Deprecated - keeping for migration
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  userPlans UserPlan[]
+  referralBonus   Float      @default(0)
+  isActive        Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  userPlans       UserPlan[]
 
   @@map("plans")
 }
 
 model UserPlan {
   id         String     @id @default(cuid())
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String     @unique
   planId     String
-  plan       Plan       @relation(fields: [planId], references: [id])
   amountPaid Float
   startDate  DateTime
   endDate    DateTime
   status     PlanStatus @default(ACTIVE)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
+  plan       Plan       @relation(fields: [planId], references: [id])
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId])
   @@map("user_plans")
 }
 
-enum PlanStatus {
-  ACTIVE
-  EXPIRED
-  CANCELLED
-}
-
 model Video {
-  id            String    @id @default(cuid())
-  title         String
-  description   String?
-  url           String
-  thumbnailUrl  String?
-  duration      Int
-  rewardAmount  Float
-  isActive      Boolean   @default(true)
-  availableFrom DateTime?
-  availableTo   DateTime?
-
-  // Upload method and source tracking
-  uploadMethod       String  @default("file") // "file" or "youtube"
-  youtubeVideoId     String?
+  id                 String          @id @default(cuid())
+  title              String
+  description        String?
+  url                String
+  thumbnailUrl       String?
+  duration           Int
+  rewardAmount       Float
+  isActive           Boolean         @default(true)
+  availableFrom      DateTime?
+  availableTo        DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  positionLevelId    String?
   cloudinaryPublicId String?
-  tags               String? // JSON string of tags array
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Position Level Reference
-  positionLevelId String?
-  positionLevel   PositionLevel? @relation(fields: [positionLevelId], references: [id])
-
-  // Relations
-  videoTasks UserVideoTask[]
+  tags               String?
+  uploadMethod       String          @default("file")
+  youtubeVideoId     String?
+  videoTasks         UserVideoTask[]
+  positionLevel      PositionLevel?  @relation(fields: [positionLevelId], references: [id])
 
   @@map("videos")
 }
@@ -193,17 +158,17 @@ model Video {
 model UserVideoTask {
   id            String   @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId       String
-  video         Video    @relation(fields: [videoId], references: [id])
   watchedAt     DateTime
-  watchDuration Int // in seconds
+  watchDuration Int
   rewardEarned  Float
-  positionLevel String? // Position level when task was completed
+  positionLevel String?
   ipAddress     String?
   deviceId      String?
-  isVerified    Boolean  @default(false) // anti-cheat verification
+  isVerified    Boolean  @default(false)
   createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video         Video    @relation(fields: [videoId], references: [id])
 
   @@unique([userId, videoId])
   @@map("user_video_tasks")
@@ -212,17 +177,296 @@ model UserVideoTask {
 model WalletTransaction {
   id           String            @id @default(cuid())
   userId       String
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   type         TransactionType
   amount       Float
   balanceAfter Float
   description  String
   referenceId  String            @unique
   status       TransactionStatus @default(COMPLETED)
-  metadata     String? // JSON string for additional data
+  metadata     String?
   createdAt    DateTime          @default(now())
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("wallet_transactions")
+}
+
+model WithdrawalRequest {
+  id             String           @id @default(cuid())
+  userId         String
+  amount         Float
+  paymentMethod  String
+  paymentDetails String
+  status         WithdrawalStatus @default(PENDING)
+  adminNotes     String?
+  processedAt    DateTime?
+  transactionId  String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("withdrawal_requests")
+}
+
+model ReferralActivity {
+  id             String         @id @default(cuid())
+  referrerId     String
+  referredUserId String?
+  referralCode   String
+  ipAddress      String?
+  userAgent      String?
+  source         String?
+  status         ReferralStatus @default(PENDING)
+  rewardAmount   Float?
+  rewardPaidAt   DateTime?
+  metadata       String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  referrer       User           @relation(fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@map("referral_activities")
+}
+
+model ReferralReward {
+  id             String    @id @default(cuid())
+  name           String
+  description    String?
+  triggerEvent   String
+  rewardAmount   Float
+  isActive       Boolean   @default(true)
+  validFrom      DateTime  @default(now())
+  validUntil     DateTime?
+  maxRewards     Int?
+  currentRewards Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("referral_rewards")
+}
+
+model AdminUser {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         AdminRole     @default(ADMIN)
+  lastLogin    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  phone        String        @unique
+  activityLogs ActivityLog[]
+  apiKeys      ApiKey[]
+  auditLogs    AuditLog[]
+  fileUploads  FileUpload[]
+  systemLogs   SystemLog[]
+
+  @@map("admin_users")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model ReferralHierarchy {
+  id         String        @id @default(cuid())
+  userId     String
+  referrerId String
+  level      ReferralLevel
+  createdAt  DateTime      @default(now())
+  referrer   User          @relation("ReferrerHierarchy", fields: [referrerId], references: [id], onDelete: Cascade)
+  user       User          @relation("UserReferralHierarchy", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, referrerId])
+  @@map("referral_hierarchy")
+}
+
+model TaskManagementBonus {
+  id               String        @id @default(cuid())
+  userId           String
+  subordinateId    String
+  subordinateLevel ReferralLevel
+  bonusAmount      Float
+  taskDate         DateTime
+  taskIncome       Float
+  createdAt        DateTime      @default(now())
+  subordinate      User          @relation("SubordinateBonuses", fields: [subordinateId], references: [id], onDelete: Cascade)
+  user             User          @relation("UserManagementBonuses", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("task_management_bonuses")
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  description String
+  details     String?
+  adminId     String?
+  createdAt   DateTime    @default(now())
+  ipAddress   String?
+  targetId    String?
+  targetType  String
+  userAgent   String?
+  admin       AdminUser?  @relation(fields: [adminId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model SystemNotification {
+  id         String               @id @default(cuid())
+  type       NotificationType
+  title      String
+  message    String
+  severity   NotificationSeverity @default(INFO)
+  metadata   String?
+  actionUrl  String?
+  createdAt  DateTime             @default(now())
+  isRead     Boolean              @default(false)
+  readAt     DateTime?
+  targetId   String?
+  targetType String?
+
+  @@map("system_notifications")
+}
+
+model FileUpload {
+  id               String         @id @default(cuid())
+  metadata         String?
+  createdAt        DateTime       @default(now())
+  fileName         String
+  filePath         String
+  fileSize         Int
+  isProcessed      Boolean        @default(false)
+  mimeType         String
+  originalName     String
+  processingStatus String?
+  updatedAt        DateTime       @updatedAt
+  uploadType       FileUploadType
+  uploadedBy       String?
+  uploader         AdminUser?     @relation(fields: [uploadedBy], references: [id])
+
+  @@map("file_uploads")
+}
+
+model ActivityLog {
+  id          String     @id @default(cuid())
+  activity    String
+  description String
+  metadata    String?
+  adminId     String?
+  createdAt   DateTime   @default(now())
+  ipAddress   String?
+  sessionId   String?
+  userAgent   String?
+  userId      String?
+  admin       AdminUser? @relation(fields: [adminId], references: [id])
+  user        User?      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([adminId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model SystemLog {
+  id        String     @id @default(cuid())
+  level     LogLevel
+  component String
+  message   String
+  error     String?
+  metadata  String?
+  adminId   String?
+  createdAt DateTime   @default(now())
+  userId    String?
+  admin     AdminUser? @relation(fields: [adminId], references: [id])
+  user      User?      @relation(fields: [userId], references: [id])
+
+  @@index([level])
+  @@index([component])
+  @@index([createdAt])
+  @@map("system_logs")
+}
+
+model DashboardCache {
+  id        String   @id @default(cuid())
+  data      String
+  cacheKey  String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+  @@map("dashboard_cache")
+}
+
+model ApiKey {
+  id          String     @id @default(cuid())
+  name        String
+  key         String     @unique
+  permissions String[]
+  metadata    String?
+  createdAt   DateTime   @default(now())
+  createdBy   String?
+  expiresAt   DateTime?
+  isActive    Boolean    @default(true)
+  lastUsedAt  DateTime?
+  updatedAt   DateTime   @updatedAt
+  creator     AdminUser? @relation(fields: [createdBy], references: [id])
+
+  @@map("api_keys")
+}
+
+model AdminWallet {
+  id               String         @id @default(cuid())
+  walletType       BankType
+  walletNumber     String
+  walletHolderName String
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  topupRequests    TopupRequest[]
+
+  @@map("admin_wallets")
+}
+
+model TopupRequest {
+  id               String      @id @default(cuid())
+  userId           String
+  amount           Float
+  selectedWalletId String
+  paymentProof     String?
+  status           TopupStatus @default(PENDING)
+  adminNotes       String?
+  processedAt      DateTime?
+  transactionId    String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  selectedWallet   AdminWallet @relation(fields: [selectedWalletId], references: [id])
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("topup_requests")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum BankType {
+  JAZZCASH
+  EASYPAISA
+}
+
+enum PlanStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }
 
 enum TransactionType {
@@ -244,23 +488,6 @@ enum TransactionStatus {
   FAILED
 }
 
-model WithdrawalRequest {
-  id             String           @id @default(cuid())
-  userId         String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  amount         Float
-  paymentMethod  String
-  paymentDetails String // JSON string for payment details
-  status         WithdrawalStatus @default(PENDING)
-  adminNotes     String?
-  processedAt    DateTime?
-  transactionId  String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-
-  @@map("withdrawal_requests")
-}
-
 enum WithdrawalStatus {
   PENDING
   APPROVED
@@ -268,69 +495,12 @@ enum WithdrawalStatus {
   PROCESSED
 }
 
-model ReferralActivity {
-  id             String         @id @default(cuid())
-  referrerId     String
-  referrer       User           @relation(fields: [referrerId], references: [id], onDelete: Cascade)
-  referredUserId String? // Null if user hasn't registered yet
-  referralCode   String
-  ipAddress      String?
-  userAgent      String?
-  source         String? // 'link', 'code', 'social', etc.
-  status         ReferralStatus @default(PENDING)
-  rewardAmount   Float?
-  rewardPaidAt   DateTime?
-  metadata       String? // JSON for additional tracking data
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  @@map("referral_activities")
-}
-
 enum ReferralStatus {
-  PENDING // User clicked link but hasn't registered
-  REGISTERED // User registered but hasn't completed qualifying action
-  QUALIFIED // User completed qualifying action (e.g., first video watch)
-  REWARDED // Referrer has been rewarded
-  EXPIRED // Referral link expired
-}
-
-model ReferralReward {
-  id             String    @id @default(cuid())
-  name           String
-  description    String?
-  triggerEvent   String // 'registration', 'first_video', 'first_plan', etc.
-  rewardAmount   Float
-  isActive       Boolean   @default(true)
-  validFrom      DateTime  @default(now())
-  validUntil     DateTime?
-  maxRewards     Int? // Maximum number of times this reward can be claimed
-  currentRewards Int       @default(0)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  @@map("referral_rewards")
-}
-
-model AdminUser {
-  id        String    @id @default(cuid())
-  name      String
-  phone     String    @unique
-  email     String    @unique
-  password  String
-  role      AdminRole @default(ADMIN)
-  lastLogin DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  // Relations
-  auditLogs    AuditLog[]
-  fileUploads  FileUpload[]
-  activityLogs ActivityLog[]
-  systemLogs   SystemLog[]
-  apiKeys      ApiKey[]
-
-  @@map("admin_users")
+  PENDING
+  REGISTERED
+  QUALIFIED
+  REWARDED
+  EXPIRED
 }
 
 enum AdminRole {
@@ -338,64 +508,10 @@ enum AdminRole {
   SUPER_ADMIN
 }
 
-model Setting {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String // JSON string for complex values
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("settings")
-}
-
-model ReferralHierarchy {
-  id         String        @id @default(cuid())
-  userId     String
-  user       User          @relation("UserReferralHierarchy", fields: [userId], references: [id], onDelete: Cascade)
-  referrerId String
-  referrer   User          @relation("ReferrerHierarchy", fields: [referrerId], references: [id], onDelete: Cascade)
-  level      ReferralLevel // A, B, or C level
-  createdAt  DateTime      @default(now())
-
-  @@unique([userId, referrerId])
-  @@map("referral_hierarchy")
-}
-
 enum ReferralLevel {
   A_LEVEL
   B_LEVEL
   C_LEVEL
-}
-
-model TaskManagementBonus {
-  id               String        @id @default(cuid())
-  userId           String
-  user             User          @relation("UserManagementBonuses", fields: [userId], references: [id], onDelete: Cascade)
-  subordinateId    String
-  subordinate      User          @relation("SubordinateBonuses", fields: [subordinateId], references: [id], onDelete: Cascade)
-  subordinateLevel ReferralLevel
-  bonusAmount      Float
-  taskDate         DateTime // Date when the subordinate completed tasks
-  taskIncome       Float // Subordinate's task income that generated this bonus
-  createdAt        DateTime      @default(now())
-
-  @@map("task_management_bonuses")
-}
-
-model AuditLog {
-  id          String      @id @default(cuid())
-  adminId     String?
-  admin       AdminUser?  @relation(fields: [adminId], references: [id])
-  action      AuditAction
-  targetType  String // "user", "video", "transaction", etc.
-  targetId    String?
-  description String
-  details     String? // JSON string for additional data
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime    @default(now())
-
-  @@map("audit_logs")
 }
 
 enum AuditAction {
@@ -416,23 +532,6 @@ enum AuditAction {
   DATA_EXPORT
 }
 
-model SystemNotification {
-  id         String               @id @default(cuid())
-  type       NotificationType
-  title      String
-  message    String
-  severity   NotificationSeverity @default(INFO)
-  targetType String? // "all", "admin", "user", or specific user ID
-  targetId   String?
-  isRead     Boolean              @default(false)
-  actionUrl  String?
-  metadata   String? // JSON string for additional data
-  createdAt  DateTime             @default(now())
-  readAt     DateTime?
-
-  @@map("system_notifications")
-}
-
 enum NotificationType {
   SYSTEM_ALERT
   USER_ACTION
@@ -451,70 +550,12 @@ enum NotificationSeverity {
   SUCCESS
 }
 
-model FileUpload {
-  id               String         @id @default(cuid())
-  originalName     String
-  fileName         String
-  filePath         String
-  fileSize         Int
-  mimeType         String
-  uploadType       FileUploadType
-  uploadedBy       String?
-  uploader         AdminUser?     @relation(fields: [uploadedBy], references: [id])
-  isProcessed      Boolean        @default(false)
-  processingStatus String? // "pending", "processing", "completed", "failed"
-  metadata         String? // JSON string for file metadata
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-
-  @@map("file_uploads")
-}
-
 enum FileUploadType {
   VIDEO
   THUMBNAIL
   AVATAR
   DOCUMENT
   OTHER
-}
-
-model ActivityLog {
-  id          String     @id @default(cuid())
-  userId      String?
-  user        User?      @relation(fields: [userId], references: [id])
-  adminId     String?
-  admin       AdminUser? @relation(fields: [adminId], references: [id])
-  activity    String // "login", "video_watch", "withdrawal_request", etc.
-  description String
-  ipAddress   String?
-  userAgent   String?
-  sessionId   String?
-  metadata    String? // JSON string for additional data
-  createdAt   DateTime   @default(now())
-
-  @@index([userId])
-  @@index([adminId])
-  @@index([createdAt])
-  @@map("activity_logs")
-}
-
-model SystemLog {
-  id        String     @id @default(cuid())
-  level     LogLevel
-  component String // "api", "auth", "payment", "video", etc.
-  message   String
-  error     String? // Error stack trace if applicable
-  userId    String?
-  user      User?      @relation(fields: [userId], references: [id])
-  adminId   String?
-  admin     AdminUser? @relation(fields: [adminId], references: [id])
-  metadata  String? // JSON string for additional data
-  createdAt DateTime   @default(now())
-
-  @@index([level])
-  @@index([component])
-  @@index([createdAt])
-  @@map("system_logs")
 }
 
 enum LogLevel {
@@ -525,32 +566,8 @@ enum LogLevel {
   FATAL
 }
 
-model DashboardCache {
-  id        String   @id @default(cuid())
-  cacheKey  String   @unique
-  data      String // JSON string of cached data
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([cacheKey])
-  @@index([expiresAt])
-  @@map("dashboard_cache")
-}
-
-model ApiKey {
-  id          String     @id @default(cuid())
-  name        String
-  key         String     @unique
-  permissions String[] // Array of permissions like "read:users", "write:videos"
-  isActive    Boolean    @default(true)
-  lastUsedAt  DateTime?
-  expiresAt   DateTime?
-  createdBy   String?
-  creator     AdminUser? @relation(fields: [createdBy], references: [id])
-  metadata    String? // JSON string for additional data
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  @@map("api_keys")
+enum TopupStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

@@ -26,7 +26,10 @@
     "validate:user-management": "bun scripts/validate-user-management.ts",
     "test:user-service": "bun scripts/test-user-service.ts",
     "create:admin": "bun run scripts/create-admin.ts",
-    "test:db": "tsx scripts/test-db-connection.ts"
+    "test:db": "tsx scripts/test-db-connection.ts",
+    "setup:topup-wallets": "bun run scripts/setup-topup-wallets.ts",
+    "test:topup-api": "bun run scripts/test-topup-api.ts",
+    "test:topup-endpoints": "bun run scripts/test-topup-endpoints.ts"
   },
   "dependencies": {
     "@cloudinary/react": "^1.14.3",
