@@ -124,6 +124,8 @@ export async function middleware(req: NextRequest) {
     res.cookies.delete("refresh-token");
 
     if (isProtectedApiRoute) {
+      // For API routes, we still want to return a 401 for client-side handling
+      // but ensure the client redirects to login
       return NextResponse.json(
         { error: "Authentication required", redirect: "/" },
         { status: 401 },

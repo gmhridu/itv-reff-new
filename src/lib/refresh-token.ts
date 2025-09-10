@@ -72,7 +72,9 @@ export function isTokenExpired(): boolean {
   }
 }
 
-export default {
+const tokenUtils = {
   refreshToken,
   isTokenExpired
 };
+
+export default tokenUtils;
