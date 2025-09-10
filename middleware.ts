@@ -11,37 +11,49 @@ async function handleTokenRefresh(
     return null;
   }
 
-  const response = await fetch(new URL("/api/auth/refresh", req.url), {
-    method: "POST",
-    headers: {
-      Cookie: `refresh-token=${refreshToken}`,
-    },
-  });
-
-  if (response.ok) {
-    const res = NextResponse.next({
-      request: {
-        headers: new Headers(req.headers),
+  try {
+    const response = await fetch(new URL("/api/auth/refresh", req.url), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `refresh-token=${refreshToken}`,
       },
+      credentials: "include",
     });
 
-    // Forward the Set-Cookie header from the API response
-    const setCookie = response.headers.get("set-cookie");
-    if (setCookie) {
-      // Manually parse and set cookies because of Next.js limitations
-      const cookies = setCookie.split(", ");
-      for (const cookie of cookies) {
-        res.headers.append("Set-Cookie", cookie);
+    if (response.ok) {
+      const res = NextResponse.next({
+        request: {
+          headers: new Headers(req.headers),
+        },
+      });
+
+      // Forward the Set-Cookie header from the API response
+      const setCookie = response.headers.get("set-cookie");
+      if (setCookie) {
+        // Manually parse and set cookies because of Next.js limitations
+        const cookies = setCookie.split(", ");
+        for (const cookie of cookies) {
+          res.headers.append("Set-Cookie", cookie);
+        }
       }
+
+      return res;
     }
 
+    // If refresh fails, clear all auth cookies and return redirect response
+    const res = NextResponse.redirect(new URL("/", req.url));
+    res.cookies.delete("access_token");
+    res.cookies.delete("refresh-token");
+    return res;
+  } catch (error) {
+    console.error("Token refresh error:", error);
+    // On any error during refresh, clear auth cookies and redirect to login
+    const res = NextResponse.redirect(new URL("/", req.url));
+    res.cookies.delete("access_token");
+    res.cookies.delete("refresh-token");
     return res;
   }
-
-  const res = NextResponse.redirect(new URL("/", req.url));
-  res.cookies.delete("access_token");
-  res.cookies.delete("refresh-token");
-  return res;
 }
 
 export async function middleware(req: NextRequest) {
@@ -93,6 +105,10 @@ export async function middleware(req: NextRequest) {
   if (isProtectedRoute || isProtectedApiRoute) {
     const refreshResponse = await handleTokenRefresh(req);
     if (refreshResponse) {
+      // If refresh is successful, continue with the refreshed request
+      if (refreshResponse.status === 307) { // Redirect response
+        return refreshResponse;
+      }
       // If refresh is successful, the response has the new cookies.
       // We rewrite this response to the original URL to continue the user's request.
       return NextResponse.rewrite(req.url, refreshResponse);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { handleAuthError } from "@/lib/auth-error-handler";
 
 interface User {
   id: string;
@@ -48,14 +49,22 @@ export function useAuth(): UseAuthReturn {
         setUser(data.user);
       } else {
         setUser(null);
-        if (response.status !== 401) {
+        // Handle 401 errors properly
+        if (response.status === 401) {
+          handleAuthError(new Response(null, { status: 401 }), { redirectPath: "/" });
+        } else {
           setError(data.error || "Failed to fetch user data");
         }
       }
     } catch (err) {
       console.error("Auth fetch error:", err);
       setUser(null);
-      setError("Network error occurred");
+      // Handle network errors
+      if (err instanceof TypeError && err.message.includes('Failed to fetch')) {
+        setError("Network error occurred");
+      } else {
+        setError("An error occurred");
+      }
     } finally {
       setLoading(false);
     }

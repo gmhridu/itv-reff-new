@@ -363,6 +363,21 @@ export async function getUserFromServer() {
   if (!token) return null;
 
   try {
+    // First, verify the token locally
+    const payload = SecureTokenManager.verifyAccessToken(token);
+    if (!payload) {
+      // Token is invalid or expired, try to refresh
+      const refreshToken = cookieStore.get("refresh-token")?.value;
+      if (!refreshToken) {
+        return null;
+      }
+      
+      // If we're on the server, we can't easily refresh tokens
+      // Return null to force redirect to login
+      return null;
+    }
+
+    // If token is valid, get user from API
     const res = await fetch(`${process.env.BACKEND_URL}/api/auth/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -371,7 +386,13 @@ export async function getUserFromServer() {
       cache: "no-store",
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // If we get a 401, token might be expired
+      if (res.status === 401) {
+        return null;
+      }
+      return null;
+    }
 
     const data = await res.json();
     return data.success ? data.user : null;

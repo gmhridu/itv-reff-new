@@ -319,8 +319,8 @@ export default function DashboardOverview() {
                   level.name === (user?.currentPosition?.name || "Intern")
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
                     : level.isUnlocked
-                      ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
-                      : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
+                    ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                    : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 <Play className="w-4 h-4 mr-1" />
@@ -365,31 +365,6 @@ export default function DashboardOverview() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Video Status Section */}
-                <div className="flex items-center justify-between p-6 bg-gray-50 rounded-xl border border-gray-200">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                      <Play className="h-8 w-8 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg text-gray-800">
-                        Available Videos
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {videosData?.videos
-                          ? `${videosData.videos.length} videos available • ${
-                              videosData.tasksRemaining ?? 0
-                            } tasks remaining`
-                          : `${Math.max(
-                              0,
-                              (todayProgress?.dailyLimit ?? 0) -
-                                (todayProgress?.videosWatched ?? 0),
-                            )} videos remaining today`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Videos Grid */}
                 {videosLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

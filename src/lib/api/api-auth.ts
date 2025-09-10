@@ -24,6 +24,10 @@ export async function authMiddleware(request: NextRequest) {
 
     // Get user from database
     const user = await getUserById(payload.userId);
+    if (!user || user.status !== "ACTIVE") {
+      return null;
+    }
+    
     return user;
   } catch (error) {
     console.error("Auth middleware error:", error);
@@ -53,6 +57,10 @@ export async function adminAuthMiddleware(request: NextRequest) {
 
     // Get admin from database
     const admin = await getAdminById(payload.userId);
+    if (!admin) {
+      return null;
+    }
+    
     return admin;
   } catch (error) {
     console.error("Admin auth middleware error:", error);
