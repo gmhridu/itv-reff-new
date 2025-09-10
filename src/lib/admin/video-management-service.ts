@@ -16,7 +16,7 @@ export class VideoManagementService {
    */
   async getVideos(
     filters: VideoFilters = {},
-    pagination: PaginationParams = { page: 1, limit: 10 },
+    pagination: PaginationParams = { page: 1, limit: 10 }
   ): Promise<PaginatedResponse<VideoManagement>> {
     const {
       page,
@@ -110,7 +110,7 @@ export class VideoManagementService {
             },
           },
         },
-      }),
+      })
     );
 
     return this.mapVideoToVideoManagement(video);
@@ -121,7 +121,7 @@ export class VideoManagementService {
    */
   async updateVideo(
     videoId: string,
-    updateData: Partial<VideoUploadData>,
+    updateData: Partial<VideoUploadData>
   ): Promise<VideoManagement> {
     // Extract and transform the update data to match Prisma schema
     const {
@@ -181,7 +181,7 @@ export class VideoManagementService {
             },
           },
         },
-      }),
+      })
     );
 
     return this.mapVideoToVideoManagement(video);
@@ -256,7 +256,7 @@ export class VideoManagementService {
   async getVideoAnalytics(
     dateFrom?: Date,
     dateTo?: Date,
-    limit: number = 10,
+    limit: number = 10
   ): Promise<VideoAnalytics[]> {
     const endDate = dateTo || new Date();
     const startDate =
@@ -387,7 +387,6 @@ export class VideoManagementService {
       deposit: level.deposit,
       tasksPerDay: level.tasksPerDay,
       unitPrice: level.unitPrice,
-      validityDays: level.validityDays,
     }));
   }
 
@@ -396,7 +395,7 @@ export class VideoManagementService {
    */
   async bulkUpdateVideos(
     videoIds: string[],
-    updateData: Partial<VideoUploadData>,
+    updateData: Partial<VideoUploadData>
   ): Promise<{ updated: number; failed: string[] }> {
     const failed: string[] = [];
     let updated = 0;
@@ -464,7 +463,7 @@ export class VideoManagementService {
    */
   async getVideoWatchHistory(
     videoId: string,
-    pagination: PaginationParams = { page: 1, limit: 10 },
+    pagination: PaginationParams = { page: 1, limit: 10 }
   ) {
     const { page, limit } = pagination;
     const skip = (page - 1) * limit;
@@ -534,7 +533,7 @@ export class VideoManagementService {
 
   private buildOrderByClause(
     sortBy: string,
-    sortOrder: "asc" | "desc",
+    sortOrder: "asc" | "desc"
   ): Prisma.VideoOrderByWithRelationInput {
     const validSortFields = [
       "createdAt",
@@ -555,7 +554,7 @@ export class VideoManagementService {
     where: Prisma.VideoWhereInput,
     orderBy: Prisma.VideoOrderByWithRelationInput,
     skip: number,
-    take: number,
+    take: number
   ): Promise<VideoManagement[]> {
     const videos = await prisma.video.findMany({
       where,
@@ -584,13 +583,13 @@ export class VideoManagementService {
     const totalRewardsPaid =
       video.videoTasks?.reduce(
         (sum: number, task: any) => sum + task.rewardEarned,
-        0,
+        0
       ) || 0;
     const averageWatchDuration =
       totalViews > 0
         ? video.videoTasks.reduce(
             (sum: number, task: any) => sum + task.watchDuration,
-            0,
+            0
           ) / totalViews
         : 0;
 
@@ -614,7 +613,6 @@ export class VideoManagementService {
             deposit: video.positionLevel.deposit,
             tasksPerDay: video.positionLevel.tasksPerDay,
             unitPrice: video.positionLevel.unitPrice,
-            validityDays: video.positionLevel.validityDays,
           }
         : null,
       createdAt: video.createdAt,

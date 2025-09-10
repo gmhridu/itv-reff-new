@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosResponse } from "axios";
+import { handleAuthError } from "@/lib/auth-error-handler";
 
 export interface ApiError {
   message: string;
@@ -102,24 +103,8 @@ apiClient.interceptors.response.use(
     // Handle authentication errors - redirect to '/' instantly for any 401
     if (error.response?.status === 401) {
       apiError.message = "Authentication required. Please log in again.";
-
-      // Clear any stored authentication data
-      if (typeof window !== "undefined") {
-        // Clear access token cookie
-        document.cookie =
-          "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
-        // Clear any localStorage auth data if exists
-        try {
-          localStorage.removeItem("auth_token");
-          localStorage.removeItem("user_data");
-        } catch (e) {
-          // Ignore localStorage errors
-        }
-
-        // Instant redirect to home page
-        window.location.href = "/";
-      }
+      // Use the centralized auth error handler
+      handleAuthError(error, { redirectPath: "/" });
     }
 
     return Promise.reject(apiError);

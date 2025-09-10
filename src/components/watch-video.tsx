@@ -346,6 +346,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
   // Debug effect to log progress updates
   useEffect(() => {
     console.log('Progress Update:', {
+      videoData: video,
       watchPercentage: Math.round(watchPercentage),
       canComplete,
       watchedSegments: watchedSegments.length,

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { SecureTokenManager } from "@/lib/token-manager";
 import { getUserById, getAdminById } from "@/lib/api/auth";
+import { db } from "@/lib/db";
 
 // API authentication middleware replacement
 export async function authMiddleware(request: NextRequest) {
@@ -22,8 +23,18 @@ export async function authMiddleware(request: NextRequest) {
       return null;
     }
 
-    // Get user from database
-    const user = await getUserById(payload.userId);
+    // Get user from database with position information
+    const user = await db.user.findUnique({
+      where: { id: payload.userId },
+      include: {
+        currentPosition: true,
+      },
+    });
+    
+    if (!user || user.status !== "ACTIVE") {
+      return null;
+    }
+    
     return user;
   } catch (error) {
     console.error("Auth middleware error:", error);
@@ -53,6 +64,10 @@ export async function adminAuthMiddleware(request: NextRequest) {
 
     // Get admin from database
     const admin = await getAdminById(payload.userId);
+    if (!admin) {
+      return null;
+    }
+    
     return admin;
   } catch (error) {
     console.error("Admin auth middleware error:", error);

@@ -23,7 +23,8 @@ export function handleAuthError(
   const is401Error = 
     error?.status === 401 || 
     error?.response?.status === 401 ||
-    (error instanceof Response && error.status === 401);
+    (error instanceof Response && error.status === 401) ||
+    (error?.response && error.response.status === 401);
 
   if (!is401Error) {
     return;
@@ -37,7 +38,7 @@ export function handleAuthError(
   if (clearStorage) {
     // Clear authentication cookies
     document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     // Clear localStorage auth data
     try {
@@ -91,7 +92,9 @@ export async function authFetch(
     }
     
     // Handle other auth errors
-    handleAuthError(error, authOptions);
+    if (isAuthError(error)) {
+      handleAuthError(error, authOptions);
+    }
     throw error;
   }
 }
@@ -105,7 +108,8 @@ export function isAuthError(error: any): boolean {
   return (
     error?.status === 401 || 
     error?.response?.status === 401 ||
-    (error instanceof Response && error.status === 401)
+    (error instanceof Response && error.status === 401) ||
+    (error?.response && error.response.status === 401)
   );
 }
 

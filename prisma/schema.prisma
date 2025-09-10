@@ -83,11 +83,11 @@ model BankCard {
 
 model PositionLevel {
   id           String   @id @default(cuid())
-  name         String   @unique
-  level        Int      @unique
-  deposit      Float
-  tasksPerDay  Int
-  unitPrice    Float
+  name         String   @unique // "Intern", "P1", "P2", etc.
+  level        Int      @unique // 0 for Intern, 1 for P1, 2 for P2, etc.
+  deposit      Float // Security deposit required (0 for Intern)
+  tasksPerDay  Int // Number of tasks allowed per day
+  unitPrice    Float // Price per task in PKR
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

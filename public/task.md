@@ -69,7 +69,7 @@ Ensure icons are visually clear and responsive across devices.
 Overview
 The platform offers 11 subscription levels (L1–L11), each requiring a deposit to unlock daily tasks and earnings. The validity period is removed from all levels.
 Level Details
-
+Inter Deposit: 0 PKR | 5 tasks/day | 13 PKR/task | Daily: 65 PKR | Monthly: 1,950 PKR | Yearly: 23,400 PKR but can not be withdrawn
 L1: Deposit: 2,000 PKR | 5 tasks/day | 13 PKR/task | Daily: 65 PKR | Monthly: 1,950 PKR | Yearly: 23,400 PKR
 L2: Deposit: 5,000 PKR | 8 tasks/day | 21 PKR/task | Daily: 168 PKR | Monthly: 5,040 PKR | Yearly: 60,480 PKR
 L3: Deposit: 20,000 PKR | 10 tasks/day | 72 PKR/task | Daily: 720 PKR | Monthly: 21,600 PKR | Yearly: 259,200 PKR

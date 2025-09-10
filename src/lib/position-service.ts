@@ -57,15 +57,11 @@ export class PositionService {
       include: { currentPosition: true }
     });
 
-
-
     if (!user) return null;
 
-    const now = new Date();
-    const isExpired = user.positionEndDate ? now > user.positionEndDate : false;
-    const daysRemaining = user.positionEndDate
-      ? Math.max(0, Math.ceil((user.positionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
-      : 0;
+    // Since we're removing validityDays, positions never expire
+    const isExpired = false;
+    const daysRemaining = Infinity;
 
     return {
       user,
@@ -124,8 +120,8 @@ export class PositionService {
       }
 
       const startDate = new Date();
-      const endDate = new Date();
-      endDate.setDate(startDate.getDate() + targetPosition.validityDays);
+      // Since we're removing validityDays, we don't set an end date
+      const endDate = null;
 
       // Perform upgrade transaction
       await db.$transaction(async (tx) => {
@@ -174,41 +170,9 @@ export class PositionService {
   }
 
   static async checkAndExpirePositions(): Promise<void> {
-    const now = new Date();
-
-    const expiredUsers = await db.user.findMany({
-      where: {
-        positionEndDate: { lt: now },
-        currentPositionId: { not: null }
-      },
-      include: { currentPosition: true }
-    });
-
-    for (const user of expiredUsers) {
-      // Move expired users back to Intern
-      const internPosition = await db.positionLevel.findUnique({
-        where: { name: 'Intern' }
-      });
-
-      if (internPosition) {
-        const newStartDate = new Date();
-        const newEndDate = new Date();
-        newEndDate.setDate(newStartDate.getDate() + internPosition.validityDays);
-
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            currentPositionId: internPosition.id,
-            positionStartDate: newStartDate,
-            positionEndDate: newEndDate,
-            isIntern: true,
-            depositPaid: 0
-          }
-        });
-
-        console.log(`User ${user.email} position expired, moved to Intern`);
-      }
-    }
+    // Since we're removing validityDays, this function is no longer needed
+    // Positions don't expire anymore
+    return;
   }
 
   static async getDailyTasksCompleted(userId: string, date?: Date): Promise<number> {

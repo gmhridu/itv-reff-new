@@ -154,7 +154,6 @@ export interface PositionLevelInfo {
   deposit: number;
   tasksPerDay: number;
   unitPrice: number;
-  validityDays: number;
 }
 
 export interface VideoAnalytics {
