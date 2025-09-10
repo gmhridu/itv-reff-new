@@ -28,7 +28,6 @@ interface Position {
   deposit: number;
   tasksPerDay: number;
   unitPrice: number;
-  validityDays: number;
   dailyIncome: number;
   monthlyIncome: number;
   annualIncome: number;
@@ -176,8 +175,8 @@ export default function PostionOverview() {
               </CardTitle>
               <CardDescription className="text-green-700">
                 {currentPosition.isExpired
-                  ? "Position has expired"
-                  : `${currentPosition.daysRemaining} days remaining`}
+                  ? "Position active"
+                  : "Position active"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -271,12 +270,6 @@ export default function PostionOverview() {
                       <Gift className="h-4 w-4 text-green-600" />
                       <span className="text-sm">
                         {formatCurrency(position.unitPrice)} per task
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-4 w-4 text-orange-600" />
-                      <span className="text-sm">
-                        {position.validityDays} days validity
                       </span>
                     </div>
                   </div>

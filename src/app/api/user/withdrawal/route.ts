@@ -24,6 +24,15 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
+    // Check if user is an Intern - Intern users cannot withdraw
+    if (user.isIntern || (user.currentPosition && user.currentPosition.name === "Intern")) {
+      response = NextResponse.json(
+        { error: "Intern position earnings cannot be withdrawn" },
+        { status: 400 },
+      );
+      return addAPISecurityHeaders(response);
+    }
+
     const body = await request.json();
     const { walletType, amount, fundPassword, paymentMethodId } = body;
 

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authMiddleware } from '@/lib/api/api-auth';
 import { db } from '@/lib/db';
-import { NotificationService } from '@/lib/notification-service';
-import { NotificationType, NotificationSeverity } from '@prisma/client';
+import { addAPISecurityHeaders } from '@/lib/security-headers';
+import { 
+  notificationService, 
+  NotificationType, 
+  NotificationSeverity 
+} from '@/lib/admin/notification-service';
 
+// GET - Fetch user's withdrawal requests with pagination and filters
 export async function GET(request: NextRequest) {
   try {
     const user = await authMiddleware(request);
@@ -15,23 +20,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get query parameters
     const { searchParams } = new URL(request.url);
+    
+    // Pagination
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    const status = searchParams.get('status'); // PENDING, APPROVED, REJECTED, PROCESSED
+    const skip = (page - 1) * limit;
+    
+    // Filters
+    const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-
-    const skip = (page - 1) * limit;
-
+    
     // Build where clause
-    const where: any = { userId: user.id };
-
+    const where: any = {
+      userId: user.id
+    };
+    
     if (status && ['PENDING', 'APPROVED', 'REJECTED', 'PROCESSED'].includes(status)) {
       where.status = status;
     }
-
+    
     if (startDate || endDate) {
       where.createdAt = {};
       if (startDate) {
@@ -41,7 +50,7 @@ export async function GET(request: NextRequest) {
         where.createdAt.lte = new Date(endDate);
       }
     }
-
+    
     // Get withdrawal requests with pagination
     const [withdrawals, totalCount] = await Promise.all([
       db.withdrawalRequest.findMany({
@@ -52,12 +61,12 @@ export async function GET(request: NextRequest) {
       }),
       db.withdrawalRequest.count({ where })
     ]);
-
+    
     // Calculate weekly withdrawal limit and amount
     const startOfWeek = new Date();
     startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Start of week (Sunday)
     startOfWeek.setHours(0, 0, 0, 0);
-
+    
     const weeklyWithdrawals = await db.withdrawalRequest.aggregate({
       where: {
         userId: user.id,
@@ -67,11 +76,11 @@ export async function GET(request: NextRequest) {
       _sum: { amount: true },
       _count: { id: true }
     });
-
+    
     const weeklyLimit = 100.00; // PKR 100 weekly limit
     const weeklyWithdrawn = weeklyWithdrawals._sum.amount || 0;
     const weeklyRemaining = Math.max(0, weeklyLimit - weeklyWithdrawn);
-
+    
     return NextResponse.json({
       withdrawals: withdrawals.map(withdrawal => ({
         id: withdrawal.id,
@@ -97,7 +106,7 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1,
       }
     });
-
+    
   } catch (error) {
     console.error('Get withdrawals error:', error);
     return NextResponse.json(
@@ -115,6 +124,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
+      );
+    }
+
+    // Check if user is an Intern - Intern users cannot withdraw
+    if (user.isIntern || (user.currentPosition && user.currentPosition.name === "Intern")) {
+      return NextResponse.json(
+        { error: 'Intern position earnings cannot be withdrawn' },
+        { status: 400 }
       );
     }
 
@@ -202,6 +219,31 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Send notification to admin
+    try {
+      await notificationService.createNotification(
+        NotificationType.WITHDRAWAL_REQUEST,
+        'New Withdrawal Request',
+        `User ${user.name || user.email || user.phone} has requested withdrawal of $${withdrawalAmount.toFixed(2)}`,
+        {
+          severity: NotificationSeverity.INFO,
+          targetType: 'admin',
+          targetId: 'all',
+          actionUrl: `/admin/withdrawals/${withdrawal.id}`,
+          metadata: {
+            withdrawalId: withdrawal.id,
+            userId: user.id,
+            amount: withdrawalAmount,
+            paymentMethod,
+            status: 'PENDING'
+          }
+        }
+      );
+    } catch (notificationError) {
+      console.error('Failed to create admin notification:', notificationError);
+      // Don't fail the withdrawal if notification fails
+    }
+
     return NextResponse.json({
       message: 'Withdrawal request submitted successfully',
       withdrawal: {
@@ -219,48 +261,5 @@ export async function POST(request: NextRequest) {
       { error: 'Internal server error' },
       { status: 500 }
     );
-  }
-}
-
-async function sendWithdrawalNotification(
-  userId: string,
-  status: string,
-  amount: number
-) {
-  let title = '';
-  let message = '';
-  let severity: NotificationSeverity = 'INFO';
-
-  switch (status) {
-    case 'APPROVED':
-      title = 'Withdrawal Approved';
-      message = `Your withdrawal request for $${amount.toFixed(2)} has been approved.`;
-      severity = 'SUCCESS';
-      break;
-    case 'REJECTED':
-      title = 'Withdrawal Rejected';
-      message = `Your withdrawal request for $${amount.toFixed(2)} has been rejected.`;
-      severity = 'WARNING';
-      break;
-    case 'PROCESSED':
-      title = 'Withdrawal Processed';
-      message = `Your withdrawal request for $${amount.toFixed(2)} has been processed successfully.`;
-      severity = 'SUCCESS';
-      break;
-    default:
-      title = 'Withdrawal Status Updated';
-      message = `Your withdrawal request status has been updated to ${status}.`;
-  }
-
-  try {
-    await NotificationService.createNotification({
-      type: NotificationType.WITHDRAWAL_REQUEST,
-      title,
-      message,
-      severity,
-      actionUrl: '/dashboard/withdraw',
-    }, userId);
-  } catch (error) {
-    console.error('Error sending withdrawal notification:', error);
   }
 }

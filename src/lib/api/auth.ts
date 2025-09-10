@@ -243,7 +243,6 @@ export async function createUser(userData: {
     // Calculate position validity dates
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(startDate.getDate() + internPosition.validityDays);
 
     const user = await db.user.create({
       data: {

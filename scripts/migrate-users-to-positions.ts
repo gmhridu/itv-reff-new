@@ -26,8 +26,8 @@ async function migrateUsersToPositions() {
   // Set all users to Intern position initially
   for (const user of usersWithoutPosition) {
     const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(startDate.getDate() + internPosition.validityDays);
+    // Since we're removing validityDays, we don't set an end date
+    const endDate = null;
 
     await prisma.user.update({
       where: { id: user.id },

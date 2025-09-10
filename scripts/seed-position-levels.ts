@@ -8,101 +8,100 @@ const positionLevels = [
     level: 0,
     deposit: 0,
     tasksPerDay: 5,
-    unitPrice: 26,
-    validityDays: 4,
+    unitPrice: 13,
   },
   {
-    name: 'P1',
+    name: 'L1',
     level: 1,
-    deposit: 3900,
+    deposit: 2000,
     tasksPerDay: 5,
-    unitPrice: 26,
-    validityDays: 365,
+    unitPrice: 13,
   },
   {
-    name: 'P2',
+    name: 'L2',
     level: 2,
-    deposit: 18000,
-    tasksPerDay: 10,
-    unitPrice: 62,
-    validityDays: 365,
+    deposit: 5000,
+    tasksPerDay: 8,
+    unitPrice: 21,
   },
   {
-    name: 'P3',
+    name: 'L3',
     level: 3,
-    deposit: 52000,
-    tasksPerDay: 20,
-    unitPrice: 93,
-    validityDays: 365,
+    deposit: 20000,
+    tasksPerDay: 10,
+    unitPrice: 72,
   },
   {
-    name: 'P4',
+    name: 'L4',
     level: 4,
-    deposit: 120000,
-    tasksPerDay: 30,
-    unitPrice: 145,
-    validityDays: 365,
+    deposit: 50000,
+    tasksPerDay: 15,
+    unitPrice: 123,
   },
   {
-    name: 'P5',
+    name: 'L5',
     level: 5,
-    deposit: 250000,
-    tasksPerDay: 50,
-    unitPrice: 210,
-    validityDays: 365,
+    deposit: 100000,
+    tasksPerDay: 20,
+    unitPrice: 192,
   },
   {
-    name: 'P6',
+    name: 'L6',
     level: 6,
-    deposit: 550000,
-    tasksPerDay: 60,
-    unitPrice: 350,
-    validityDays: 365,
+    deposit: 250000,
+    tasksPerDay: 22,
+    unitPrice: 454,
   },
   {
-    name: 'P7',
+    name: 'L7',
     level: 7,
-    deposit: 1100000,
-    tasksPerDay: 80,
-    unitPrice: 720,
-    validityDays: 365,
+    deposit: 500000,
+    tasksPerDay: 25,
+    unitPrice: 836,
   },
   {
-    name: 'P8',
+    name: 'L8',
     level: 8,
-    deposit: 2200000,
-    tasksPerDay: 100,
-    unitPrice: 1300,
-    validityDays: 365,
+    deposit: 1000000,
+    tasksPerDay: 27,
+    unitPrice: 1611,
   },
   {
-    name: 'P9',
+    name: 'L9',
     level: 9,
-    deposit: 4000000,
-    tasksPerDay: 120,
-    unitPrice: 2000,
-    validityDays: 365,
+    deposit: 2000000,
+    tasksPerDay: 30,
+    unitPrice: 3033,
   },
   {
-    name: 'P10',
+    name: 'L10',
     level: 10,
-    deposit: 7000000,
-    tasksPerDay: 150,
-    unitPrice: 2800,
-    validityDays: 365,
+    deposit: 4000000,
+    tasksPerDay: 31,
+    unitPrice: 6129,
+  },
+  {
+    name: 'L11',
+    level: 11,
+    deposit: 8000000,
+    tasksPerDay: 32,
+    unitPrice: 12500,
   },
 ];
 
 async function seedPositionLevels() {
   console.log('Seeding position levels...');
+  
+  // First, let's delete all existing position levels
+  await prisma.positionLevel.deleteMany({});
+  console.log('Deleted existing position levels');
 
+  // Then create new ones
   for (const position of positionLevels) {
-    await prisma.positionLevel.upsert({
-      where: { name: position.name },
-      update: position,
-      create: position,
+    await prisma.positionLevel.create({
+      data: position,
     });
-    console.log(`✓ Created/Updated position: ${position.name}`);
+    console.log(`✓ Created position: ${position.name}`);
   }
 
   console.log('Position levels seeded successfully!');
