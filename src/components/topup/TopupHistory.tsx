@@ -122,6 +122,8 @@ export const TopupHistory = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showProcessModal, setShowProcessModal] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   // Processing form data
   const [processData, setProcessData] = useState({
@@ -129,6 +131,12 @@ export const TopupHistory = () => {
     adminNotes: "",
     transactionId: "",
   });
+
+  // Open image modal
+  const openImageModal = (imageUrl: string) => {
+    setSelectedImageUrl(imageUrl);
+    setShowImageModal(true);
+  };
 
   // Fetch topup history
   const fetchTopupHistory = async (showRefreshing = false) => {
@@ -754,10 +762,10 @@ export const TopupHistory = () => {
                               size="sm"
                               variant="outline"
                               onClick={() =>
-                                window.open(request.paymentProof, "_blank")
+                                openImageModal(request.paymentProof!)
                               }
                             >
-                              <ExternalLink className="w-3 h-3 mr-1" />
+                              <Eye className="w-3 h-3 mr-1" />
                               View
                             </Button>
                           </div>
@@ -1017,16 +1025,59 @@ export const TopupHistory = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          window.open(selectedRequest.paymentProof, "_blank")
-                        }
-                        className="w-full"
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        View Payment Proof
-                      </Button>
+                      <div className="space-y-3">
+                        <div className="relative w-full max-w-md mx-auto">
+                          <img
+                            src={selectedRequest.paymentProof}
+                            alt="Payment Proof"
+                            className="w-full h-auto rounded-lg border border-purple-300 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() =>
+                              openImageModal(selectedRequest.paymentProof!)
+                            }
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                "none";
+                              (
+                                e.target as HTMLImageElement
+                              ).nextElementSibling?.setAttribute(
+                                "style",
+                                "display: block",
+                              );
+                            }}
+                          />
+                          <div className="hidden text-center p-4">
+                            <ImageIcon className="w-8 h-8 mx-auto text-purple-400 mb-2" />
+                            <p className="text-sm text-purple-600">
+                              Image not available
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              openImageModal(selectedRequest.paymentProof!)
+                            }
+                            className="flex-1"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Full Size
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              window.open(
+                                selectedRequest.paymentProof,
+                                "_blank",
+                              )
+                            }
+                            className="flex-1"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Open in New Tab
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1244,6 +1295,61 @@ export const TopupHistory = () => {
                   : `${processData.status === "APPROVED" ? "Approve" : "Reject"} Request`}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Modal */}
+      <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-purple-600" />
+              Payment Proof
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-6">
+            {selectedImageUrl && (
+              <div className="relative">
+                <img
+                  src={selectedImageUrl}
+                  alt="Payment Proof"
+                  className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                    (
+                      e.target as HTMLImageElement
+                    ).nextElementSibling?.setAttribute(
+                      "style",
+                      "display: flex",
+                    );
+                  }}
+                />
+                <div className="hidden items-center justify-center p-8 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <ImageIcon className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+                    <p className="text-gray-500">Image could not be loaded</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(selectedImageUrl, "_blank")}
+                    className="flex-1"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open in New Tab
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowImageModal(false)}
+                    className="flex-1"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

@@ -32,6 +32,11 @@ interface SidebarProps extends React.ComponentProps<typeof Sidebar> {
   } | null;
 }
 
+interface PendingCounts {
+  topup: number;
+  withdrawal: number;
+}
+
 // This is sample data.
 const data = {
   user: {
@@ -44,7 +49,7 @@ const data = {
     logo: GalleryVerticalEnd,
     plan: "Enterprise",
   },
-  navMain: [
+  getNavMain: (pendingCounts: PendingCounts) => [
     {
       title: "Analytics",
       url: "/admin/analytics",
@@ -59,11 +64,14 @@ const data = {
       title: "Topup Management",
       url: "/admin/topup-management",
       icon: ArrowUpCircle,
+      badge: pendingCounts.topup > 0 ? pendingCounts.topup : undefined,
     },
     {
       title: "Withdrawal Management",
       url: "/admin/withdrawal-management",
       icon: ArrowDownCircle,
+      badge:
+        pendingCounts.withdrawal > 0 ? pendingCounts.withdrawal : undefined,
     },
     {
       title: "User Management",
@@ -79,6 +87,45 @@ const data = {
 };
 
 export function AppSidebar({ user, ...props }: SidebarProps) {
+  const [pendingCounts, setPendingCounts] = React.useState<PendingCounts>({
+    topup: 0,
+    withdrawal: 0,
+  });
+  const [loading, setLoading] = React.useState(true);
+
+  // Fetch pending counts
+  const fetchPendingCounts = React.useCallback(async () => {
+    try {
+      const [topupResponse, withdrawalResponse] = await Promise.all([
+        fetch("/api/admin/topup-history?status=PENDING&limit=1"),
+        fetch("/api/admin/withdrawal-management?status=PENDING&limit=1"),
+      ]);
+
+      const [topupData, withdrawalData] = await Promise.all([
+        topupResponse.json(),
+        withdrawalResponse.json(),
+      ]);
+
+      setPendingCounts({
+        topup: topupData.success ? topupData.data.statistics.pending || 0 : 0,
+        withdrawal: withdrawalData.success
+          ? withdrawalData.data.statistics.pending || 0
+          : 0,
+      });
+    } catch (error) {
+      console.error("Error fetching pending counts:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchPendingCounts();
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchPendingCounts, 30000);
+    return () => clearInterval(interval);
+  }, [fetchPendingCounts]);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -89,7 +136,7 @@ export function AppSidebar({ user, ...props }: SidebarProps) {
         />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={data.getNavMain(pendingCounts)} />
       </SidebarContent>
       <SidebarFooter>
         {user && (

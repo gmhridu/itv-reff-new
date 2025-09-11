@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession, authOptions } from "@/lib/auth";
+import { getUserSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getUserSession();
 
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -76,17 +76,34 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getUserSession();
 
     if (!session?.user?.id) {
+      console.error("Topup request failed: No valid session");
       return NextResponse.json(
         { success: false, error: "Authentication required" },
         { status: 401 },
       );
     }
 
+    console.log(`Topup request from user: ${session.user.id}`, {
+      userId: session.user.id,
+      userEmail: session.user.email,
+      userName: session.user.name,
+    });
+
     const body = await request.json();
-    const { amount, selectedWalletId, paymentProof } = body;
+    const { amount, selectedWalletId, paymentProof, transactionId } = body;
+
+    console.log("Topup request data:", {
+      amount,
+      selectedWalletId,
+      hasPaymentProof: !!paymentProof,
+      paymentProofUrl: paymentProof
+        ? paymentProof.substring(0, 50) + "..."
+        : null,
+      transactionId,
+    });
 
     // Validate required fields
     if (!amount || !selectedWalletId) {
@@ -146,6 +163,7 @@ export async function POST(request: NextRequest) {
         amount,
         selectedWalletId,
         paymentProof: paymentProof || null,
+        transactionId: transactionId || null,
         status: "PENDING",
       },
       include: {
@@ -156,7 +174,24 @@ export async function POST(request: NextRequest) {
             walletHolderName: true,
           },
         },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
       },
+    });
+
+    console.log("Topup request created successfully:", {
+      requestId: topupRequest.id,
+      userId: topupRequest.userId,
+      userName: topupRequest.user?.name,
+      userPhone: topupRequest.user?.phone,
+      amount: topupRequest.amount,
+      paymentProofStored: !!topupRequest.paymentProof,
     });
 
     // Log the activity
@@ -170,6 +205,13 @@ export async function POST(request: NextRequest) {
           amount,
           walletType: selectedWallet.walletType,
           walletNumber: selectedWallet.walletNumber,
+          hasPaymentProof: !!paymentProof,
+          transactionId: transactionId || null,
+          userInfo: {
+            id: session.user.id,
+            name: session.user.name,
+            phone: session.user.phone,
+          },
         }),
       },
     });
@@ -181,6 +223,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error creating topup request:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : null,
+    });
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 },

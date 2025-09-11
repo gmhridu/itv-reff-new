@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession, authOptions } from "@/lib/auth";
+import { getAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
@@ -157,21 +157,29 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        adminId: session.user.id,
-        action: "BULK_UPDATE", // We can add a more specific action later
-        targetType: "admin_wallet",
-        targetId: newWallet.id,
-        description: `Created new ${walletType} wallet`,
-        details: JSON.stringify({
-          walletNumber,
-          walletHolderName,
-          walletType,
-        }),
-      },
-    });
+    // Create audit log (non-blocking)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          adminId: session.user.id,
+          action: "BULK_UPDATE", // We can add a more specific action later
+          targetType: "admin_wallet",
+          targetId: newWallet.id,
+          description: `Created new ${walletType} wallet`,
+          details: JSON.stringify({
+            walletNumber,
+            walletHolderName,
+            walletType,
+          }),
+        },
+      });
+    } catch (auditError) {
+      console.error(
+        "Failed to create audit log for wallet creation:",
+        auditError,
+      );
+      // Continue execution - audit log failure shouldn't break wallet creation
+    }
 
     return NextResponse.json({
       success: true,

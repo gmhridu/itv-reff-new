@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession, authOptions } from "@/lib/auth";
+import { getAdminSession } from "@/lib/auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
@@ -69,7 +69,7 @@ export async function PUT(
   { params }: { params: { id: string } },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
@@ -132,35 +132,43 @@ export async function PUT(
       },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        adminId: session.user.id,
-        action: "BULK_UPDATE",
-        targetType: "admin_wallet",
-        targetId: id,
-        description: `Updated ${existingWallet.walletType} wallet`,
-        details: JSON.stringify({
-          changes: {
-            ...(walletNumber && {
-              walletNumber: {
-                from: existingWallet.walletNumber,
-                to: walletNumber,
-              },
-            }),
-            ...(walletHolderName && {
-              walletHolderName: {
-                from: existingWallet.walletHolderName,
-                to: walletHolderName,
-              },
-            }),
-            ...(typeof isActive === "boolean" && {
-              isActive: { from: existingWallet.isActive, to: isActive },
-            }),
-          },
-        }),
-      },
-    });
+    // Create audit log (non-blocking)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          adminId: session.user.id,
+          action: "BULK_UPDATE",
+          targetType: "admin_wallet",
+          targetId: id,
+          description: `Updated ${existingWallet.walletType} wallet`,
+          details: JSON.stringify({
+            changes: {
+              ...(walletNumber && {
+                walletNumber: {
+                  from: existingWallet.walletNumber,
+                  to: walletNumber,
+                },
+              }),
+              ...(walletHolderName && {
+                walletHolderName: {
+                  from: existingWallet.walletHolderName,
+                  to: walletHolderName,
+                },
+              }),
+              ...(typeof isActive === "boolean" && {
+                isActive: { from: existingWallet.isActive, to: isActive },
+              }),
+            },
+          }),
+        },
+      });
+    } catch (auditError) {
+      console.error(
+        "Failed to create audit log for wallet update:",
+        auditError,
+      );
+      // Continue execution - audit log failure shouldn't break wallet update
+    }
 
     return NextResponse.json({
       success: true,
@@ -181,7 +189,7 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
@@ -231,21 +239,29 @@ export async function DELETE(
       where: { id },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        adminId: session.user.id,
-        action: "BULK_UPDATE",
-        targetType: "admin_wallet",
-        targetId: id,
-        description: `Deleted ${existingWallet.walletType} wallet`,
-        details: JSON.stringify({
-          walletNumber: existingWallet.walletNumber,
-          walletHolderName: existingWallet.walletHolderName,
-          walletType: existingWallet.walletType,
-        }),
-      },
-    });
+    // Create audit log (non-blocking)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          adminId: session.user.id,
+          action: "BULK_UPDATE",
+          targetType: "admin_wallet",
+          targetId: id,
+          description: `Deleted ${existingWallet.walletType} wallet`,
+          details: JSON.stringify({
+            walletNumber: existingWallet.walletNumber,
+            walletHolderName: existingWallet.walletHolderName,
+            walletType: existingWallet.walletType,
+          }),
+        },
+      });
+    } catch (auditError) {
+      console.error(
+        "Failed to create audit log for wallet deletion:",
+        auditError,
+      );
+      // Continue execution - audit log failure shouldn't break wallet deletion
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,25 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession, authOptions } from "@/lib/auth";
+import { getAdminSession } from "@/lib/auth";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
+    const { id } = params;
 
     if (
       !session?.user?.role ||
       !["ADMIN", "SUPER_ADMIN"].includes(session.user.role)
     ) {
+      console.error("Admin topup request access denied", {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userRole: session?.user?.role,
+        requestedId: id,
+      });
       return NextResponse.json(
         { success: false, error: "Unauthorized access" },
         { status: 401 },
       );
     }
-
-    const { id } = params;
 
     const topupRequest = await prisma.topupRequest.findUnique({
       where: { id },
@@ -46,11 +51,22 @@ export async function GET(
     });
 
     if (!topupRequest) {
+      console.error(`Topup request not found: ${id}`);
       return NextResponse.json(
         { success: false, error: "Topup request not found" },
         { status: 404 },
       );
     }
+
+    console.log("Topup request found:", {
+      requestId: topupRequest.id,
+      userId: topupRequest.userId,
+      userName: topupRequest.user?.name,
+      userPhone: topupRequest.user?.phone,
+      amount: topupRequest.amount,
+      status: topupRequest.status,
+      hasPaymentProof: !!topupRequest.paymentProof,
+    });
 
     return NextResponse.json({
       success: true,
@@ -58,6 +74,11 @@ export async function GET(
     });
   } catch (error) {
     console.error("Error fetching topup request:", error);
+    console.error("Error details:", {
+      requestId: params.id,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : null,
+    });
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 },
@@ -70,7 +91,7 @@ export async function PUT(
   { params }: { params: { id: string } },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
@@ -85,6 +106,12 @@ export async function PUT(
     const { id } = params;
     const body = await request.json();
     const { status, adminNotes, transactionId } = body;
+
+    console.log(`Admin ${session.user.id} updating topup request ${id}:`, {
+      newStatus: status,
+      hasAdminNotes: !!adminNotes,
+      hasTransactionId: !!transactionId,
+    });
 
     // Validate status
     if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) {
@@ -104,14 +131,28 @@ export async function PUT(
     });
 
     if (!existingRequest) {
+      console.error(`Topup request not found for update: ${id}`);
       return NextResponse.json(
         { success: false, error: "Topup request not found" },
         { status: 404 },
       );
     }
 
+    console.log("Existing request details:", {
+      requestId: existingRequest.id,
+      currentStatus: existingRequest.status,
+      userId: existingRequest.userId,
+      userName: existingRequest.user?.name,
+      amount: existingRequest.amount,
+    });
+
     // Check if already processed
     if (existingRequest.status !== "PENDING") {
+      console.warn(`Attempt to update already processed request: ${id}`, {
+        currentStatus: existingRequest.status,
+        attemptedStatus: status,
+        adminId: session.user.id,
+      });
       return NextResponse.json(
         { success: false, error: "Request has already been processed" },
         { status: 400 },
@@ -177,6 +218,15 @@ export async function PUT(
       return updatedRequest;
     });
 
+    console.log("Topup request updated successfully:", {
+      requestId: result.id,
+      newStatus: result.status,
+      userId: result.userId,
+      userName: result.user?.name,
+      amount: existingRequest.amount,
+      balanceUpdated: status === "APPROVED",
+    });
+
     // Create audit log
     await prisma.auditLog.create({
       data: {
@@ -202,6 +252,11 @@ export async function PUT(
     });
   } catch (error) {
     console.error("Error updating topup request:", error);
+    console.error("Update error details:", {
+      requestId: params.id,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : null,
+    });
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 },
@@ -214,7 +269,7 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (!session?.user?.role || session.user.role !== "SUPER_ADMIN") {
       return NextResponse.json(

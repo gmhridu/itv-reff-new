@@ -1,20 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession, authOptions } from "@/lib/auth";
+import { getAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getAdminSession();
 
     if (
       !session?.user?.role ||
       !["ADMIN", "SUPER_ADMIN"].includes(session.user.role)
     ) {
+      console.error("Admin topup-history access denied", {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userRole: session?.user?.role,
+      });
       return NextResponse.json(
         { success: false, error: "Unauthorized access" },
         { status: 401 },
       );
     }
+
+    console.log("Admin topup-history request from:", {
+      adminId: session.user.id,
+      adminRole: session.user.role,
+      adminName: session.user.name,
+    });
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -93,6 +104,13 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    console.log("Fetching topup requests with filters:", {
+      where,
+      page,
+      limit,
+      skip,
+    });
+
     // Get topup requests with pagination
     const [topupRequests, total] = await Promise.all([
       prisma.topupRequest.findMany({
@@ -107,6 +125,7 @@ export async function GET(request: NextRequest) {
               name: true,
               phone: true,
               email: true,
+              referralCode: true,
             },
           },
           selectedWallet: {
@@ -121,6 +140,14 @@ export async function GET(request: NextRequest) {
       }),
       prisma.topupRequest.count({ where }),
     ]);
+
+    console.log("Topup requests fetched:", {
+      totalFound: total,
+      requestsInPage: topupRequests.length,
+      firstRequestUserId: topupRequests[0]?.userId,
+      firstRequestUserName: topupRequests[0]?.user?.name,
+      firstRequestUserPhone: topupRequests[0]?.user?.phone,
+    });
 
     // Get statistics
     const [
@@ -155,10 +182,29 @@ export async function GET(request: NextRequest) {
         .then((result) => result._sum.amount || 0),
     ]);
 
+    // Verify data integrity
+    const requestsWithIssues = topupRequests.filter((req) => !req.user);
+    if (requestsWithIssues.length > 0) {
+      console.error("Found topup requests with missing user data:", {
+        requestIds: requestsWithIssues.map((r) => r.id),
+        userIds: requestsWithIssues.map((r) => r.userId),
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        topupRequests,
+        topupRequests: topupRequests.map((request) => ({
+          ...request,
+          // Ensure user data is present
+          user: request.user || {
+            id: request.userId,
+            name: "Unknown User",
+            phone: "N/A",
+            email: "N/A",
+            referralCode: "N/A",
+          },
+        })),
         pagination: {
           page,
           limit,
@@ -178,6 +224,10 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching topup history:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : null,
+    });
     return NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 },
