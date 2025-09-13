@@ -52,6 +52,8 @@ model User {
   referrals           User[]                @relation("UserReferrals")
   transactions        WalletTransaction[]
   withdrawalRequests  WithdrawalRequest[]
+  // Announcement relations
+  userAnnouncements   UserAnnouncement[]
 
   @@map("users")
 }
@@ -82,17 +84,17 @@ model BankCard {
 }
 
 model PositionLevel {
-  id           String   @id @default(cuid())
-  name         String   @unique // "Intern", "P1", "P2", etc.
-  level        Int      @unique // 0 for Intern, 1 for P1, 2 for P2, etc.
-  deposit      Float // Security deposit required (0 for Intern)
-  tasksPerDay  Int // Number of tasks allowed per day
-  unitPrice    Float // Price per task in PKR
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  users        User[]
-  videos       Video[]
+  id          String   @id @default(cuid())
+  name        String   @unique // "Intern", "P1", "P2", etc.
+  level       Int      @unique // 0 for Intern, 1 for P1, 2 for P2, etc.
+  deposit     Float // Security deposit required (0 for Intern)
+  tasksPerDay Int // Number of tasks allowed per day
+  unitPrice   Float // Price per task in PKR
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  videos      Video[]
 
   @@map("position_levels")
 }
@@ -243,20 +245,22 @@ model ReferralReward {
 }
 
 model AdminUser {
-  id           String        @id @default(cuid())
-  name         String
-  email        String        @unique
-  password     String
-  role         AdminRole     @default(ADMIN)
-  lastLogin    DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  phone        String        @unique
-  activityLogs ActivityLog[]
-  apiKeys      ApiKey[]
-  auditLogs    AuditLog[]
-  fileUploads  FileUpload[]
-  systemLogs   SystemLog[]
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          AdminRole      @default(ADMIN)
+  lastLogin     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  phone         String         @unique
+  activityLogs  ActivityLog[]
+  apiKeys       ApiKey[]
+  auditLogs     AuditLog[]
+  fileUploads   FileUpload[]
+  systemLogs    SystemLog[]
+  // Announcement relations
+  announcements Announcement[]
 
   @@map("admin_users")
 }
@@ -451,6 +455,46 @@ model TopupRequest {
   @@map("topup_requests")
 }
 
+model UserAnnouncement {
+  id             String       @id @default(cuid())
+  userId         String
+  announcementId String
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([isRead])
+  @@map("user_announcements")
+}
+
+model Announcement {
+  id                String             @id @default(cuid())
+  title             String
+  message           String
+  imageUrl          String?
+  targetType        String?            @default("all")
+  targetId          String?
+  scheduleType      String             @default("immediate")
+  scheduledAt       DateTime?
+  expiresAt         DateTime?
+  isActive          Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  adminId           String
+  admin             AdminUser          @relation(fields: [adminId], references: [id])
+  // Relation to track which users have seen this announcement
+  userAnnouncements UserAnnouncement[]
+
+  @@index([isActive])
+  @@index([scheduledAt])
+  @@index([expiresAt])
+  @@map("announcements")
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -569,4 +613,11 @@ enum TopupStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+enum AnnouncementTargetType {
+  ALL
+  SPECIFIC_USERS
+  SPECIFIC_LEVELS
+  SPECIFIC_ROLES
 }

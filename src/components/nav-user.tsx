@@ -64,6 +64,34 @@ export function NavUser({
     .toUpperCase()
     .slice(0, 2);
 
+  const handleLogout = async () => {
+    try {
+      // Call the logout API endpoint
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        // Check if this is an admin user based on role
+        const isAdmin = user.role && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
+        
+        // Redirect to appropriate login page
+        if (isAdmin) {
+          window.location.href = "/admin/login";
+        } else {
+          window.location.href = "/";
+        }
+      } else {
+        console.error("Logout failed");
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -108,7 +136,7 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut />
               Log out
             </DropdownMenuItem>
