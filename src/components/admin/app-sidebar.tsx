@@ -121,7 +121,6 @@ export function AppSidebar({ user, ...props }: SidebarProps) {
 
   React.useEffect(() => {
     fetchPendingCounts();
-    // Refresh counts every 30 seconds
     const interval = setInterval(fetchPendingCounts, 30000);
     return () => clearInterval(interval);
   }, [fetchPendingCounts]);
