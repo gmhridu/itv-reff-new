@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ITV",
+  title: "ICL Finance",
   description:
     "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
   keywords: [
-    "Z.ai",
+    "ICL Finance",
     "Next.js",
     "TypeScript",
     "Tailwind CSS",
@@ -60,15 +60,15 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <QueryProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster />
-            </ThemeProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
         </QueryProvider>
       </body>
     </html>

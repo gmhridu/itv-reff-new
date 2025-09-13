@@ -12,6 +12,7 @@ import {
   Eye,
   Settings,
   Copy,
+  MessageCircle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
@@ -66,6 +67,11 @@ const userNavigationBar: UserNavigationBarItem[] = [
     label: "Refer friends",
     href: "/referral",
   },
+  {
+    icon: MessageCircle,
+    label: "Support",
+    href: "/user/support",
+  },
 ];
 
 const UserOverview = () => {
@@ -77,7 +83,11 @@ const UserOverview = () => {
   const router = useRouter();
 
   useEffect(() => {
-    Promise.all([fetchWalletData(), fetchEarningsData(), fetchUserProfile()]).finally(() => {
+    Promise.all([
+      fetchWalletData(),
+      fetchEarningsData(),
+      fetchUserProfile(),
+    ]).finally(() => {
       setLoading(false);
     });
   }, []);
@@ -120,8 +130,8 @@ const UserOverview = () => {
 
   // Get initials for avatar
   const getUserInitials = (name: string | null | undefined) => {
-    if (!name) return 'UN';
-    const names = name.split(' ');
+    if (!name) return "UN";
+    const names = name.split(" ");
     if (names.length === 1) return names[0].substring(0, 2).toUpperCase();
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
   };
@@ -129,7 +139,7 @@ const UserOverview = () => {
   // Format phone number for display
   const formatPhoneNumber = (phone: string) => {
     if (phone.length <= 4) return phone;
-    return phone.substring(0, 4) + '****' + phone.substring(phone.length - 3);
+    return phone.substring(0, 4) + "****" + phone.substring(phone.length - 3);
   };
 
   const earningsItems = [
@@ -171,12 +181,12 @@ const UserOverview = () => {
             <div className="text-center">
               <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
                 <h2 className="text-lg font-semibold text-white">
-                  {userProfile?.name || 'User'}
+                  {userProfile?.name || "User"}
                 </h2>
               </div>
               <div className="flex items-center justify-center gap-2 bg-white/20 px-3 py-1 rounded-full mt-1">
                 <span className="text-blue-100 text-sm">
-                  {userProfile ? formatPhoneNumber(userProfile.phone) : '****'}
+                  {userProfile ? formatPhoneNumber(userProfile.phone) : "****"}
                 </span>
                 <Button
                   variant="ghost"
@@ -274,7 +284,11 @@ const UserOverview = () => {
                   </p>
                 </div>
                 <p className="text-2xl font-bold text-gray-900">
-                  PKR {earning.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  PKR{" "}
+                  {earning.amount.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </p>
                 <div className="mt-2 flex items-center text-xs text-emerald-600">
                   <TrendingUp className="w-3 h-3 mr-1" />
@@ -291,7 +305,7 @@ const UserOverview = () => {
         <h3 className="text-lg font-semibold text-gray-800 mb-3">
           Quick Actions
         </h3>
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden pb-3 mb-10">
           {userNavigationBar.map((item, index) => (
             <Link key={index} href={item.href}>
               <div
@@ -302,8 +316,18 @@ const UserOverview = () => {
                 }`}
               >
                 <div className="flex items-center">
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                    <item.icon className="w-5 h-5 text-blue-600" />
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                      item.label === "Support" ? "bg-purple-100" : "bg-blue-100"
+                    }`}
+                  >
+                    <item.icon
+                      className={`w-5 h-5 ${
+                        item.label === "Support"
+                          ? "text-purple-600"
+                          : "text-blue-600"
+                      }`}
+                    />
                   </div>
                   <span className="text-gray-800 font-medium">
                     {item.label}

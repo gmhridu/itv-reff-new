@@ -5,6 +5,7 @@ import { Button } from "./ui/button";
 import { useState } from "react";
 import { NotificationPopover } from "./notification-popover";
 import { Badge } from "./ui/badge";
+import Image from "next/image";
 
 const DashboardHeader = ({ user }) => {
   const [selectedLanguage, setSelectedLanguage] = useState("English");
@@ -194,11 +195,18 @@ const DashboardHeader = ({ user }) => {
           {/* Center Section - Logo */}
           <div className="flex-1 flex justify-center">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+              {/*<div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">iTV</span>
-              </div>
+              </div>*/}
+              <Image
+                src={"/logo.png"}
+                alt="ICL Finance Logo"
+                width={64}
+                height={48}
+                priority={true}
+              />
               <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-wide">
-                Dashboard
+                ICL Finance
               </h1>
             </div>
           </div>

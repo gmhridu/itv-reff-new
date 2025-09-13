@@ -1,7 +1,54 @@
 import React from "react";
 import { Button } from "./ui/button";
 
-const ProfitOverview = () => {
+interface TableRow {
+  position: string;
+  jobSecurityDeposite: string;
+  numberOfTasks: string;
+  unitPrice: string;
+  dailyIncome: string;
+  monthlyIncome: string;
+  annualIncome: string;
+}
+
+interface RewardsRow {
+  position: string;
+  incomeRatio: string;
+  aLevelRewards: string;
+  bLevelRewards: string;
+  cLevelRewards: string;
+}
+
+interface BonusRow {
+  level: string;
+  ratio: string;
+  example: string;
+}
+
+interface PositionDescription {
+  level: string;
+  description: string;
+}
+
+const ProfitOverview: React.FC = () => {
+  // Function to format numbers with consistent comma separators
+  const formatNumber = (num: string | number): string => {
+    if (typeof num === "string" && num.includes("---")) {
+      return num;
+    }
+
+    // Remove existing commas and convert to number
+    const cleanNum =
+      typeof num === "string" ? num.replace(/,/g, "") : num.toString();
+    const numValue = parseFloat(cleanNum);
+
+    if (isNaN(numValue)) {
+      return num.toString();
+    }
+
+    // Use toLocaleString with 'en-US' to ensure commas as thousand separators
+    return numValue.toLocaleString("en-US");
+  };
   // Default data if none is provided
   const defaultTableData = {
     headers: [
@@ -301,76 +348,166 @@ const ProfitOverview = () => {
   const rules = defaultIncomeRules;
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-      {/* Header with Logo */}
-      <h1 className="text-4xl font-bold text-blue-600 text-center">{"itv"}</h1>
-
+    <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 md:p-6 bg-white rounded-lg shadow-lg">
       {/* Main Table */}
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-          Position level And Income
+      <div className="mb-8 sm:mb-10">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-4 sm:mb-6 text-gray-800">
+          Position Level And Income
         </h2>
-        <Button className="mb-4 bg-blue-600 hover:bg-blue-800 text-white">
-          Currency Unit (PKR)
-        </Button>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-200">
-            <thead>
-              <tr className="bg-gray-100">
-                {data.headers.map((header, index) => (
-                  <th
-                    key={index}
-                    className="py-3 px-4 border-b text-left font-semibold text-gray-700"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.rows.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}
-                >
-                  <td className="py-3 px-4 border-b font-medium">
-                    {row.position}
-                  </td>
-                  <td className="py-3 px-4 border-b">
-                    {row.jobSecurityDeposite}
-                  </td>
-                  <td className="py-3 px-4 border-b">{row.numberOfTasks}</td>
-                  <td className="py-3 px-4 border-b">{row.unitPrice}</td>
-                  <td className="py-3 px-4 border-b">{row.dailyIncome}</td>
-                  <td className="py-3 px-4 border-b">{row.monthlyIncome}</td>
-                  <td className="py-3 px-4 border-b">{row.annualIncome}</td>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+          <Button className="bg-blue-600 hover:bg-blue-800 text-white text-sm sm:text-base px-4 py-2">
+            Currency Unit (PKR)
+          </Button>
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden lg:block">
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-200">
+              <thead>
+                <tr className="bg-gray-100">
+                  {data.headers.map((header, index) => (
+                    <th
+                      key={index}
+                      className="py-3 px-4 border-b text-left font-semibold text-gray-700 text-sm xl:text-base whitespace-nowrap"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data.rows.map((row, rowIndex) => (
+                  <tr
+                    key={rowIndex}
+                    className={rowIndex % 2 === 0 ? "bg-gray-50" : "bg-white"}
+                  >
+                    <td className="py-3 px-4 border-b font-medium text-sm xl:text-base">
+                      {row.position}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm xl:text-base">
+                      {formatNumber(row.jobSecurityDeposite)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm xl:text-base">
+                      {formatNumber(row.numberOfTasks)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm xl:text-base">
+                      {formatNumber(row.unitPrice)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm xl:text-base">
+                      {formatNumber(row.dailyIncome)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm xl:text-base">
+                      {formatNumber(row.monthlyIncome)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm xl:text-base">
+                      {formatNumber(row.annualIncome)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Mobile/Tablet Cards */}
+        <div className="block lg:hidden">
+          <div className="space-y-4">
+            {data.rows.map((row, rowIndex) => (
+              <div
+                key={rowIndex}
+                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-bold text-blue-600">
+                    {row.position}
+                  </h4>
+                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+                    Level {row.position}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div className="bg-gray-50 p-3 rounded border">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+                      Security Deposit
+                    </div>
+                    <div className="font-mono font-semibold text-gray-800">
+                      {formatNumber(row.jobSecurityDeposite)} PKR
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded border">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+                      Tasks/Day
+                    </div>
+                    <div className="font-mono font-semibold text-gray-800">
+                      {formatNumber(row.numberOfTasks)}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded border">
+                    <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+                      Unit Price
+                    </div>
+                    <div className="font-mono font-semibold text-gray-800">
+                      {formatNumber(row.unitPrice)} PKR
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 p-3 rounded border border-green-200">
+                    <div className="text-green-600 text-xs uppercase tracking-wide font-semibold mb-1">
+                      Daily Income
+                    </div>
+                    <div className="font-mono font-bold text-green-700">
+                      {formatNumber(row.dailyIncome)} PKR
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                    <div className="text-blue-600 text-xs uppercase tracking-wide font-semibold mb-1">
+                      Monthly Income
+                    </div>
+                    <div className="font-mono font-bold text-blue-700">
+                      {formatNumber(row.monthlyIncome)} PKR
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                    <div className="text-purple-600 text-xs uppercase tracking-wide font-semibold mb-1">
+                      Annual Income
+                    </div>
+                    <div className="font-mono font-bold text-purple-700">
+                      {formatNumber(row.annualIncome)} PKR
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Position Descriptions */}
-      <div className="mb-10">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">
+      <div className="mb-8 sm:mb-10">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
           Position Descriptions
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           {descriptions.map((desc, index) => (
             <div
               key={index}
-              className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200 shadow-sm"
+              className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 sm:p-4 md:p-5 rounded-lg border border-blue-200 shadow-sm"
             >
-              <div className="flex items-start">
-                <div className="flex-shrink-0 w-8 h-8 mt-1 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold mr-4">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs sm:text-sm font-bold">
                   {index + 1}
                 </div>
-                <div className="flex-1">
-                  <span className="font-bold text-blue-700 text-lg">
+                <div className="flex-1 min-w-0">
+                  <span className="font-bold text-blue-700 text-sm sm:text-base md:text-lg break-words">
                     {desc.level}:
                   </span>
-                  <p className="text-gray-700 mt-2 leading-relaxed">
+                  <p className="text-gray-700 mt-1 sm:mt-2 leading-relaxed text-sm sm:text-base break-words">
                     {desc.description}
                   </p>
                 </div>
@@ -381,182 +518,107 @@ const ProfitOverview = () => {
       </div>
 
       {/* Invitation Rewards */}
-      <div className="mb-10">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">
+      <div className="mb-8 sm:mb-10">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
           Invitation Rewards
         </h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white border border-gray-200">
-            <thead>
-              <tr className="bg-blue-100">
-                {rewards.headers.map((header, index) => (
-                  <th
-                    key={index}
-                    className="py-3 px-4 border-b text-left font-semibold text-gray-700"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rewards.rows.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className={rowIndex % 2 === 0 ? "bg-blue-50" : "bg-white"}
-                >
-                  <td className="py-3 px-4 border-b font-medium">
-                    {row.position}
-                  </td>
-                  <td className="py-3 px-4 border-b">{row.incomeRatio}</td>
-                  <td className="py-3 px-4 border-b">{row.aLevelRewards}</td>
-                  <td className="py-3 px-4 border-b">{row.bLevelRewards}</td>
-                  <td className="py-3 px-4 border-b">{row.cLevelRewards}</td>
+
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-200">
+              <thead>
+                <tr className="bg-blue-100">
+                  {rewards.headers.map((header, index) => (
+                    <th
+                      key={index}
+                      className="py-3 px-4 border-b text-left font-semibold text-gray-700 text-sm lg:text-base whitespace-nowrap"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rewards.rows.map((row, rowIndex) => (
+                  <tr
+                    key={rowIndex}
+                    className={rowIndex % 2 === 0 ? "bg-blue-50" : "bg-white"}
+                  >
+                    <td className="py-3 px-4 border-b font-medium text-sm lg:text-base">
+                      {row.position}
+                    </td>
+                    <td className="py-3 px-4 border-b text-sm lg:text-base">
+                      {row.incomeRatio}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm lg:text-base">
+                      {formatNumber(row.aLevelRewards)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm lg:text-base">
+                      {formatNumber(row.bLevelRewards)}
+                    </td>
+                    <td className="py-3 px-4 border-b font-mono text-sm lg:text-base">
+                      {formatNumber(row.cLevelRewards)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Referral Rewards Instructions */}
-      <div className="mb-10">
-        <div className="bg-gradient-to-r from-red-50 to-pink-50 p-6 rounded-lg border border-red-200 shadow-sm">
-          <h3 className="text-2xl font-bold mb-6 text-red-600 flex items-center">
-            <span className="mr-3">🎯</span>
-            Referral Rewards Instructions
-          </h3>
-
-          {/* Invitation Rewards Section */}
-          <div className="bg-white p-5 rounded-lg border border-red-100 mb-6">
-            <h4 className="text-lg font-bold mb-4 text-red-500 flex items-center">
-              <span className="mr-2">👉</span>
-              Invitation Rewards Structure
-            </h4>
-            <div className="space-y-3">
-              <div className="flex items-start bg-green-50 p-3 rounded-lg border-l-4 border-green-400">
-                <span className="text-green-600 font-bold mr-3">Level A:</span>
-                <span className="text-gray-700">
-                  If <strong>you</strong> invite <strong>A</strong> and they
-                  become <strong>L1</strong>, you earn{" "}
-                  <strong className="text-green-600">5 PKR</strong>
+        {/* Mobile Cards */}
+        <div className="block md:hidden space-y-4">
+          {rewards.rows.map((row, rowIndex) => (
+            <div
+              key={rowIndex}
+              className="bg-white border border-blue-200 rounded-lg p-4 shadow-sm"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-lg font-bold text-blue-600">
+                  {row.position}
+                </h4>
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-semibold">
+                  {row.incomeRatio}
                 </span>
               </div>
-              <div className="flex items-start bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
-                <span className="text-blue-600 font-bold mr-3">Level B:</span>
-                <span className="text-gray-700">
-                  If <strong>A</strong> invites <strong>B</strong> and they
-                  become <strong>L1</strong>, you earn{" "}
-                  <strong className="text-blue-600">2 PKR</strong>
-                </span>
-              </div>
-              <div className="flex items-start bg-purple-50 p-3 rounded-lg border-l-4 border-purple-400">
-                <span className="text-purple-600 font-bold mr-3">Level C:</span>
-                <span className="text-gray-700">
-                  If <strong>B</strong> invites <strong>C</strong> and they
-                  become <strong>L1</strong>, you earn{" "}
-                  <strong className="text-purple-600">1 PKR</strong>
-                </span>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-300">
-                <p className="text-yellow-800 font-semibold flex items-center">
-                  <span className="mr-2">✅</span>
-                  You earn rewards from your direct invites AND from your team's
-                  invites too!
-                </p>
-              </div>
-            </div>
-          </div>
 
-          {/* Key Examples Section */}
-          <div className="bg-white p-5 rounded-lg border border-red-100">
-            <h4 className="text-lg font-bold mb-4 text-red-500 flex items-center">
-              <span className="mr-2">💡</span>
-              Key Examples & Rules
-            </h4>
-
-            <div className="mb-4">
-              <h5 className="font-bold text-gray-800 mb-3 flex items-center">
-                <span className="mr-2">👉</span>
-                When a subordinate has a higher level than you:
-              </h5>
-              <div className="space-y-3">
-                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                  <div className="font-semibold text-orange-700 mb-2">
-                    Example 1:
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="bg-red-50 p-3 rounded border border-red-200 text-center">
+                  <div className="text-red-600 text-xs font-semibold mb-1">
+                    A-Level
                   </div>
-                  <p className="text-gray-700">
-                    If you are{" "}
-                    <span className="bg-orange-200 px-2 py-1 rounded font-bold">
-                      L1
-                    </span>{" "}
-                    and your subordinate A becomes{" "}
-                    <span className="bg-orange-200 px-2 py-1 rounded font-bold">
-                      L2
-                    </span>
-                    , you receive{" "}
-                    <span className="bg-green-200 px-2 py-1 rounded font-bold">
-                      8% of the L1 invitation reward (5 PKR)
-                    </span>{" "}
-                    — that's{" "}
-                    <span className="text-green-600 font-bold">0.4 PKR</span>
-                  </p>
-                </div>
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                  <div className="font-semibold text-indigo-700 mb-2">
-                    Example 2:
+                  <div className="font-mono font-bold text-red-700">
+                    {formatNumber(row.aLevelRewards)} PKR
                   </div>
-                  <p className="text-gray-700">
-                    If you are{" "}
-                    <span className="bg-indigo-200 px-2 py-1 rounded font-bold">
-                      L4
-                    </span>{" "}
-                    and your subordinate A becomes{" "}
-                    <span className="bg-indigo-200 px-2 py-1 rounded font-bold">
-                      L4
-                    </span>
-                    , you receive{" "}
-                    <span className="bg-green-200 px-2 py-1 rounded font-bold">
-                      8% of the L4 invitation reward (148 PKR)
-                    </span>{" "}
-                    — that's{" "}
-                    <span className="text-green-600 font-bold">12 PKR</span>
-                  </p>
                 </div>
-              </div>
-            </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
-              <div className="flex items-start">
-                <span className="text-2xl mr-3">✅</span>
-                <div>
-                  <p className="font-bold text-blue-700 mb-2">
-                    Important Rule:
-                  </p>
-                  <p className="text-gray-700 mb-3">
-                    If you invite someone of a higher level, you only get{" "}
-                    <span className="bg-yellow-200 px-2 py-1 rounded font-bold">
-                      8%
-                    </span>{" "}
-                    of that level's invitation reward.
-                  </p>
-                  <div className="flex items-center text-blue-600">
-                    <span className="mr-2">🔼</span>
-                    <p className="font-semibold">
-                      As you reach higher membership levels, the base invitation
-                      rewards grow — so your potential income increases!
-                    </p>
+                <div className="bg-blue-50 p-3 rounded border border-blue-200 text-center">
+                  <div className="text-blue-600 text-xs font-semibold mb-1">
+                    B-Level
+                  </div>
+                  <div className="font-mono font-bold text-blue-700">
+                    {formatNumber(row.bLevelRewards)} PKR
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 p-3 rounded border border-purple-200 text-center">
+                  <div className="text-purple-600 text-xs font-semibold mb-1">
+                    C-Level
+                  </div>
+                  <div className="font-mono font-bold text-purple-700">
+                    {formatNumber(row.cLevelRewards)} PKR
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
       {/* Task Management Bonus */}
-      <div className="mb-10">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">
+      <div className="mb-8 sm:mb-10">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
           Task Management Bonus
         </h3>
         <div className="overflow-x-auto">
@@ -566,7 +628,7 @@ const ProfitOverview = () => {
                 {bonus.headers.map((header, index) => (
                   <th
                     key={index}
-                    className="py-3 px-4 border-b text-left font-semibold text-gray-700"
+                    className="py-2 sm:py-3 px-2 sm:px-4 border-b text-left font-semibold text-gray-700 text-xs sm:text-sm lg:text-base whitespace-nowrap"
                   >
                     {header}
                   </th>
@@ -579,11 +641,15 @@ const ProfitOverview = () => {
                   key={rowIndex}
                   className={rowIndex % 2 === 0 ? "bg-green-50" : "bg-white"}
                 >
-                  <td className="py-3 px-4 border-b font-medium">
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 border-b font-medium text-xs sm:text-sm lg:text-base">
                     {row.level}
                   </td>
-                  <td className="py-3 px-4 border-b">{row.ratio}</td>
-                  <td className="py-3 px-4 border-b">{row.example}</td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 border-b text-xs sm:text-sm lg:text-base">
+                    {row.ratio}
+                  </td>
+                  <td className="py-2 sm:py-3 px-2 sm:px-4 border-b text-xs sm:text-sm lg:text-base">
+                    {row.example}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -592,109 +658,172 @@ const ProfitOverview = () => {
       </div>
 
       {/* Daily Management Bonus */}
-      <div className="mb-10">
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-lg border border-green-200 shadow-sm">
-          <h3 className="text-2xl font-bold mb-6 text-green-600 flex items-center">
-            <span className="mr-3">💰</span>
-            Daily Management Bonus
+      <div className="mb-8 sm:mb-10">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 sm:p-6 rounded-lg border border-green-200 shadow-sm">
+          <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-green-600 flex items-center flex-wrap gap-2">
+            <span className="text-xl sm:text-2xl">💰</span>
+            <span className="break-words">Daily Management Bonus</span>
           </h3>
 
           {/* Introduction */}
-          <div className="bg-white p-5 rounded-lg border border-green-100 mb-6">
-            <h4 className="text-lg font-bold mb-4 text-green-500 flex items-center">
-              <span className="mr-2">👉</span>
-              Invite Friends & Earn Daily Management Fees!
+          <div className="bg-white p-3 sm:p-5 rounded-lg border border-green-100 mb-4 sm:mb-6">
+            <h4 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-green-500 flex items-center flex-wrap gap-2">
+              <span>👉</span>
+              <span className="break-words">
+                Invite Friends & Earn Daily Management Fees!
+              </span>
             </h4>
-            <p className="text-gray-700 text-lg leading-relaxed">
-              When employees you invite complete their daily tasks, you earn a <span className="bg-green-200 px-2 py-1 rounded font-bold">management bonus</span> based on their level:
+            <p className="text-gray-700 text-sm sm:text-base lg:text-lg leading-relaxed">
+              When employees you invite complete their daily tasks, you earn a{" "}
+              <span className="bg-green-200 px-2 py-1 rounded font-bold">
+                management bonus
+              </span>{" "}
+              based on their level:
             </p>
           </div>
 
           {/* Bonus Rates */}
-          <div className="bg-white p-5 rounded-lg border border-green-100 mb-6">
-            <h4 className="text-lg font-bold mb-4 text-green-500 flex items-center">
-              <span className="mr-2">📊</span>
-              Management Bonus Rates
+          <div className="bg-white p-3 sm:p-5 rounded-lg border border-green-100 mb-4 sm:mb-6">
+            <h4 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-green-500 flex items-center gap-2">
+              <span>📊</span>
+              <span>Management Bonus Rates</span>
             </h4>
             <div className="space-y-3">
-              <div className="flex items-center justify-between bg-red-50 p-4 rounded-lg border border-red-200">
-                <div className="flex items-center">
-                  <span className="bg-red-500 text-white px-3 py-1 rounded-full font-bold mr-4">A</span>
-                  <span className="font-semibold text-gray-700">A-level subordinates</span>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200 gap-2">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <span className="bg-red-500 text-white px-3 py-1 rounded-full font-bold text-sm">
+                    A
+                  </span>
+                  <span className="font-semibold text-gray-700 text-sm sm:text-base">
+                    A-level subordinates
+                  </span>
                 </div>
-                <span className="bg-red-200 px-4 py-2 rounded-lg font-bold text-red-700">6% of daily income</span>
+                <span className="bg-red-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-red-700 text-sm sm:text-base">
+                  6% of daily income
+                </span>
               </div>
-              <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="flex items-center">
-                  <span className="bg-blue-500 text-white px-3 py-1 rounded-full font-bold mr-4">B</span>
-                  <span className="font-semibold text-gray-700">B-level subordinates</span>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 gap-2">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <span className="bg-blue-500 text-white px-3 py-1 rounded-full font-bold text-sm">
+                    B
+                  </span>
+                  <span className="font-semibold text-gray-700 text-sm sm:text-base">
+                    B-level subordinates
+                  </span>
                 </div>
-                <span className="bg-blue-200 px-4 py-2 rounded-lg font-bold text-blue-700">3% of daily income</span>
+                <span className="bg-blue-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-blue-700 text-sm sm:text-base">
+                  3% of daily income
+                </span>
               </div>
-              <div className="flex items-center justify-between bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <div className="flex items-center">
-                  <span className="bg-purple-500 text-white px-3 py-1 rounded-full font-bold mr-4">C</span>
-                  <span className="font-semibold text-gray-700">C-level subordinates</span>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200 gap-2">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <span className="bg-purple-500 text-white px-3 py-1 rounded-full font-bold text-sm">
+                    C
+                  </span>
+                  <span className="font-semibold text-gray-700 text-sm sm:text-base">
+                    C-level subordinates
+                  </span>
                 </div>
-                <span className="bg-purple-200 px-4 py-2 rounded-lg font-bold text-purple-700">1% of daily income</span>
+                <span className="bg-purple-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-purple-700 text-sm sm:text-base">
+                  1% of daily income
+                </span>
               </div>
             </div>
           </div>
 
           {/* Example Calculation */}
-          <div className="bg-white p-5 rounded-lg border border-green-100">
-            <h4 className="text-lg font-bold mb-4 text-green-500 flex items-center">
-              <span className="mr-2">🧮</span>
-              Example Calculation
+          <div className="bg-white p-3 sm:p-5 rounded-lg border border-green-100">
+            <h4 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 text-green-500 flex items-center gap-2">
+              <span>🧮</span>
+              <span>Example Calculation</span>
             </h4>
 
-            <div className="mb-6">
-              <h5 className="font-bold text-gray-800 mb-3">If you invite:</h5>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-center">
-                  <div className="text-2xl font-bold text-red-600">10</div>
-                  <div className="text-red-700 font-semibold">A-level subordinates</div>
+            <div className="mb-4 sm:mb-6">
+              <h5 className="font-bold text-gray-800 mb-2 sm:mb-3 text-sm sm:text-base">
+                If you invite:
+              </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                <div className="bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200 text-center">
+                  <div className="text-xl sm:text-2xl font-bold text-red-600">
+                    {formatNumber(10)}
+                  </div>
+                  <div className="text-red-700 font-semibold text-sm sm:text-base">
+                    A-level subordinates
+                  </div>
                 </div>
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 text-center">
-                  <div className="text-2xl font-bold text-blue-600">100</div>
-                  <div className="text-blue-700 font-semibold">B-level subordinates</div>
+                <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 text-center">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-600">
+                    {formatNumber(100)}
+                  </div>
+                  <div className="text-blue-700 font-semibold text-sm sm:text-base">
+                    B-level subordinates
+                  </div>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 text-center">
-                  <div className="text-2xl font-bold text-purple-600">1,000</div>
-                  <div className="text-purple-700 font-semibold">C-level subordinates</div>
+                <div className="bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200 text-center">
+                  <div className="text-xl sm:text-2xl font-bold text-purple-600">
+                    {formatNumber(1000)}
+                  </div>
+                  <div className="text-purple-700 font-semibold text-sm sm:text-base">
+                    C-level subordinates
+                  </div>
                 </div>
               </div>
               <div className="text-center bg-yellow-50 p-3 rounded-lg border border-yellow-300">
-                <span className="text-yellow-800 font-semibold">Each earning an average of </span>
-                <span className="bg-yellow-200 px-3 py-1 rounded font-bold text-yellow-900">1,000 PKR daily</span>
+                <span className="text-yellow-800 font-semibold text-sm sm:text-base">
+                  Each earning an average of{" "}
+                </span>
+                <span className="bg-yellow-200 px-3 py-1 rounded font-bold text-yellow-900 font-mono text-sm sm:text-base">
+                  {formatNumber(1000)} PKR daily
+                </span>
               </div>
             </div>
 
-            <div className="mb-6">
-              <h5 className="font-bold text-gray-800 mb-3">Your earnings will be:</h5>
+            <div className="mb-4 sm:mb-6">
+              <h5 className="font-bold text-gray-800 mb-2 sm:mb-3 text-sm sm:text-base">
+                Your earnings will be:
+              </h5>
               <div className="space-y-3">
-                <div className="flex items-center justify-between bg-red-50 p-4 rounded-lg border border-red-200">
-                  <span className="font-semibold text-gray-700">A-level: 1,000 × 10 × 6%</span>
-                  <span className="bg-red-200 px-4 py-2 rounded-lg font-bold text-red-700">600 PKR</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200 gap-2">
+                  <span className="font-semibold text-gray-700 text-sm sm:text-base">
+                    A-level: {formatNumber(1000)} × {formatNumber(10)} × 6%
+                  </span>
+                  <span className="bg-red-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-red-700 font-mono text-sm sm:text-base">
+                    {formatNumber(600)} PKR
+                  </span>
                 </div>
-                <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <span className="font-semibold text-gray-700">B-level: 1,000 × 100 × 3%</span>
-                  <span className="bg-blue-200 px-4 py-2 rounded-lg font-bold text-blue-700">3,000 PKR</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 gap-2">
+                  <span className="font-semibold text-gray-700 text-sm sm:text-base">
+                    B-level: {formatNumber(1000)} × {formatNumber(100)} × 3%
+                  </span>
+                  <span className="bg-blue-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-blue-700 font-mono text-sm sm:text-base">
+                    {formatNumber(3000)} PKR
+                  </span>
                 </div>
-                <div className="flex items-center justify-between bg-purple-50 p-4 rounded-lg border border-purple-200">
-                  <span className="font-semibold text-gray-700">C-level: 1,000 × 1,000 × 1%</span>
-                  <span className="bg-purple-200 px-4 py-2 rounded-lg font-bold text-purple-700">10,000 PKR</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200 gap-2">
+                  <span className="font-semibold text-gray-700 text-sm sm:text-base">
+                    C-level: {formatNumber(1000)} × {formatNumber(1000)} × 1%
+                  </span>
+                  <span className="bg-purple-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-purple-700 font-mono text-sm sm:text-base">
+                    {formatNumber(10000)} PKR
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-6 rounded-lg border border-green-300">
-              <div className="flex items-center justify-center">
-                <span className="text-2xl mr-3">✅</span>
+            <div className="bg-gradient-to-r from-green-100 to-emerald-100 p-4 sm:p-6 rounded-lg border border-green-300">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <span className="text-xl sm:text-2xl">✅</span>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-green-700 mb-2">Total Daily Management Bonus</div>
-                  <div className="text-3xl font-bold text-green-800">
-                    600 + 3000 + 10000 = <span className="bg-green-200 px-4 py-2 rounded-lg">13.600 PKR</span>
+                  <div className="text-base sm:text-lg font-bold text-green-700 mb-2">
+                    Total Daily Management Bonus
+                  </div>
+                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-800 break-words">
+                    <span className="block sm:inline">
+                      {`${formatNumber(600)} + ${formatNumber(3000)} + ${formatNumber(10000)} = `}
+                    </span>
+                    <span className="bg-green-200 px-3 sm:px-4 py-2 rounded-lg font-mono inline-block mt-2 sm:mt-0">
+                      {formatNumber(13600)} PKR
+                    </span>
                   </div>
                 </div>
               </div>
@@ -704,10 +833,14 @@ const ProfitOverview = () => {
       </div>
 
       {/* Income Rules */}
-      <div>
-        <h3 className="text-xl font-bold mb-4 text-gray-800">Income Rules</h3>
-        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-          <p className="text-gray-700">{rules}</p>
+      <div className="mb-6 sm:mb-8 lg:mb-10 pb-2.5">
+        <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">
+          Income Rules
+        </h3>
+        <div className="bg-yellow-50 p-4 sm:p-6 rounded-lg border border-yellow-100 mb-9">
+          <p className="text-gray-700 text-sm sm:text-base leading-relaxed">
+            {rules}
+          </p>
         </div>
       </div>
     </div>
