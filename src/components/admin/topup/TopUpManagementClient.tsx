@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { TopupWalletManagement } from "@/components/topup/TopupWalletManagement";
 import { TopupHistory } from "@/components/topup/TopupHistory";
+import { UsdtSettingsManagement } from "./UsdtSettingsManagement";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -251,7 +252,7 @@ export function TopUpManagementClient() {
         {/* Enhanced Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="mb-8">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 gap-1 p-1 bg-white/80 backdrop-blur-sm shadow-sm border-0 rounded-xl">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5 gap-1 p-1 bg-white/80 backdrop-blur-sm shadow-sm border-0 rounded-xl h-[58px]">
               <TabsTrigger
                 value="overview"
                 className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
@@ -265,6 +266,13 @@ export function TopUpManagementClient() {
               >
                 <Wallet className="w-4 h-4" />
                 <span className="hidden sm:inline">Wallets</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="usdt-settings"
+                className="flex items-center gap-2 text-sm font-medium px-4 py-3 rounded-lg transition-all data-[state=active]:bg-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
+              >
+                <Zap className="w-4 h-4" />
+                <span className="hidden sm:inline">USDT</span>
               </TabsTrigger>
               <TabsTrigger
                 value="history"
@@ -533,6 +541,27 @@ export function TopUpManagementClient() {
             <Card className="border-0 shadow-sm">
               <CardContent className="p-6">
                 <TopupWalletManagement />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* USDT Settings Tab */}
+          <TabsContent value="usdt-settings" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <Zap className="w-6 h-6 text-orange-600" />
+                  USDT Settings
+                </h2>
+                <p className="text-gray-600">
+                  Configure USDT exchange rates, wallets, and bonus settings
+                </p>
+              </div>
+            </div>
+
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <UsdtSettingsManagement />
               </CardContent>
             </Card>
           </TabsContent>

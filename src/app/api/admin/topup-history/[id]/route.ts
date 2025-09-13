@@ -142,7 +142,7 @@ export async function PUT(
       requestId: existingRequest.id,
       currentStatus: existingRequest.status,
       userId: existingRequest.userId,
-      userName: existingRequest.user?.name,
+      userName: existingRequest.user.name,
       amount: existingRequest.amount,
     });
 
@@ -189,14 +189,27 @@ export async function PUT(
         const newBalance =
           existingRequest.user.walletBalance + existingRequest.amount;
 
+        // Check if this is a USDT payment (eligible for 3% commission bonus)
+        const isUsdtPayment =
+          existingRequest.selectedWallet?.walletType === ("USDT_TRC20" as any);
+        let commissionBonus = 0;
+        let newCommissionBalance = existingRequest.user.commissionBalance;
+
+        if (isUsdtPayment) {
+          commissionBonus = existingRequest.amount * 0.03; // 3% bonus
+          newCommissionBalance =
+            existingRequest.user.commissionBalance + commissionBonus;
+        }
+
         await tx.user.update({
           where: { id: existingRequest.userId },
           data: {
             walletBalance: newBalance,
+            ...(isUsdtPayment && { commissionBalance: newCommissionBalance }),
           },
         });
 
-        // Create wallet transaction record
+        // Create wallet transaction record for main topup
         await tx.walletTransaction.create({
           data: {
             userId: existingRequest.userId,
@@ -210,9 +223,32 @@ export async function PUT(
               topupRequestId: existingRequest.id,
               walletType: existingRequest.selectedWallet?.walletType,
               transactionId: transactionId,
+              isUsdtPayment,
             }),
           },
         });
+
+        // Create commission bonus transaction if USDT payment
+        if (isUsdtPayment && commissionBonus > 0) {
+          await tx.walletTransaction.create({
+            data: {
+              userId: existingRequest.userId,
+              type: "CREDIT" as any,
+              amount: commissionBonus,
+              balanceAfter: newCommissionBalance,
+              description: `USDT Topup Bonus (3%) - ${existingRequest.selectedWallet?.walletType}`,
+              referenceId: `USDT_BONUS_${existingRequest.id}`,
+              status: "COMPLETED",
+              metadata: JSON.stringify({
+                topupRequestId: existingRequest.id,
+                bonusPercentage: 3,
+                originalAmount: existingRequest.amount,
+                bonusAmount: commissionBonus,
+                transactionType: "COMMISSION",
+              }),
+            },
+          });
+        }
       }
 
       return updatedRequest;
@@ -222,7 +258,7 @@ export async function PUT(
       requestId: result.id,
       newStatus: result.status,
       userId: result.userId,
-      userName: result.user?.name,
+      userName: result.user.name,
       amount: existingRequest.amount,
       balanceUpdated: status === "APPROVED",
     });
@@ -241,6 +277,13 @@ export async function PUT(
           status: { from: existingRequest.status, to: status },
           adminNotes,
           transactionId,
+          isUsdtPayment:
+            existingRequest.selectedWallet?.walletType ===
+            ("USDT_TRC20" as any),
+          commissionBonus:
+            existingRequest.selectedWallet?.walletType === ("USDT_TRC20" as any)
+              ? existingRequest.amount * 0.03
+              : 0,
         }),
       },
     });

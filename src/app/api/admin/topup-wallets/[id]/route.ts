@@ -83,7 +83,13 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
-    const { walletNumber, walletHolderName, isActive } = body;
+    const {
+      walletNumber,
+      walletHolderName,
+      isActive,
+      usdtWalletAddress,
+      qrCodeUrl,
+    } = body;
 
     // Check if wallet exists
     const existingWallet = await prisma.adminWallet.findUnique({
@@ -97,32 +103,62 @@ export async function PUT(
       );
     }
 
-    // Check for duplicate wallet number if it's being changed
-    if (walletNumber && walletNumber !== existingWallet.walletNumber) {
-      const duplicateWallet = await prisma.adminWallet.findFirst({
-        where: {
-          walletNumber,
-          walletType: existingWallet.walletType,
-          id: { not: id },
-        },
-      });
+    // Check for duplicate wallet number/address if it's being changed
+    if (existingWallet.walletType === ("USDT_TRC20" as any)) {
+      if (
+        usdtWalletAddress &&
+        usdtWalletAddress !== (existingWallet as any).usdtWalletAddress
+      ) {
+        const duplicateWallet = await prisma.adminWallet.findFirst({
+          where: {
+            walletType: existingWallet.walletType,
+            id: { not: id },
+          },
+        });
 
-      if (duplicateWallet) {
-        return NextResponse.json(
-          { success: false, error: "Wallet with this number already exists" },
-          { status: 400 },
-        );
+        if (duplicateWallet) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Wallet with this USDT address already exists",
+            },
+            { status: 400 },
+          );
+        }
+      }
+    } else {
+      if (
+        walletNumber &&
+        walletNumber !== (existingWallet as any).walletNumber
+      ) {
+        const duplicateWallet = await prisma.adminWallet.findFirst({
+          where: {
+            walletNumber,
+            walletType: existingWallet.walletType,
+            id: { not: id },
+          },
+        });
+
+        if (duplicateWallet) {
+          return NextResponse.json(
+            { success: false, error: "Wallet with this number already exists" },
+            { status: 400 },
+          );
+        }
       }
     }
 
     // Update wallet
+    const updateData: any = {};
+    if (walletNumber) updateData.walletNumber = walletNumber;
+    if (walletHolderName) updateData.walletHolderName = walletHolderName;
+    if (usdtWalletAddress) updateData.usdtWalletAddress = usdtWalletAddress;
+    if (qrCodeUrl !== undefined) updateData.qrCodeUrl = qrCodeUrl || null;
+    if (typeof isActive === "boolean") updateData.isActive = isActive;
+
     const updatedWallet = await prisma.adminWallet.update({
       where: { id },
-      data: {
-        ...(walletNumber && { walletNumber }),
-        ...(walletHolderName && { walletHolderName }),
-        ...(typeof isActive === "boolean" && { isActive }),
-      },
+      data: updateData,
       include: {
         _count: {
           select: {
@@ -145,7 +181,7 @@ export async function PUT(
             changes: {
               ...(walletNumber && {
                 walletNumber: {
-                  from: existingWallet.walletNumber,
+                  from: (existingWallet as any).walletNumber,
                   to: walletNumber,
                 },
               }),
@@ -153,6 +189,18 @@ export async function PUT(
                 walletHolderName: {
                   from: existingWallet.walletHolderName,
                   to: walletHolderName,
+                },
+              }),
+              ...(usdtWalletAddress && {
+                usdtWalletAddress: {
+                  from: (existingWallet as any).usdtWalletAddress,
+                  to: usdtWalletAddress,
+                },
+              }),
+              ...(qrCodeUrl !== undefined && {
+                qrCodeUrl: {
+                  from: (existingWallet as any).qrCodeUrl,
+                  to: qrCodeUrl || null,
                 },
               }),
               ...(typeof isActive === "boolean" && {
@@ -249,9 +297,10 @@ export async function DELETE(
           targetId: id,
           description: `Deleted ${existingWallet.walletType} wallet`,
           details: JSON.stringify({
-            walletNumber: existingWallet.walletNumber,
+            walletNumber: (existingWallet as any).walletNumber,
             walletHolderName: existingWallet.walletHolderName,
             walletType: existingWallet.walletType,
+            usdtWalletAddress: (existingWallet as any).usdtWalletAddress,
           }),
         },
       });

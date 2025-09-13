@@ -424,14 +424,16 @@ model ApiKey {
 }
 
 model AdminWallet {
-  id               String         @id @default(cuid())
-  walletType       BankType
-  walletNumber     String
-  walletHolderName String
-  isActive         Boolean        @default(true)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  topupRequests    TopupRequest[]
+  id                String         @id @default(cuid())
+  walletType        BankType
+  walletNumber      String?
+  walletHolderName  String
+  usdtWalletAddress String?
+  qrCodeUrl         String?
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  topupRequests     TopupRequest[]
 
   @@map("admin_wallets")
 }
@@ -503,6 +505,7 @@ enum UserStatus {
 enum BankType {
   JAZZCASH
   EASYPAISA
+  USDT_TRC20
 }
 
 enum PlanStatus {

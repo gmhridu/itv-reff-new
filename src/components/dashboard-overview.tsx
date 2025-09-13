@@ -46,6 +46,7 @@ import WithdrawTab from "./withdraw-tab";
 import WalletTab from "./wallet-tab";
 import Link from "next/link";
 import AnnouncementPopup from "@/components/announcement-popup";
+import { useMembershipList } from "@/hooks/use-membership-list";
 
 const sliderImages = [
   {
@@ -70,44 +71,6 @@ const sliderImages = [
   },
 ];
 
-// Mock membership data
-const membershipData = [
-  {
-    id: 1,
-    name: "Last week's earnings",
-    amount: "1500PKR",
-    avatar: "/avatar1.jpg",
-  },
-  {
-    id: 2,
-    name: "Congratulations ***1794",
-    subtitle: "Last week's earnings",
-    amount: "480PKR",
-    avatar: "/avatar2.jpg",
-  },
-  {
-    id: 3,
-    name: "Congratulations ***9472",
-    subtitle: "Last week's earnings",
-    amount: "480PKR",
-    avatar: "/avatar3.jpg",
-  },
-  {
-    id: 4,
-    name: "Congratulations ***5712",
-    subtitle: "Last week's earnings",
-    amount: "150PKR",
-    avatar: "/avatar4.jpg",
-  },
-  {
-    id: 5,
-    name: "Congratulations ***6313",
-    subtitle: "Last week's earnings",
-    amount: "200PKR",
-    avatar: "/avatar5.jpg",
-  },
-];
-
 export default function DashboardOverview() {
   const router = useRouter();
 
@@ -123,10 +86,16 @@ export default function DashboardOverview() {
     error: videosError,
     refetch: refetchVideos,
   } = useVideos();
+  const {
+    data: membershipData,
+    isLoading: membershipLoading,
+    error: membershipError,
+  } = useMembershipList("weekly", 5);
 
   // Handle authentication errors using the global handler
   useAuthErrorHandler(dashboardError);
   useAuthErrorHandler(videosError);
+  useAuthErrorHandler(membershipError);
 
   if (dashboardLoading) {
     return (
@@ -169,7 +138,7 @@ export default function DashboardOverview() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <AnnouncementPopup userId={user.id} isFirstLogin={false} />
-      
+
       <DashboardHeader user={user} />
 
       {/* Hero Slider Section - Restored */}
@@ -304,15 +273,15 @@ export default function DashboardOverview() {
             {(
               user?.availableLevels || [
                 { name: "Intern", level: 0, isUnlocked: true },
-                { name: "D1", level: 1, isUnlocked: false },
-                { name: "D2", level: 2, isUnlocked: false },
-                { name: "D3", level: 3, isUnlocked: false },
-                { name: "D4", level: 4, isUnlocked: false },
-                { name: "D5", level: 5, isUnlocked: false },
-                { name: "D6", level: 6, isUnlocked: false },
-                { name: "D7", level: 7, isUnlocked: false },
-                { name: "D8", level: 8, isUnlocked: false },
-                { name: "D9", level: 9, isUnlocked: false },
+                { name: "L1", level: 1, isUnlocked: false },
+                { name: "L2", level: 2, isUnlocked: false },
+                { name: "L3", level: 3, isUnlocked: false },
+                { name: "L4", level: 4, isUnlocked: false },
+                { name: "L5", level: 5, isUnlocked: false },
+                { name: "L6", level: 6, isUnlocked: false },
+                { name: "L7", level: 7, isUnlocked: false },
+                { name: "L8", level: 8, isUnlocked: false },
+                { name: "L9", level: 9, isUnlocked: false },
               ]
             ).map((level) => (
               <Button
@@ -335,7 +304,7 @@ export default function DashboardOverview() {
 
         {/* Original Video Tasks Section (Updated Styling) */}
         <Card className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-          <CardHeader className="bg-gray-50 border-b border-gray-200">
+          <CardHeader className="bg-gray-50 border-b border-gray-200 p-4">
             <CardTitle className="flex items-center gap-3 text-gray-800">
               <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
                 <Play className="h-6 w-6 text-white" />
@@ -443,44 +412,92 @@ export default function DashboardOverview() {
         </Card>
 
         {/* Membership List Section */}
-        <div className="mb-6">
+        <div className="mb-6 mt-5">
           <h3 className="text-gray-800 text-lg font-semibold mb-4">
             Membership list
           </h3>
           <div className="space-y-3">
-            {membershipData.map((member, index) => (
-              <Card
-                key={member.id}
-                className="bg-white border border-gray-200 rounded-xl shadow-sm hover:border-emerald-200 transition-colors"
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">
-                          {String.fromCharCode(65 + index)}
-                        </span>
+            {membershipLoading ? (
+              // Loading skeleton
+              Array.from({ length: 5 }).map((_, index) => (
+                <Card
+                  key={index}
+                  className="bg-white border border-gray-200 rounded-xl shadow-sm animate-pulse"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                        <div>
+                          <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+                          <div className="h-3 bg-gray-200 rounded w-24"></div>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-gray-800 font-medium text-sm">
-                          {member.name}
-                        </h4>
-                        {member.subtitle && (
-                          <p className="text-gray-600 text-xs">
-                            {member.subtitle}
-                          </p>
-                        )}
-                      </div>
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-emerald-600 font-bold text-sm">
-                        {member.amount}
-                      </span>
-                    </div>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : membershipError ? (
+              // Error state
+              <Card className="bg-red-50 border border-red-200 rounded-xl shadow-sm">
+                <CardContent className="p-4 text-center">
+                  <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                  <p className="text-red-600 text-sm">
+                    Failed to load membership data
+                  </p>
                 </CardContent>
               </Card>
-            ))}
+            ) : membershipData && membershipData?.membershipList?.length > 0 ? (
+              // Real data
+              membershipData.membershipList.map((member, index) => (
+                <Card
+                  key={member.id}
+                  className="bg-white border border-gray-200 rounded-xl shadow-sm hover:border-emerald-200 transition-colors"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">
+                            {String.fromCharCode(65 + index)}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="text-gray-800 font-medium text-sm">
+                            {member.name}
+                          </h4>
+                          {member.subtitle && (
+                            <p className="text-gray-600 text-xs">
+                              {member.subtitle}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-emerald-600 font-bold text-sm">
+                          {member.amount}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              // No data state
+              <Card className="bg-gray-50 border border-gray-200 rounded-xl shadow-sm">
+                <CardContent className="p-8 text-center">
+                  <div className="text-gray-400 text-6xl mb-4">👥</div>
+                  <h4 className="text-gray-600 font-medium mb-2">
+                    No earnings this week
+                  </h4>
+                  <p className="text-gray-500 text-sm">
+                    Complete video tasks to start earning and appear on the
+                    leaderboard!
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>

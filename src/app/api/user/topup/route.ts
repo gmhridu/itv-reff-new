@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
       orderBy: { walletType: "asc" },
     });
 
+    // Get USDT to PKR rate
+    const usdtRateSetting = await prisma.setting.findUnique({
+      where: { key: "usdt_to_pkr_rate" },
+    });
+
     // Get user's topup requests
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -57,6 +62,10 @@ export async function GET(request: NextRequest) {
       data: {
         wallets,
         requests: userRequests,
+        usdtToPkrRate: usdtRateSetting
+          ? parseFloat(usdtRateSetting.value)
+          : 295,
+        bonusPercentage: 3, // 3% bonus for USDT
         pagination: {
           page,
           limit,
@@ -141,6 +150,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate wallet-specific requirements
+    if (selectedWallet.walletType === ("USDT_TRC20" as any)) {
+      if (!(selectedWallet as any).usdtWalletAddress) {
+        return NextResponse.json(
+          { success: false, error: "USDT wallet address not configured" },
+          { status: 400 },
+        );
+      }
+    } else {
+      if (!(selectedWallet as any).walletNumber) {
+        return NextResponse.json(
+          { success: false, error: "Wallet number not configured" },
+          { status: 400 },
+        );
+      }
+    }
+
     // Check for pending requests
     const pendingRequest = await prisma.topupRequest.findFirst({
       where: {
@@ -204,9 +230,12 @@ export async function POST(request: NextRequest) {
           requestId: topupRequest.id,
           amount,
           walletType: selectedWallet.walletType,
-          walletNumber: selectedWallet.walletNumber,
+          walletNumber: (selectedWallet as any).walletNumber,
+          usdtWalletAddress: (selectedWallet as any).usdtWalletAddress,
           hasPaymentProof: !!paymentProof,
           transactionId: transactionId || null,
+          isUsdtPayment: selectedWallet.walletType === ("USDT_TRC20" as any),
+          bonusEligible: selectedWallet.walletType === ("USDT_TRC20" as any),
           userInfo: {
             id: session.user.id,
             name: session.user.name,

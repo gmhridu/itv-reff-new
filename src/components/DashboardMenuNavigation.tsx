@@ -113,7 +113,6 @@ const DashboardMenubarNavigation = () => {
           </nav>
         </div>
       </div>
-
       {/* Desktop/Tablet Navigation - Hidden on mobile */}
       <div className="hidden sm:fixed sm:bottom-6 sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:z-50 sm:block">
         <div className="bg-gradient-to-r from-emerald-400/95 via-green-500/95 to-teal-500/95 backdrop-blur-xl border border-white/30 rounded-2xl shadow-2xl p-2">
@@ -166,7 +165,7 @@ const DashboardMenubarNavigation = () => {
             })}
           </nav>
         </div>
-      </div>
+      </div>{" "}
     </>
   );
 };

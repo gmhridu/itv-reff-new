@@ -22,6 +22,8 @@ import {
   Loader2,
   X,
   ImageIcon,
+  Zap,
+  Gift,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -48,9 +50,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 interface AdminWallet {
   id: string;
-  walletType: "JAZZCASH" | "EASYPAISA";
-  walletNumber: string;
+  walletType: "JAZZCASH" | "EASYPAISA" | "USDT_TRC20";
+  walletNumber?: string;
   walletHolderName: string;
+  usdtWalletAddress?: string;
+  qrCodeUrl?: string;
 }
 
 interface TopupRequest {
@@ -64,9 +68,11 @@ interface TopupRequest {
   createdAt: string;
   updatedAt: string;
   selectedWallet: {
-    walletType: "JAZZCASH" | "EASYPAISA";
-    walletNumber: string;
+    walletType: "JAZZCASH" | "EASYPAISA" | "USDT_TRC20";
+    walletNumber?: string;
     walletHolderName: string;
+    usdtWalletAddress?: string;
+    qrCodeUrl?: string;
   };
 }
 
@@ -92,6 +98,8 @@ export function TopupClient() {
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [usdtToPkrRate, setUsdtToPkrRate] = useState<number>(295);
+  const [bonusPercentage] = useState<number>(3);
 
   // Form states
   const [selectedWallet, setSelectedWallet] = useState<string>("");
@@ -127,6 +135,7 @@ export function TopupClient() {
         setWallets(data.data.wallets);
         setRequests(data.data.requests);
         setPagination(data.data.pagination);
+        setUsdtToPkrRate(data.data.usdtToPkrRate || 295);
       } else {
         toast({
           title: "Error",
@@ -387,6 +396,12 @@ export function TopupClient() {
     return wallets.find((wallet) => wallet.id === selectedWallet);
   };
 
+  // Check if selected wallet is USDT
+  const isUsdtWallet = () => {
+    const wallet = getSelectedWalletDetails();
+    return wallet?.walletType === "USDT_TRC20";
+  };
+
   // Handle copy to clipboard
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -471,7 +486,7 @@ export function TopupClient() {
             Account Top-up
           </h1>
           <p className="text-gray-600 mt-1">
-            Add funds to your wallet using JazzCash or EasyPaisa
+            Add funds to your wallet using JazzCash, EasyPaisa, or USDT (TRC20)
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -541,7 +556,7 @@ export function TopupClient() {
                       }}
                     >
                       <SelectTrigger className="cursor-pointer">
-                        <SelectValue placeholder="Choose JazzCash or EasyPaisa wallet" />
+                        <SelectValue placeholder="Choose your payment method" />
                       </SelectTrigger>
                       <SelectContent>
                         {wallets.map((wallet) => (
@@ -551,13 +566,29 @@ export function TopupClient() {
                             className="cursor-pointer"
                           >
                             <div className="flex items-center gap-2">
-                              <CreditCard className="w-4 h-4" />
-                              <span className="font-medium">
-                                {wallet.walletType}
-                              </span>
-                              <span className="text-gray-500">
-                                - {wallet.walletNumber}
-                              </span>
+                              {wallet.walletType === "USDT_TRC20" ? (
+                                <div className="flex items-center gap-2">
+                                  <Zap className="w-4 h-4 text-orange-500" />
+                                  <span className="font-medium">
+                                    USDT (TRC20)
+                                  </span>
+                                  <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full">
+                                    +3% Bonus
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <CreditCard className="w-4 h-4" />
+                                  <span className="font-medium">
+                                    {wallet.walletType === "JAZZCASH"
+                                      ? "JazzCash"
+                                      : "EasyPaisa"}
+                                  </span>
+                                  <span className="text-gray-500">
+                                    - {wallet.walletNumber}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           </SelectItem>
                         ))}
@@ -567,51 +598,183 @@ export function TopupClient() {
 
                   {/* Selected Wallet Details */}
                   {showWalletDetails && selectedWallet && (
-                    <Card className="border-blue-200 bg-blue-50">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <h4 className="font-semibold text-blue-900">
-                              Send Money To:
-                            </h4>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">Type:</span>
-                                <span>
-                                  {getSelectedWalletDetails()?.walletType}
-                                </span>
+                    <div className="space-y-4">
+                      {isUsdtWallet() ? (
+                        <div className="space-y-4">
+                          {/* USDT Wallet Card */}
+                          <Card className="border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50">
+                            <CardContent className="p-4">
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <Zap className="w-5 h-5 text-orange-500" />
+                                  <h4 className="font-semibold text-orange-900">
+                                    USDT (TRC20) - Fast & Secure Recharge
+                                  </h4>
+                                </div>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      Wallet Address:
+                                    </span>
+                                    <span className="font-mono text-xs bg-white px-2 py-1 rounded">
+                                      {
+                                        getSelectedWalletDetails()
+                                          ?.usdtWalletAddress
+                                      }
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 cursor-pointer"
+                                      onClick={() =>
+                                        handleCopy(
+                                          getSelectedWalletDetails()
+                                            ?.usdtWalletAddress || "",
+                                        )
+                                      }
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">Name:</span>
+                                    <span>
+                                      {
+                                        getSelectedWalletDetails()
+                                          ?.walletHolderName
+                                      }
+                                    </span>
+                                  </div>
+                                  {getSelectedWalletDetails()?.qrCodeUrl && (
+                                    <div className="mt-3">
+                                      <span className="font-medium text-sm">
+                                        QR Code:
+                                      </span>
+                                      <div className="mt-2">
+                                        <img
+                                          src={
+                                            getSelectedWalletDetails()
+                                              ?.qrCodeUrl
+                                          }
+                                          alt="USDT Wallet QR Code"
+                                          className="w-32 h-32 border-2 border-orange-300 rounded-lg"
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">Number:</span>
-                                <span className="font-mono">
-                                  {getSelectedWalletDetails()?.walletNumber}
-                                </span>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0 cursor-pointer"
-                                  onClick={() =>
-                                    handleCopy(
+                            </CardContent>
+                          </Card>
+
+                          {/* USDT Rate Info */}
+                          <Card className="border-blue-200 bg-blue-50">
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-3">
+                                <Info className="w-5 h-5 text-blue-600" />
+                                <div>
+                                  <p className="font-semibold text-blue-900">
+                                    Today's USDT to PKR Rate: {usdtToPkrRate}{" "}
+                                    PKR per 1 USDT
+                                  </p>
+                                  <p className="text-sm text-blue-700">
+                                    Your USDT will be converted to PKR using
+                                    this rate
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Bonus Info */}
+                          <Card className="border-green-200 bg-green-50">
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-3">
+                                <Gift className="w-5 h-5 text-green-600" />
+                                <div>
+                                  <p className="font-semibold text-green-900">
+                                    Recharge via USDT & Get +{bonusPercentage}%
+                                    Extra Commission Bonus
+                                  </p>
+                                  <p className="text-sm text-green-700">
+                                    Bonus will be added to your Commission
+                                    Wallet
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      ) : (
+                        // Traditional Wallet Card (JazzCash/EasyPaisa)
+                        <Card className="border-blue-200 bg-blue-50">
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              <h4 className="font-semibold text-blue-900">
+                                Send Money To:
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Type:</span>
+                                  <span>
+                                    {getSelectedWalletDetails()?.walletType ===
+                                    "JAZZCASH"
+                                      ? "JazzCash"
+                                      : "EasyPaisa"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Number:</span>
+                                  <span className="font-mono">
+                                    {getSelectedWalletDetails()?.walletNumber}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 cursor-pointer"
+                                    onClick={() =>
+                                      handleCopy(
+                                        getSelectedWalletDetails()
+                                          ?.walletNumber || "",
+                                      )
+                                    }
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">Name:</span>
+                                  <span>
+                                    {
                                       getSelectedWalletDetails()
-                                        ?.walletNumber || "",
-                                    )
-                                  }
-                                >
-                                  <Copy className="w-3 h-3" />
-                                </Button>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">Name:</span>
-                                <span>
-                                  {getSelectedWalletDetails()?.walletHolderName}
-                                </span>
+                                        ?.walletHolderName
+                                    }
+                                  </span>
+                                </div>
+                                {getSelectedWalletDetails()?.qrCodeUrl && (
+                                  <div className="mt-3">
+                                    <span className="font-medium text-sm">
+                                      QR Code:
+                                    </span>
+                                    <div className="mt-2">
+                                      <img
+                                        src={
+                                          getSelectedWalletDetails()?.qrCodeUrl
+                                        }
+                                        alt="Payment QR Code"
+                                        className="w-32 h-32 border-2 border-blue-300 rounded-lg"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
                   )}
 
                   {/* Amount Input */}
@@ -639,25 +802,35 @@ export function TopupClient() {
                   {/* Transaction ID Input */}
                   <div className="space-y-2">
                     <Label htmlFor="transactionId">
-                      Transaction ID (Optional)
+                      {isUsdtWallet() ? "Transaction Hash" : "Transaction ID"}{" "}
+                      (Optional)
                     </Label>
                     <Input
                       id="transactionId"
                       type="text"
-                      placeholder="Enter your transaction ID from the payment app"
+                      placeholder={
+                        isUsdtWallet()
+                          ? "Enter USDT transaction hash from blockchain"
+                          : "Enter your transaction ID from the payment app"
+                      }
                       value={transactionId}
                       onChange={(e) => setTransactionId(e.target.value)}
                       className="cursor-pointer"
                     />
                     <p className="text-xs text-gray-500">
-                      Enter the transaction reference number from your
-                      JazzCash/EasyPaisa app
+                      {isUsdtWallet()
+                        ? "Enter the blockchain transaction hash for your USDT transfer"
+                        : "Enter the transaction reference number from your JazzCash/EasyPaisa app"}
                     </p>
                   </div>
 
                   {/* Payment Proof Upload */}
                   <div className="space-y-2">
-                    <Label>Payment Screenshot</Label>
+                    <Label>
+                      {isUsdtWallet()
+                        ? "Transaction Proof"
+                        : "Payment Screenshot"}
+                    </Label>
 
                     {!uploadPreview ? (
                       <div
@@ -684,12 +857,14 @@ export function TopupClient() {
                             <h3 className="text-lg font-medium text-gray-900">
                               {dragActive
                                 ? "Drop image here"
-                                : "Upload Payment Screenshot"}
+                                : isUsdtWallet()
+                                  ? "Upload Transaction Proof"
+                                  : "Upload Payment Screenshot"}
                             </h3>
                             <p className="text-sm text-gray-500 mt-1">
                               {dragActive
-                                ? "Release to upload your payment screenshot"
-                                : "Drag and drop or click to select your payment screenshot"}
+                                ? `Release to upload your ${isUsdtWallet() ? "transaction proof" : "payment screenshot"}`
+                                : `Drag and drop or click to select your ${isUsdtWallet() ? "transaction proof" : "payment screenshot"}`}
                             </p>
                           </div>
                           {!dragActive && (
@@ -756,14 +931,35 @@ export function TopupClient() {
                       <Info className="w-4 h-4 text-yellow-600 mt-0.5" />
                       <div className="text-sm text-yellow-800">
                         <p className="font-medium mb-1">
-                          Payment Instructions:
+                          {isUsdtWallet()
+                            ? "USDT Payment Instructions:"
+                            : "Payment Instructions:"}
                         </p>
-                        <ol className="list-decimal list-inside space-y-1">
-                          <li>Send the exact amount to the selected wallet</li>
-                          <li>Take a screenshot of the payment confirmation</li>
-                          <li>Upload the screenshot above</li>
-                          <li>Submit your request for admin approval</li>
-                        </ol>
+                        {isUsdtWallet() ? (
+                          <ol className="list-decimal list-inside space-y-1">
+                            <li>Copy the USDT wallet address above</li>
+                            <li>Send USDT (TRC20) to the wallet address</li>
+                            <li>
+                              Take a screenshot of the transaction confirmation
+                            </li>
+                            <li>Upload the transaction proof above</li>
+                            <li>Submit your request for admin approval</li>
+                            <li>
+                              Get +3% bonus added to your Commission Wallet!
+                            </li>
+                          </ol>
+                        ) : (
+                          <ol className="list-decimal list-inside space-y-1">
+                            <li>
+                              Send the exact amount to the selected wallet
+                            </li>
+                            <li>
+                              Take a screenshot of the payment confirmation
+                            </li>
+                            <li>Upload the screenshot above</li>
+                            <li>Submit your request for admin approval</li>
+                          </ol>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -771,7 +967,7 @@ export function TopupClient() {
                   {/* Submit Button */}
                   <Button
                     type="submit"
-                    className="w-full cursor-pointer"
+                    className="w-full cursor-pointer mb-8"
                     disabled={submitting || !selectedWallet || !amount}
                   >
                     {submitting ? (
@@ -848,11 +1044,39 @@ export function TopupClient() {
 
                               <div className="text-sm text-gray-600 space-y-1">
                                 <div className="flex items-center gap-2">
-                                  <CreditCard className="w-3 h-3" />
+                                  {request.selectedWallet.walletType ===
+                                  "USDT_TRC20" ? (
+                                    <Zap className="w-3 h-3 text-orange-500" />
+                                  ) : (
+                                    <CreditCard className="w-3 h-3" />
+                                  )}
                                   <span>
-                                    {request.selectedWallet.walletType} -{" "}
-                                    {request.selectedWallet.walletNumber}
+                                    {request.selectedWallet.walletType ===
+                                    "USDT_TRC20" ? (
+                                      <>
+                                        USDT (TRC20) -{" "}
+                                        {request.selectedWallet.usdtWalletAddress?.substring(
+                                          0,
+                                          10,
+                                        )}
+                                        ...
+                                      </>
+                                    ) : (
+                                      <>
+                                        {request.selectedWallet.walletType ===
+                                        "JAZZCASH"
+                                          ? "JazzCash"
+                                          : "EasyPaisa"}{" "}
+                                        - {request.selectedWallet.walletNumber}
+                                      </>
+                                    )}
                                   </span>
+                                  {request.selectedWallet.walletType ===
+                                    "USDT_TRC20" && (
+                                    <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full">
+                                      +3% Bonus
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Clock className="w-3 h-3" />

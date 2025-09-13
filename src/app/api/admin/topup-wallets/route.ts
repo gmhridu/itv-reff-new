@@ -108,46 +108,98 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { walletType, walletNumber, walletHolderName } = body;
+    const {
+      walletType,
+      walletNumber,
+      walletHolderName,
+      usdtWalletAddress,
+      qrCodeUrl,
+    } = body;
 
     // Validate required fields
-    if (!walletType || !walletNumber || !walletHolderName) {
+    if (!walletType || !walletHolderName) {
       return NextResponse.json(
-        { success: false, error: "All fields are required" },
+        { success: false, error: "Wallet type and holder name are required" },
         { status: 400 },
       );
     }
 
     // Validate wallet type
-    if (!["JAZZCASH", "EASYPAISA"].includes(walletType)) {
+    if (!["JAZZCASH", "EASYPAISA", "USDT_TRC20"].includes(walletType)) {
       return NextResponse.json(
         { success: false, error: "Invalid wallet type" },
         { status: 400 },
       );
     }
 
-    // Check if wallet number already exists
-    const existingWallet = await prisma.adminWallet.findFirst({
-      where: {
+    // Validate wallet type specific requirements
+    if (walletType === "USDT_TRC20") {
+      if (!usdtWalletAddress) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "USDT wallet address is required for USDT wallets",
+          },
+          { status: 400 },
+        );
+      }
+    } else {
+      if (!walletNumber) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Wallet number is required for JazzCash/EasyPaisa wallets",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Check for duplicate wallet
+    let duplicateCondition = {};
+    if (walletType === "USDT_TRC20") {
+      duplicateCondition = {
+        usdtWalletAddress,
+        walletType,
+      };
+    } else {
+      duplicateCondition = {
         walletNumber,
         walletType,
-      },
+      };
+    }
+
+    const existingWallet = await prisma.adminWallet.findFirst({
+      where: duplicateCondition,
     });
 
     if (existingWallet) {
       return NextResponse.json(
-        { success: false, error: "Wallet with this number already exists" },
+        {
+          success: false,
+          error: "Wallet with this address/number already exists",
+        },
         { status: 400 },
       );
     }
 
     // Create new wallet
+    const walletData: any = {
+      walletType,
+      walletHolderName,
+      qrCodeUrl: qrCodeUrl || null,
+    };
+
+    if (walletType === "USDT_TRC20") {
+      walletData.usdtWalletAddress = usdtWalletAddress;
+      walletData.walletNumber = null;
+    } else {
+      walletData.walletNumber = walletNumber;
+      walletData.usdtWalletAddress = null;
+    }
+
     const newWallet = await prisma.adminWallet.create({
-      data: {
-        walletType,
-        walletNumber,
-        walletHolderName,
-      },
+      data: walletData,
       include: {
         _count: {
           select: {

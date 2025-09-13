@@ -194,17 +194,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        topupRequests: topupRequests.map((request) => ({
-          ...request,
-          // Ensure user data is present
-          user: request.user || {
-            id: request.userId,
-            name: "Unknown User",
-            phone: "N/A",
-            email: "N/A",
-            referralCode: "N/A",
-          },
-        })),
+        topupRequests: topupRequests,
         pagination: {
           page,
           limit,

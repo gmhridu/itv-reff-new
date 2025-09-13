@@ -52,9 +52,11 @@ import { Textarea } from "../ui/textarea";
 
 interface AdminWallet {
   id: string;
-  walletType: "JAZZCASH" | "EASYPAISA";
-  walletNumber: string;
+  walletType: "JAZZCASH" | "EASYPAISA" | "USDT_TRC20";
+  walletNumber?: string;
   walletHolderName: string;
+  usdtWalletAddress?: string;
+  qrCodeUrl?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -103,15 +105,21 @@ export const TopupWalletManagement = () => {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState<AdminWallet | null>(null);
+  const [selectedWallet, setSelectedWallet] = useState<AdminWallet | null>(
+    null,
+  );
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [walletToDelete, setWalletToDelete] = useState<AdminWallet | null>(null);
+  const [walletToDelete, setWalletToDelete] = useState<AdminWallet | null>(
+    null,
+  );
 
   // Form states
   const [formData, setFormData] = useState({
-    walletType: "" as "JAZZCASH" | "EASYPAISA" | "",
+    walletType: "" as "JAZZCASH" | "EASYPAISA" | "USDT_TRC20" | "",
     walletNumber: "",
     walletHolderName: "",
+    usdtWalletAddress: "",
+    qrCodeUrl: "",
     isActive: true,
   });
   const [formLoading, setFormLoading] = useState(false);
@@ -130,7 +138,8 @@ export const TopupWalletManagement = () => {
         limit: pagination.limit.toString(),
       });
 
-      if (walletTypeFilter !== "ALL") params.append("walletType", walletTypeFilter);
+      if (walletTypeFilter !== "ALL")
+        params.append("walletType", walletTypeFilter);
       if (statusFilter !== "ALL") params.append("status", statusFilter);
 
       const response = await fetch(`/api/admin/topup-wallets?${params}`);
@@ -200,6 +209,8 @@ export const TopupWalletManagement = () => {
           walletType: "",
           walletNumber: "",
           walletHolderName: "",
+          usdtWalletAddress: "",
+          qrCodeUrl: "",
           isActive: true,
         });
         setSelectedWallet(null);
@@ -228,9 +239,12 @@ export const TopupWalletManagement = () => {
     if (!walletToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/topup-wallets/${walletToDelete.id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/admin/topup-wallets/${walletToDelete.id}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       const data = await response.json();
 
@@ -265,8 +279,10 @@ export const TopupWalletManagement = () => {
     setSelectedWallet(wallet);
     setFormData({
       walletType: wallet.walletType,
-      walletNumber: wallet.walletNumber,
+      walletNumber: wallet.walletNumber || "",
       walletHolderName: wallet.walletHolderName,
+      usdtWalletAddress: wallet.usdtWalletAddress || "",
+      qrCodeUrl: wallet.qrCodeUrl || "",
       isActive: wallet.isActive,
     });
     setShowEditModal(true);
@@ -332,6 +348,15 @@ export const TopupWalletManagement = () => {
 
   // Get wallet type badge
   const getWalletTypeBadge = (type: string) => {
+    if (type === "USDT_TRC20") {
+      return (
+        <Badge className="bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-800 border-orange-200 flex items-center gap-1 px-3 py-1">
+          <span className="text-xs font-bold">₿</span>
+          USDT (TRC20)
+        </Badge>
+      );
+    }
+
     const isJazzCash = type === "JAZZCASH";
     return (
       <Badge
@@ -351,9 +376,11 @@ export const TopupWalletManagement = () => {
   const filteredWallets = wallets.filter(
     (wallet) =>
       searchTerm === "" ||
-      wallet.walletNumber.includes(searchTerm) ||
-      wallet.walletHolderName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      wallet.walletType.toLowerCase().includes(searchTerm.toLowerCase())
+      (wallet.walletNumber && wallet.walletNumber.includes(searchTerm)) ||
+      wallet.walletHolderName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      wallet.walletType.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Load data on component mount and when filters change
@@ -377,7 +404,9 @@ export const TopupWalletManagement = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Total Wallets</p>
-                <p className="text-2xl font-bold text-gray-900">{statistics.total}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {statistics.total}
+                </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <Wallet className="w-6 h-6 text-blue-600" />
@@ -391,7 +420,9 @@ export const TopupWalletManagement = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Active Wallets</p>
-                <p className="text-2xl font-bold text-green-600">{statistics.active}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {statistics.active}
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-green-600" />
@@ -405,7 +436,9 @@ export const TopupWalletManagement = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Inactive Wallets</p>
-                <p className="text-2xl font-bold text-red-600">{statistics.inactive}</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {statistics.inactive}
+                </p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <XCircle className="w-6 h-6 text-red-600" />
@@ -435,10 +468,7 @@ export const TopupWalletManagement = () => {
                 />
                 Refresh
               </Button>
-              <Button
-                onClick={() => setShowAddModal(true)}
-                size="sm"
-              >
+              <Button onClick={() => setShowAddModal(true)} size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Wallet
               </Button>
@@ -458,7 +488,10 @@ export const TopupWalletManagement = () => {
               />
             </div>
 
-            <Select value={walletTypeFilter} onValueChange={setWalletTypeFilter}>
+            <Select
+              value={walletTypeFilter}
+              onValueChange={setWalletTypeFilter}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
@@ -466,6 +499,7 @@ export const TopupWalletManagement = () => {
                 <SelectItem value="ALL">All Types</SelectItem>
                 <SelectItem value="JAZZCASH">JazzCash</SelectItem>
                 <SelectItem value="EASYPAISA">EasyPaisa</SelectItem>
+                <SelectItem value="USDT_TRC20">USDT (TRC20)</SelectItem>
               </SelectContent>
             </Select>
 
@@ -513,7 +547,9 @@ export const TopupWalletManagement = () => {
                 No Wallets Found
               </h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm || walletTypeFilter !== "ALL" || statusFilter !== "ALL"
+                {searchTerm ||
+                walletTypeFilter !== "ALL" ||
+                statusFilter !== "ALL"
                   ? "No wallets found matching your filters."
                   : "No wallets have been added yet."}
               </p>
@@ -549,7 +585,9 @@ export const TopupWalletManagement = () => {
                         {wallet.walletHolderName}
                       </h3>
                       <p className="text-gray-600 font-mono">
-                        {wallet.walletNumber}
+                        {wallet.walletType === "USDT_TRC20"
+                          ? `${wallet.usdtWalletAddress?.substring(0, 20)}...`
+                          : wallet.walletNumber || "N/A"}
                       </p>
                       <p className="text-sm text-gray-500">
                         {wallet._count.topupRequests} topup requests
@@ -595,19 +633,24 @@ export const TopupWalletManagement = () => {
       </Card>
 
       {/* Add/Edit Wallet Modal */}
-      <Dialog open={showAddModal || showEditModal} onOpenChange={(open) => {
-        if (!open) {
-          setShowAddModal(false);
-          setShowEditModal(false);
-          setSelectedWallet(null);
-          setFormData({
-            walletType: "",
-            walletNumber: "",
-            walletHolderName: "",
-            isActive: true,
-          });
-        }
-      }}>
+      <Dialog
+        open={showAddModal || showEditModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowAddModal(false);
+            setShowEditModal(false);
+            setSelectedWallet(null);
+            setFormData({
+              walletType: "",
+              walletNumber: "",
+              walletHolderName: "",
+              usdtWalletAddress: "",
+              qrCodeUrl: "",
+              isActive: true,
+            });
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -616,8 +659,7 @@ export const TopupWalletManagement = () => {
             <DialogDescription>
               {showEditModal
                 ? "Update wallet information"
-                : "Add a new wallet for topup requests"
-              }
+                : "Add a new wallet for topup requests"}
             </DialogDescription>
           </DialogHeader>
 
@@ -637,23 +679,48 @@ export const TopupWalletManagement = () => {
                 <SelectContent>
                   <SelectItem value="JAZZCASH">JazzCash</SelectItem>
                   <SelectItem value="EASYPAISA">EasyPaisa</SelectItem>
+                  <SelectItem value="USDT_TRC20">USDT (TRC20)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="walletNumber">Wallet Number</Label>
-              <Input
-                id="walletNumber"
-                type="text"
-                value={formData.walletNumber}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, walletNumber: e.target.value }))
-                }
-                placeholder="Enter wallet number"
-                required
-              />
-            </div>
+            {formData.walletType === "USDT_TRC20" ? (
+              <div className="space-y-2">
+                <Label htmlFor="usdtWalletAddress">
+                  USDT Wallet Address (TRC20)
+                </Label>
+                <Input
+                  id="usdtWalletAddress"
+                  type="text"
+                  value={formData.usdtWalletAddress}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      usdtWalletAddress: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter USDT TRC20 wallet address"
+                  required
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="walletNumber">Wallet Number</Label>
+                <Input
+                  id="walletNumber"
+                  type="text"
+                  value={formData.walletNumber}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      walletNumber: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter wallet number"
+                  required
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="walletHolderName">Wallet Holder Name</Label>
@@ -662,11 +729,33 @@ export const TopupWalletManagement = () => {
                 type="text"
                 value={formData.walletHolderName}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, walletHolderName: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    walletHolderName: e.target.value,
+                  }))
                 }
                 placeholder="Enter holder name"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="qrCodeUrl">QR Code URL (Optional)</Label>
+              <Input
+                id="qrCodeUrl"
+                type="url"
+                value={formData.qrCodeUrl}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    qrCodeUrl: e.target.value,
+                  }))
+                }
+                placeholder="Enter QR code image URL"
+              />
+              <p className="text-xs text-gray-500">
+                Upload QR code image and paste the URL here
+              </p>
             </div>
 
             {showEditModal && (
@@ -676,7 +765,10 @@ export const TopupWalletManagement = () => {
                   type="checkbox"
                   checked={formData.isActive}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, isActive: e.target.checked }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      isActive: e.target.checked,
+                    }))
                   }
                 />
                 <Label htmlFor="isActive">Active</Label>
@@ -698,7 +790,11 @@ export const TopupWalletManagement = () => {
               </Button>
               <Button type="submit" disabled={formLoading}>
                 <Save className="w-4 h-4 mr-2" />
-                {formLoading ? "Saving..." : showEditModal ? "Update" : "Create"}
+                {formLoading
+                  ? "Saving..."
+                  : showEditModal
+                    ? "Update"
+                    : "Create"}
               </Button>
             </div>
           </form>
@@ -711,8 +807,9 @@ export const TopupWalletManagement = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the wallet
-              "{walletToDelete?.walletHolderName}" ({walletToDelete?.walletNumber}).
+              This action cannot be undone. This will permanently delete the
+              wallet "{walletToDelete?.walletHolderName}" (
+              {walletToDelete?.walletNumber}).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
