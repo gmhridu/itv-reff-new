@@ -126,7 +126,7 @@ export function VideoCard({ video, disabled = false }: VideoCardProps) {
               className="border-emerald-200 text-emerald-700 dark:border-emerald-500/50 dark:text-emerald-400 font-bold px-4 py-1.5 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:from-emerald-950/30 dark:to-cyan-950/30 rounded-lg"
             >
               <DollarSign className="h-3 w-3 mr-1" />
-              {video.rewardAmount.toFixed(2)}
+              {video.rewardAmount.toFixed(2)} PKR
             </Badge>
           </div>
 

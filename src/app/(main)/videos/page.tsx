@@ -116,7 +116,7 @@ export default function VideosPage() {
         setVideos(prev => prev.filter(v => v.id !== currentVideo.id));
         setVideosWatched(prev => prev + 1);
 
-        alert(`Video completed! Earned $${data.rewardEarned.toFixed(2)}`);
+        alert(`Video completed! Earned PKR${data.rewardEarned.toFixed(2)}`);
         stopWatching();
 
         // Check if daily limit reached
@@ -258,7 +258,7 @@ export default function VideosPage() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
-                    ${currentVideo.rewardAmount.toFixed(2)}
+                    PKR{currentVideo.rewardAmount.toFixed(2)}
                   </div>
                   <div className="text-sm text-gray-600">Reward</div>
                 </div>
@@ -405,7 +405,7 @@ export default function VideosPage() {
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary" className="bg-green-100 text-green-800">
                       <DollarSign className="h-3 w-3 mr-1" />
-                      ${video.rewardAmount.toFixed(2)}
+                      PKR{video.rewardAmount.toFixed(2)}
                     </Badge>
                     <Button size="sm">Watch Now</Button>
                   </div>

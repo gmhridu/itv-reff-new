@@ -227,7 +227,7 @@ export default function ReferralDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                <p className="text-2xl font-bold">${(referralData.stats?.totalEarnings || 0).toFixed(2)}</p>
+                <p className="text-2xl font-bold">PKR{(referralData.stats?.totalEarnings || 0).toFixed(2)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-yellow-500" />
             </div>
@@ -372,7 +372,7 @@ export default function ReferralDashboard() {
                       <div className="text-right">
                         {activity.rewardAmount && (
                           <p className="font-medium text-green-600">
-                            +${activity.rewardAmount.toFixed(2)}
+                            +PKR{activity.rewardAmount.toFixed(2)}
                           </p>
                         )}
                         <Badge variant="outline" className="text-xs">

@@ -123,10 +123,10 @@ export function TransactionItem({ transaction }: TransactionItemProps) {
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <div className={`font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                    {isPositive ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+                    {isPositive ? '+' : ''}PKR{Math.abs(transaction.amount).toFixed(2)}
                   </div>
                   <div className="text-xs text-gray-500">
-                    Balance: ${transaction.balanceAfter.toFixed(2)}
+                    Balance: PKR{transaction.balanceAfter.toFixed(2)}
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" className="p-1">

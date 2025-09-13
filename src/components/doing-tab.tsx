@@ -127,7 +127,7 @@ export function DoingTab() {
               {currentPosition && (
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600">
-                    ${currentPosition.unitPrice.toFixed(2)}
+                    PKR{currentPosition.unitPrice.toFixed(2)}
                   </div>
                   <div className="text-sm text-gray-600">Per Video</div>
                 </div>

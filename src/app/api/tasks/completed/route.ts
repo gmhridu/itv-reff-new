@@ -136,7 +136,7 @@ async function sendTaskCompletionNotification(
     await NotificationService.createNotification({
       type: 'TASK_COMPLETED' as any, // Using string literal instead of enum property
       title: 'Task Reward Received',
-      message: `You've earned $${rewardAmount.toFixed(2)} for completing your daily task.`,
+      message: `You've earned PKR${rewardAmount.toFixed(2)} for completing your daily task.`,
       severity: 'SUCCESS',
       actionUrl: '/dashboard/task',
     }, userId);

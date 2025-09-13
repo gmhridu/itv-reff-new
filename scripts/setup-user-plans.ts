@@ -50,6 +50,7 @@ async function setupUserPlans() {
         {
           email: 'user1@example.com',
           name: 'Test User 1',
+          phone: '+923001234567', // 添加必需的 phone 字段
           password: '$2b$10$example.hash.here', // In real app, this would be properly hashed
           referralCode: 'TEST001',
           walletBalance: 5000,
@@ -57,6 +58,7 @@ async function setupUserPlans() {
         {
           email: 'user2@example.com',
           name: 'Test User 2',
+          phone: '+923001234568', // 添加必需的 phone 字段
           password: '$2b$10$example.hash.here',
           referralCode: 'TEST002',
           walletBalance: 3000,
@@ -64,6 +66,7 @@ async function setupUserPlans() {
         {
           email: 'user3@example.com',
           name: 'Test User 3',
+          phone: '+923001234569', // 添加必需的 phone 字段
           password: '$2b$10$example.hash.here',
           referralCode: 'TEST003',
           walletBalance: 8000,

@@ -69,7 +69,7 @@ export function CompletedTaskCard({ task }: CompletedTaskCardProps) {
             </Badge>
             <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-200">
               <DollarSign className="h-3 w-3" />
-              {task.rewardEarned.toFixed(2)}
+              {task.rewardEarned.toFixed(2)} PKR
             </Badge>
           </div>
 

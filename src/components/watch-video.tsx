@@ -309,7 +309,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-blue-50 rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
-                    ${video.rewardAmount.toFixed(2)}
+                    PKR{video.rewardAmount.toFixed(2)}
                   </div>
                   <div className="text-sm text-blue-600">Reward Earned</div>
                 </div>
@@ -350,7 +350,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                 )}
               </div>
               <Badge variant="secondary" className="ml-4">
-                <DollarSign className="h-3 w-3 mr-1" />$
+                <DollarSign className="h-3 w-3 mr-1" />PKR
                 {video.rewardAmount.toFixed(2)}
               </Badge>
             </div>
@@ -405,7 +405,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">
-                      You earned ${video.rewardEarned?.toFixed(2) || "0.00"} on{" "}
+                      You earned PKR{video.rewardEarned?.toFixed(2) || "0.00"} on{" "}
                       {video.completedAt
                         ? new Date(video.completedAt).toLocaleDateString()
                         : "a previous date"}
