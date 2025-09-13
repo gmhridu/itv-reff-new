@@ -18,100 +18,109 @@ const ProfitOverview = () => {
         position: "Intern",
         jobSecurityDeposite: "0",
         numberOfTasks: "5",
-        unitPrice: "26",
-        dailyIncome: "130",
+        unitPrice: "13",
+        dailyIncome: "65",
         monthlyIncome: "---",
         annualIncome: "---",
       },
       {
-        position: "P 1",
-        jobSecurityDeposite: "3900",
+        position: "L1",
+        jobSecurityDeposite: "2,000",
         numberOfTasks: "5",
-        unitPrice: "26",
-        dailyIncome: "130",
-        monthlyIncome: "3900",
-        annualIncome: "47450",
+        unitPrice: "13",
+        dailyIncome: "65",
+        monthlyIncome: "1,950",
+        annualIncome: "23,725",
       },
       {
-        position: "p 2",
-        jobSecurityDeposite: "18000",
+        position: "L2",
+        jobSecurityDeposite: "5,000",
+        numberOfTasks: "8",
+        unitPrice: "21",
+        dailyIncome: "168",
+        monthlyIncome: "5,040",
+        annualIncome: "61,320",
+      },
+      {
+        position: "L3",
+        jobSecurityDeposite: "20,000",
         numberOfTasks: "10",
-        unitPrice: "62",
-        dailyIncome: "620",
-        monthlyIncome: "18600",
-        annualIncome: "226300",
+        unitPrice: "72",
+        dailyIncome: "720",
+        monthlyIncome: "21,600",
+        annualIncome: "262,800",
       },
       {
-        position: "P 3",
-        jobSecurityDeposite: "52000",
+        position: "L4",
+        jobSecurityDeposite: "50,000",
+        numberOfTasks: "15",
+        unitPrice: "123",
+        dailyIncome: "1,845",
+        monthlyIncome: "55,350",
+        annualIncome: "673,425",
+      },
+      {
+        position: "L5",
+        jobSecurityDeposite: "100,000",
         numberOfTasks: "20",
-        unitPrice: "93",
-        dailyIncome: "1860",
-        monthlyIncome: "55800",
-        annualIncome: "678900",
+        unitPrice: "192",
+        dailyIncome: "3,840",
+        monthlyIncome: "115,200",
+        annualIncome: "1,401,600",
       },
       {
-        position: "P 4",
-        jobSecurityDeposite: "120000",
+        position: "L6",
+        jobSecurityDeposite: "250,000",
+        numberOfTasks: "22",
+        unitPrice: "454",
+        dailyIncome: "9,988",
+        monthlyIncome: "299,640",
+        annualIncome: "3,645,620",
+      },
+      {
+        position: "L7",
+        jobSecurityDeposite: "500,000",
+        numberOfTasks: "25",
+        unitPrice: "836",
+        dailyIncome: "20,900",
+        monthlyIncome: "627,000",
+        annualIncome: "7,628,500",
+      },
+      {
+        position: "L8",
+        jobSecurityDeposite: "1,000,000",
+        numberOfTasks: "27",
+        unitPrice: "1,611",
+        dailyIncome: "43,497",
+        monthlyIncome: "1,304,910",
+        annualIncome: "15,876,405",
+      },
+      {
+        position: "L9",
+        jobSecurityDeposite: "2,000,000",
         numberOfTasks: "30",
-        unitPrice: "145",
-        dailyIncome: "4350",
-        monthlyIncome: "130500",
-        annualIncome: "1587750",
+        unitPrice: "3,033",
+        dailyIncome: "90,990",
+        monthlyIncome: "2,729,700",
+        annualIncome: "33,212,850",
       },
       {
-        position: "P 5",
-        jobSecurityDeposite: "250000",
-        numberOfTasks: "50",
-        unitPrice: "210",
-        dailyIncome: "10500",
-        monthlyIncome: "315000",
-        annualIncome: "3832500",
+        position: "L10",
+        jobSecurityDeposite: "4,000,000",
+        numberOfTasks: "31",
+        unitPrice: "6,129",
+        dailyIncome: "189,999",
+        monthlyIncome: "5,699,970",
+        annualIncome: "69,349,635",
       },
       {
-        position: "P 6",
-        jobSecurityDeposite: "550000",
-        numberOfTasks: "60",
-        unitPrice: "350",
-        dailyIncome: "21000",
-        monthlyIncome: "630000",
-        annualIncome: "7665000",
-      },
-      {
-        position: "P 7",
-        jobSecurityDeposite: "1100000",
-        numberOfTasks: "80",
-        unitPrice: "720",
-        dailyIncome: "57600",
-        monthlyIncome: "1728000",
-        annualIncome: "21024000",
-      },
-      {
-        position: "P 8",
-        jobSecurityDeposite: "2200000",
-        numberOfTasks: "100",
-        unitPrice: "1300",
-        dailyIncome: "130000",
-        monthlyIncome: "3900000",
-        annualIncome: "47450000",
-      },
-      {
-        position: "P 9",
-        jobSecurityDeposite: "4000000",
-        numberOfTasks: "120",
-        unitPrice: "2000",
-        dailyIncome: "240000",
-        monthlyIncome: "7200000",
-        annualIncome: "87600000",
-      },
-      {
-        position: "P 10",
-        jobSecurityDeposite: "7000000",
-        numberOfTasks: "150",
-        unitPrice: "2800",
-        dailyIncome: "420000",
-        monthlyIncome: "12600000",
-        annualIncome: "153300000",
+        position: "L11",
+        jobSecurityDeposite: "8,000,000",
+        numberOfTasks: "32",
+        unitPrice: "12,500",
+        dailyIncome: "400,000",
+        monthlyIncome: "12,000,000",
+        annualIncome: "146,000,000",
       },
     ],
   };
@@ -120,57 +129,62 @@ const ProfitOverview = () => {
     {
       level: "Intern",
       description:
-        "Interns do not need a work deposite, and can receive 5 tasks per day. The income for each task is 26 PKR, and the daily income is 130 PKR. The internship period is 4 days.",
+        "Interns do not need a work deposit, and can receive 5 tasks per day. The income for each task is 13 PKR, and the daily income is 65 PKR. The internship period is 4 days.",
     },
     {
-      level: "P1",
+      level: "L1",
       description:
-        "The job deposit for P1 is 3,900 PKR. The number of tasks per day is 5, and the income for each task is 26 PKR. The daily income is 130 PKR, the monthly income is 3,900 PKR, and the annual income is 47,450 PKR. The validity period is 365 days.",
+        "The job deposit for L1 is 2,000 PKR. The number of tasks per day is 5, and the income for each task is 13 PKR. The daily income is 65 PKR, the monthly income is 1,950 PKR, and the annual income is 23,725 PKR. The validity period is 365 days.",
     },
     {
-      level: "P2",
+      level: "L2",
       description:
-        "The job deposit for P2 is 18,000 PKR. The number of tasks per day is 10, and the income for each task is 62 PKR. The daily income is 620 PKR, the monthly income is 18,600 PKR, and the annual income is 226,300 PKR. The validity period is 365 days.",
+        "The job deposit for L2 is 5,000 PKR. The number of tasks per day is 8, and the income for each task is 21 PKR. The daily income is 168 PKR, the monthly income is 5,040 PKR, and the annual income is 61,320 PKR. The validity period is 365 days.",
     },
     {
-      level: "P3",
+      level: "L3",
       description:
-        "The job deposit for P3 is 52,000 PKR. The number of tasks per day is 20, and the income for each task is 93 PKR. The daily income is 1,860 PKR, the monthly income is 55,800 PKR, and the annual income is 678,900 PKR. The validity period is 365 days.",
+        "The job deposit for L3 is 20,000 PKR. The number of tasks per day is 10, and the income for each task is 72 PKR. The daily income is 720 PKR, the monthly income is 21,600 PKR, and the annual income is 262,800 PKR. The validity period is 365 days.",
     },
     {
-      level: "P4",
+      level: "L4",
       description:
-        "The job deposit for P4 is 120,000 PKR. The number of tasks per day is 30, and the income for each task is 145 PKR. The daily income is 4,350 PKR, the monthly income is 130,500 PKR, and the annual income is 1,587,750 PKR. The validity period is 365 days.",
+        "The job deposit for L4 is 50,000 PKR. The number of tasks per day is 15, and the income for each task is 123 PKR. The daily income is 1,845 PKR, the monthly income is 55,350 PKR, and the annual income is 673,425 PKR. The validity period is 365 days.",
     },
     {
-      level: "P5",
+      level: "L5",
       description:
-        "The job deposit for P5 is 250,000 PKR. The number of tasks per day is 50, and the income for each task is 210 PKR. The daily income is 10,500 PKR, the monthly income is 315,000 PKR, and the annual income is 3,832,500 PKR. The validity period is 365 days.",
+        "The job deposit for L5 is 100,000 PKR. The number of tasks per day is 20, and the income for each task is 192 PKR. The daily income is 3,840 PKR, the monthly income is 115,200 PKR, and the annual income is 1,401,600 PKR. The validity period is 365 days.",
     },
     {
-      level: "P6",
+      level: "L6",
       description:
-        "The job deposit for P6 is 550,000 PKR. The number of tasks per day is 60, and the income for each task is 350 PKR. The daily income is 21,000 PKR, the monthly income is 630,000 PKR, and the annual income is 7,665,000 PKR. The validity period is 365 days.",
+        "The job deposit for L6 is 250,000 PKR. The number of tasks per day is 22, and the income for each task is 454 PKR. The daily income is 9,988 PKR, the monthly income is 299,640 PKR, and the annual income is 3,645,620 PKR. The validity period is 365 days.",
     },
     {
-      level: "P7",
+      level: "L7",
       description:
-        "The job deposit for P7 is 1,100,000 PKR. The number of tasks per day is 80, and the income for each task is 720 PKR. The daily income is 57,600 PKR, the monthly income is 1,728,000 PKR, and the annual income is 21,024,000 PKR. The validity period is 365 days.",
+        "The job deposit for L7 is 500,000 PKR. The number of tasks per day is 25, and the income for each task is 836 PKR. The daily income is 20,900 PKR, the monthly income is 627,000 PKR, and the annual income is 7,628,500 PKR. The validity period is 365 days.",
     },
     {
-      level: "P8",
+      level: "L8",
       description:
-        "The job deposit for P8 is 2,200,000 PKR. The number of tasks per day is 100, and the income for each task is 1,300 PKR. The daily income is 130,000 PKR, the monthly income is 3,900,000 PKR, and the annual income is 47,450,000 PKR. The validity period is 365 days.",
+        "The job deposit for L8 is 1,000,000 PKR. The number of tasks per day is 27, and the income for each task is 1,611 PKR. The daily income is 43,497 PKR, the monthly income is 1,304,910 PKR, and the annual income is 15,876,405 PKR. The validity period is 365 days.",
     },
     {
-      level: "P9",
+      level: "L9",
       description:
-        "The job deposit for P9 is 4,000,000 PKR. The number of tasks per day is 120, and the income for each task is 2,000 PKR. The daily income is 240,000 PKR, the monthly income is 7,200,000 PKR, and the annual income is 87,600,000 PKR. The validity period is 365 days.",
+        "The job deposit for L9 is 2,000,000 PKR. The number of tasks per day is 30, and the income for each task is 3,033 PKR. The daily income is 90,990 PKR, the monthly income is 2,729,700 PKR, and the annual income is 33,212,850 PKR. The validity period is 365 days.",
     },
     {
-      level: "P10",
+      level: "L10",
       description:
-        "The job deposit for P10 is 7,000,000 PKR. The number of tasks per day is 150, and the income for each task is 2,800 PKR. The daily income is 420,000 PKR, the monthly income is 12,600,000 PKR, and the annual income is 153,300,000 PKR. The validity period is 365 days.",
+        "The job deposit for L10 is 4,000,000 PKR. The number of tasks per day is 31, and the income for each task is 6,129 PKR. The daily income is 189,999 PKR, the monthly income is 5,699,970 PKR, and the annual income is 69,349,635 PKR. The validity period is 365 days.",
+    },
+    {
+      level: "L11",
+      description:
+        "The job deposit for L11 is 8,000,000 PKR. The number of tasks per day is 32, and the income for each task is 12,500 PKR. The daily income is 400,000 PKR, the monthly income is 12,000,000 PKR, and the annual income is 146,000,000 PKR. The validity period is 365 days.",
     },
   ];
 
@@ -184,74 +198,81 @@ const ProfitOverview = () => {
     ],
     rows: [
       {
-        position: "P 1",
+        position: "L1",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "312",
-        bLevelRewards: "117",
-        cLevelRewards: "39",
+        aLevelRewards: "5",
+        bLevelRewards: "2",
+        cLevelRewards: "1",
       },
       {
-        position: "P 2",
+        position: "L2",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "1440",
-        bLevelRewards: "540",
-        cLevelRewards: "180",
+        aLevelRewards: "13",
+        bLevelRewards: "5",
+        cLevelRewards: "2",
       },
       {
-        position: "P 3",
+        position: "L3",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "4160",
-        bLevelRewards: "1560",
-        cLevelRewards: "520",
+        aLevelRewards: "58",
+        bLevelRewards: "22",
+        cLevelRewards: "7",
       },
       {
-        position: "P 4",
+        position: "L4",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "9600",
-        bLevelRewards: "3600",
-        cLevelRewards: "1200",
+        aLevelRewards: "148",
+        bLevelRewards: "55",
+        cLevelRewards: "18",
       },
       {
-        position: "P 5",
+        position: "L5",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "20000",
-        bLevelRewards: "7500",
-        cLevelRewards: "2500",
+        aLevelRewards: "307",
+        bLevelRewards: "115",
+        cLevelRewards: "38",
       },
       {
-        position: "P 6",
+        position: "L6",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "44000",
-        bLevelRewards: "16500",
-        cLevelRewards: "5500",
+        aLevelRewards: "799",
+        bLevelRewards: "300",
+        cLevelRewards: "100",
       },
       {
-        position: "P 7",
+        position: "L7",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "88000",
-        bLevelRewards: "33000",
-        cLevelRewards: "11000",
+        aLevelRewards: "1,672",
+        bLevelRewards: "627",
+        cLevelRewards: "209",
       },
       {
-        position: "P 8",
+        position: "L8",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "176000",
-        bLevelRewards: "66000",
-        cLevelRewards: "22000",
+        aLevelRewards: "3,480",
+        bLevelRewards: "1,305",
+        cLevelRewards: "435",
       },
       {
-        position: "P 9",
+        position: "L9",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "320000",
-        bLevelRewards: "120000",
-        cLevelRewards: "40000",
+        aLevelRewards: "7,279",
+        bLevelRewards: "2,730",
+        cLevelRewards: "910",
       },
       {
-        position: "P 10",
+        position: "L10",
         incomeRatio: "8%-3%-1%",
-        aLevelRewards: "560000",
-        bLevelRewards: "210000",
-        cLevelRewards: "70000",
+        aLevelRewards: "15,200",
+        bLevelRewards: "5,700",
+        cLevelRewards: "1,900",
+      },
+      {
+        position: "L11",
+        incomeRatio: "8%-3%-1%",
+        aLevelRewards: "32,000",
+        bLevelRewards: "12,000",
+        cLevelRewards: "4,000",
       },
     ],
   };
@@ -417,24 +438,24 @@ const ProfitOverview = () => {
                 <span className="text-green-600 font-bold mr-3">Level A:</span>
                 <span className="text-gray-700">
                   If <strong>you</strong> invite <strong>A</strong> and they
-                  become <strong>P1</strong>, you earn{" "}
-                  <strong className="text-green-600">312 PKR</strong>
+                  become <strong>L1</strong>, you earn{" "}
+                  <strong className="text-green-600">5 PKR</strong>
                 </span>
               </div>
               <div className="flex items-start bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
                 <span className="text-blue-600 font-bold mr-3">Level B:</span>
                 <span className="text-gray-700">
                   If <strong>A</strong> invites <strong>B</strong> and they
-                  become <strong>P1</strong>, you earn{" "}
-                  <strong className="text-blue-600">117 PKR</strong>
+                  become <strong>L1</strong>, you earn{" "}
+                  <strong className="text-blue-600">2 PKR</strong>
                 </span>
               </div>
               <div className="flex items-start bg-purple-50 p-3 rounded-lg border-l-4 border-purple-400">
                 <span className="text-purple-600 font-bold mr-3">Level C:</span>
                 <span className="text-gray-700">
                   If <strong>B</strong> invites <strong>C</strong> and they
-                  become <strong>P1</strong>, you earn{" "}
-                  <strong className="text-purple-600">39 PKR</strong>
+                  become <strong>L1</strong>, you earn{" "}
+                  <strong className="text-purple-600">1 PKR</strong>
                 </span>
               </div>
               <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-300">
@@ -467,18 +488,18 @@ const ProfitOverview = () => {
                   <p className="text-gray-700">
                     If you are{" "}
                     <span className="bg-orange-200 px-2 py-1 rounded font-bold">
-                      P1
+                      L1
                     </span>{" "}
                     and your subordinate A becomes{" "}
                     <span className="bg-orange-200 px-2 py-1 rounded font-bold">
-                      P2
+                      L2
                     </span>
                     , you receive{" "}
                     <span className="bg-green-200 px-2 py-1 rounded font-bold">
-                      8% of the P1 invitation reward (312 PKR)
+                      8% of the L1 invitation reward (5 PKR)
                     </span>{" "}
                     — that's{" "}
-                    <span className="text-green-600 font-bold">25 PKR</span>
+                    <span className="text-green-600 font-bold">0.4 PKR</span>
                   </p>
                 </div>
                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
@@ -488,18 +509,18 @@ const ProfitOverview = () => {
                   <p className="text-gray-700">
                     If you are{" "}
                     <span className="bg-indigo-200 px-2 py-1 rounded font-bold">
-                      P4
+                      L4
                     </span>{" "}
                     and your subordinate A becomes{" "}
                     <span className="bg-indigo-200 px-2 py-1 rounded font-bold">
-                      P4
+                      L4
                     </span>
                     , you receive{" "}
                     <span className="bg-green-200 px-2 py-1 rounded font-bold">
-                      8% of the P4 invitation reward (9,600 PKR)
+                      8% of the L4 invitation reward (148 PKR)
                     </span>{" "}
                     — that's{" "}
-                    <span className="text-green-600 font-bold">768 PKR</span>
+                    <span className="text-green-600 font-bold">12 PKR</span>
                   </p>
                 </div>
               </div>
