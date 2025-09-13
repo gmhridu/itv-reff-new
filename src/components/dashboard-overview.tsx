@@ -45,6 +45,7 @@ import DashboardHeader from "./DashboardHeader";
 import WithdrawTab from "./withdraw-tab";
 import WalletTab from "./wallet-tab";
 import Link from "next/link";
+import AnnouncementPopup from "@/components/announcement-popup";
 
 const sliderImages = [
   {
@@ -167,6 +168,8 @@ export default function DashboardOverview() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <AnnouncementPopup userId={user.id} isFirstLogin={false} />
+      
       <DashboardHeader user={user} />
 
       {/* Hero Slider Section - Restored */}

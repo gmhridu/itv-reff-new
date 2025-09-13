@@ -36,7 +36,8 @@ export default function AnnouncementPopup({ userId, isFirstLogin }: Announcement
   const fetchUnreadAnnouncements = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/user/announcements/unread");
+      // Fixed the API endpoint URL - it should be /api/user/announcements not /api/user/announcements/unread
+      const response = await fetch("/api/user/announcements");
       const data = await response.json();
       
       if (data.success) {
@@ -66,6 +67,7 @@ export default function AnnouncementPopup({ userId, isFirstLogin }: Announcement
   // Mark announcement as read
   const markAsRead = async (announcementId: string) => {
     try {
+      // Fixed the API endpoint URL - it should be /api/user/announcements/[id]/read
       const response = await fetch(`/api/user/announcements/${announcementId}/read`, {
         method: "POST",
       });
@@ -116,15 +118,24 @@ export default function AnnouncementPopup({ userId, isFirstLogin }: Announcement
     setIsOpen(false);
   };
 
-  // Fetch announcements on component mount if it's first login
+  // Fetch announcements on component mount
   useEffect(() => {
+    // For first login, show immediately
     if (isFirstLogin) {
       fetchUnreadAnnouncements();
+    } else {
+      // For dashboard, show after 3 seconds delay
+      const timer = setTimeout(() => {
+        fetchUnreadAnnouncements();
+      }, 3000);
+      
+      // Clean up timer on unmount
+      return () => clearTimeout(timer);
     }
   }, [isFirstLogin]);
 
-  // If not first login or no announcements, don't render anything
-  if (!isFirstLogin || announcements.length === 0) {
+  // If no announcements, don't render anything
+  if (announcements.length === 0) {
     return null;
   }
 
@@ -138,14 +149,14 @@ export default function AnnouncementPopup({ userId, isFirstLogin }: Announcement
             <DialogTitle className="text-2xl">
               {currentAnnouncement.title}
             </DialogTitle>
-            <Button
+            {/* <Button
               variant="ghost"
               size="icon"
               onClick={handleClose}
               className="h-8 w-8"
             >
               <X className="h-4 w-4" />
-            </Button>
+            </Button> */}
           </div>
         </DialogHeader>
         
@@ -173,7 +184,7 @@ export default function AnnouncementPopup({ userId, isFirstLogin }: Announcement
               )}
             </div>
             
-            <div className="flex space-x-2">
+            {/* <div className="flex space-x-2">
               {currentAnnouncementIndex > 0 && (
                 <Button variant="outline" onClick={handlePrevious}>
                   Previous
@@ -183,7 +194,7 @@ export default function AnnouncementPopup({ userId, isFirstLogin }: Announcement
               <Button onClick={handleNext}>
                 {currentAnnouncementIndex < announcements.length - 1 ? "Next" : "Got it"}
               </Button>
-            </div>
+            </div> */}
           </div>
         </CardContent>
       </DialogContent>
