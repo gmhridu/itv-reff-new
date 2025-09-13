@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
     // Check minimum withdrawal amount
     if (withdrawalAmount < minimumWithdrawal) {
       return NextResponse.json(
-        { error: `Minimum withdrawal amount is $${minimumWithdrawal.toFixed(2)}` },
+        { error: `Minimum withdrawal amount is PKR${minimumWithdrawal.toFixed(2)}` },
         { status: 400 }
       );
     }
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     if (weeklyWithdrawn + withdrawalAmount > weeklyLimit) {
       const remaining = weeklyLimit - weeklyWithdrawn;
       return NextResponse.json(
-        { error: `Weekly withdrawal limit exceeded. You can withdraw up to $${remaining.toFixed(2)} more this week.` },
+        { error: `Weekly withdrawal limit exceeded. You can withdraw up to PKR${remaining.toFixed(2)} more this week.` },
         { status: 400 }
       );
     }
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
       await notificationService.createNotification(
         NotificationType.WITHDRAWAL_REQUEST,
         'New Withdrawal Request',
-        `User ${user.name || user.email || user.phone} has requested withdrawal of $${withdrawalAmount.toFixed(2)}`,
+        `User ${user.name || user.email || user.phone} has requested withdrawal of PKR${withdrawalAmount.toFixed(2)}`,
         {
           severity: NotificationSeverity.INFO,
           targetType: 'admin',

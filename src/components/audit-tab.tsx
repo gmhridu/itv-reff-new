@@ -144,14 +144,14 @@ export function AuditTab() {
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
                 <ArrowUpRight className="h-4 w-4" />
-                <span className="text-2xl font-bold">${summary.totalCredits.toFixed(2)}</span>
+                <span className="text-2xl font-bold">PKR{summary.totalCredits.toFixed(2)}</span>
               </div>
               <div className="text-sm text-gray-600">Total Credits</div>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-red-600 mb-1">
                 <ArrowDownLeft className="h-4 w-4" />
-                <span className="text-2xl font-bold">${summary.totalDebits.toFixed(2)}</span>
+                <span className="text-2xl font-bold">PKR{summary.totalDebits.toFixed(2)}</span>
               </div>
               <div className="text-sm text-gray-600">Total Debits</div>
             </div>

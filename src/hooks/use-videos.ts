@@ -54,7 +54,7 @@ export function useWatchVideo() {
       // Show success message
       toast({
         title: "Video Watched Successfully!",
-        description: `You earned $${data.reward?.toFixed(2) || "0.00"}. ${data.tasksRemaining || 0} tasks remaining today.`,
+        description: `You earned PKR${data.reward?.toFixed(2) || "0.00"}. ${data.tasksRemaining || 0} tasks remaining today.`,
         variant: "default",
       });
 

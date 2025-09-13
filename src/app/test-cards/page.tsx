@@ -167,7 +167,7 @@ export default function TestCardsPage() {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                ${sampleVideos.reduce((sum, v) => sum + v.rewardAmount, 0).toFixed(2)}
+                PKR{sampleVideos.reduce((sum, v) => sum + v.rewardAmount, 0).toFixed(2)}
               </div>
               <div className="text-gray-600 dark:text-gray-400">Total Rewards</div>
             </div>

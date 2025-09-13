@@ -191,7 +191,7 @@ export default function HierarchyVisualization() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Team Earnings</p>
-                <p className="text-2xl font-bold text-blue-600">₹{hierarchyData.teamMetrics.totalTeamEarnings.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-600">PKR {hierarchyData.teamMetrics.totalTeamEarnings.toFixed(2)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-blue-500" />
             </div>
@@ -259,7 +259,7 @@ export default function HierarchyVisualization() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">₹{member.totalEarnings.toFixed(2)}</p>
+                      <p className="text-sm font-medium">PKR {member.totalEarnings.toFixed(2)}</p>
                       <p className="text-xs text-gray-500">
                         {new Date(member.joinedAt).toLocaleDateString()}
                       </p>
@@ -313,7 +313,7 @@ export default function HierarchyVisualization() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">₹{member.totalEarnings.toFixed(2)}</p>
+                      <p className="text-sm font-medium">PKR {member.totalEarnings.toFixed(2)}</p>
                       <p className="text-xs text-gray-500">
                         {new Date(member.joinedAt).toLocaleDateString()}
                       </p>
@@ -367,7 +367,7 @@ export default function HierarchyVisualization() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">₹{member.totalEarnings.toFixed(2)}</p>
+                      <p className="text-sm font-medium">PKR {member.totalEarnings.toFixed(2)}</p>
                       <p className="text-xs text-gray-500">
                         {new Date(member.joinedAt).toLocaleDateString()}
                       </p>

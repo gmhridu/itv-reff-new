@@ -152,7 +152,7 @@ export default function RewardsTracking() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Rewards</p>
-                <p className="text-2xl font-bold text-green-600">₹{rewardsData.totalRewards.total.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-green-600">PKR {rewardsData.totalRewards.total.toFixed(2)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-500" />
             </div>
@@ -164,7 +164,7 @@ export default function RewardsTracking() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Management Bonuses</p>
-                <p className="text-2xl font-bold text-blue-600">₹{rewardsData.totalManagementBonuses.total.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-600">PKR {rewardsData.totalManagementBonuses.total.toFixed(2)}</p>
               </div>
               <Target className="w-8 h-8 text-blue-500" />
             </div>
@@ -189,7 +189,7 @@ export default function RewardsTracking() {
               <div>
                 <p className="text-sm font-medium text-gray-600">This Month</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  ₹{(rewardsData.monthlyBreakdown[rewardsData.monthlyBreakdown.length - 1]?.total || 0).toFixed(2)}
+                  PKR {(rewardsData.monthlyBreakdown[rewardsData.monthlyBreakdown.length - 1]?.total || 0).toFixed(2)}
                 </p>
               </div>
               <Calendar className="w-8 h-8 text-orange-500" />
@@ -213,7 +213,7 @@ export default function RewardsTracking() {
                 <Crown className="w-5 h-5 text-yellow-500" />
                 <h3 className="font-semibold">A-Level Rewards</h3>
               </div>
-              <p className="text-2xl font-bold text-yellow-600">₹{rewardsData.totalRewards.aLevel.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-yellow-600">PKR {rewardsData.totalRewards.aLevel.toFixed(2)}</p>
               <p className="text-sm text-gray-600">{rewardsData.totalCounts.aLevel} transactions</p>
               <p className="text-xs text-gray-500 mt-1">Direct referrals (6% bonus rate)</p>
             </div>
@@ -223,7 +223,7 @@ export default function RewardsTracking() {
                 <Star className="w-5 h-5 text-blue-500" />
                 <h3 className="font-semibold">B-Level Rewards</h3>
               </div>
-              <p className="text-2xl font-bold text-blue-600">₹{rewardsData.totalRewards.bLevel.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-blue-600">PKR {rewardsData.totalRewards.bLevel.toFixed(2)}</p>
               <p className="text-sm text-gray-600">{rewardsData.totalCounts.bLevel} transactions</p>
               <p className="text-xs text-gray-500 mt-1">2nd generation (3% bonus rate)</p>
             </div>
@@ -233,7 +233,7 @@ export default function RewardsTracking() {
                 <Users className="w-5 h-5 text-green-500" />
                 <h3 className="font-semibold">C-Level Rewards</h3>
               </div>
-              <p className="text-2xl font-bold text-green-600">₹{rewardsData.totalRewards.cLevel.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-green-600">PKR {rewardsData.totalRewards.cLevel.toFixed(2)}</p>
               <p className="text-sm text-gray-600">{rewardsData.totalCounts.cLevel} transactions</p>
               <p className="text-xs text-gray-500 mt-1">3rd generation (1% bonus rate)</p>
             </div>
@@ -263,13 +263,13 @@ export default function RewardsTracking() {
                   <div>
                     <p className="font-semibold">{month.month}</p>
                     <p className="text-sm text-gray-600">
-                      Referral: ₹{month.referralRewards.toFixed(2)} | 
-                      Bonus: ₹{month.managementBonuses.toFixed(2)}
+                      Referral: PKR {month.referralRewards.toFixed(2)} | 
+                      Bonus: PKR {month.managementBonuses.toFixed(2)}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-green-600">₹{month.total.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-green-600">PKR {month.total.toFixed(2)}</p>
                   {index > 0 && (
                     <p className="text-sm text-gray-500">
                       {month.total > rewardsData.monthlyBreakdown[index - 1].total ? (
@@ -317,7 +317,7 @@ export default function RewardsTracking() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-green-600">+₹{reward.amount.toFixed(2)}</p>
+                      <p className="font-semibold text-green-600">+PKR {reward.amount.toFixed(2)}</p>
                       <p className="text-sm text-gray-500">
                         {new Date(reward.createdAt).toLocaleDateString()}
                       </p>
@@ -352,12 +352,12 @@ export default function RewardsTracking() {
                       <div>
                         <p className="font-medium">{bonus.subordinate}</p>
                         <p className="text-sm text-gray-600">
-                          {bonus.level} bonus from ₹{bonus.taskIncome} task income
+                          {bonus.level} bonus from PKR {bonus.taskIncome} task income
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-blue-600">+₹{bonus.amount.toFixed(2)}</p>
+                      <p className="font-semibold text-blue-600">+PKR {bonus.amount.toFixed(2)}</p>
                       <p className="text-sm text-gray-500">
                         {new Date(bonus.createdAt).toLocaleDateString()}
                       </p>

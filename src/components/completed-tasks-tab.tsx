@@ -115,7 +115,7 @@ export function CompletedTasksTab({ onSwitchToDoingTab }: CompletedTasksTabProps
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                ${summary.totalRewards.toFixed(2)}
+                PKR{summary.totalRewards.toFixed(2)}
               </div>
               <div className="text-sm text-gray-600">Total Earned</div>
             </div>

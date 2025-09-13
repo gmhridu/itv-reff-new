@@ -247,11 +247,11 @@ export default function PlansPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Gift className="h-4 w-4 text-green-600" />
-                      <span className="text-sm">${plan.rewardPerVideo.toFixed(2)} per video</span>
+                      <span className="text-sm">PKR{plan.rewardPerVideo.toFixed(2)} per video</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Users className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm">${plan.referralBonus.toFixed(2)} referral bonus</span>
+                      <span className="text-sm">PKR{plan.referralBonus.toFixed(2)} referral bonus</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <Clock className="h-4 w-4 text-orange-600" />
@@ -262,7 +262,7 @@ export default function PlansPage() {
                   <div className="pt-4 border-t">
                     <p className="text-sm text-gray-600 mb-3">Daily earning potential:</p>
                     <p className="text-2xl font-bold text-green-600">
-                      ${(plan.dailyVideoLimit * plan.rewardPerVideo).toFixed(2)}
+                      PKR{(plan.dailyVideoLimit * plan.rewardPerVideo).toFixed(2)}
                     </p>
                     <p className="text-sm text-gray-500">per day</p>
                   </div>
@@ -339,7 +339,7 @@ export default function PlansPage() {
                     <td className="py-3 px-4 font-medium">Reward per Video</td>
                     {plans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4">
-                        ${plan.rewardPerVideo.toFixed(2)}
+                        PKR{plan.rewardPerVideo.toFixed(2)}
                       </td>
                     ))}
                   </tr>
@@ -347,7 +347,7 @@ export default function PlansPage() {
                     <td className="py-3 px-4 font-medium">Referral Bonus</td>
                     {plans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4">
-                        ${plan.referralBonus.toFixed(2)}
+                        PKR{plan.referralBonus.toFixed(2)}
                       </td>
                     ))}
                   </tr>
@@ -355,7 +355,7 @@ export default function PlansPage() {
                     <td className="py-3 px-4 font-medium">Daily Earning Potential</td>
                     {plans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 font-semibold text-green-600">
-                        ${(plan.dailyVideoLimit * plan.rewardPerVideo).toFixed(2)}
+                        PKR{(plan.dailyVideoLimit * plan.rewardPerVideo).toFixed(2)}
                       </td>
                     ))}
                   </tr>
@@ -363,7 +363,7 @@ export default function PlansPage() {
                     <td className="py-3 px-4 font-medium">Monthly Earning Potential</td>
                     {plans.map((plan) => (
                       <td key={plan.id} className="text-center py-3 px-4 font-semibold text-green-600">
-                        ${(plan.dailyVideoLimit * plan.rewardPerVideo * 30).toFixed(2)}
+                        PKR{(plan.dailyVideoLimit * plan.rewardPerVideo * 30).toFixed(2)}
                       </td>
                     ))}
                   </tr>

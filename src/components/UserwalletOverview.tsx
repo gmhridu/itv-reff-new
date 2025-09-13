@@ -140,7 +140,7 @@ export default function UserWalletOverview() {
                   <Wallet className="w-4 h-4" />
                   <p className="text-sm font-medium opacity-90">Main Wallet</p>
                 </div>
-                <p className="text-2xl font-bold">₹0.00</p>
+                <p className="text-2xl font-bold">PKR 0.00</p>
                 <div className="flex items-center gap-1 justify-center md:justify-start mt-1">
                   <TrendingUp className="w-3 h-3" />
                   <span className="text-xs opacity-75">Available Balance</span>
@@ -159,7 +159,7 @@ export default function UserWalletOverview() {
                     Commission Wallet
                   </p>
                 </div>
-                <p className="text-2xl font-bold">₹14,300.00</p>
+                <p className="text-2xl font-bold">PKR 14,300.00</p>
                 <div className="flex items-center gap-1 justify-center md:justify-end mt-1">
                   <TrendingUp className="w-3 h-3" />
                   <span className="text-xs opacity-75">Total Earnings</span>
@@ -243,7 +243,7 @@ export default function UserWalletOverview() {
                               {transaction.id}
                             </p>
                             <p className="text-lg font-bold text-indigo-600">
-                              ₹{parseInt(transaction.amount).toLocaleString()}
+                              PKR {parseInt(transaction.amount).toLocaleString()}
                             </p>
                           </div>
 
