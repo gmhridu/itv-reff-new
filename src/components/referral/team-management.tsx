@@ -217,7 +217,7 @@ export default function TeamManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Avg Earnings</p>
-                <p className="text-2xl font-bold text-orange-600">₹{teamData.teamStats.averageEarningsPerMember.toFixed(0)}</p>
+                <p className="text-2xl font-bold text-orange-600">PKR {teamData.teamStats.averageEarningsPerMember.toFixed(0)}</p>
               </div>
               <DollarSign className="w-8 h-8 text-orange-500" />
             </div>
@@ -253,7 +253,7 @@ export default function TeamManagement() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-green-600">₹{performer.performance.weeklyEarnings.toFixed(2)}</p>
+                  <p className="font-semibold text-green-600">PKR {performer.performance.weeklyEarnings.toFixed(2)}</p>
                   <p className="text-sm text-gray-600">{performer.performance.weeklyTaskCount} tasks</p>
                 </div>
               </div>
@@ -324,7 +324,7 @@ export default function TeamManagement() {
                   <div className="flex items-center gap-4">
                     {getActivityStatusBadge(member.activityStatus)}
                     <div className="text-right">
-                      <p className="font-semibold">₹{member.performance.totalEarnings.toFixed(2)}</p>
+                      <p className="font-semibold">PKR {member.performance.totalEarnings.toFixed(2)}</p>
                       <p className="text-sm text-gray-600">Total Earnings</p>
                     </div>
                   </div>
@@ -341,7 +341,7 @@ export default function TeamManagement() {
                   </div>
                   <div>
                     <p className="text-gray-600">Weekly Earnings</p>
-                    <p className="font-medium text-green-600">₹{member.performance.weeklyEarnings.toFixed(2)}</p>
+                    <p className="font-medium text-green-600">PKR {member.performance.weeklyEarnings.toFixed(2)}</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Last Activity</p>

@@ -193,7 +193,7 @@ export default function ReferralsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Wallet Balance</p>
-                  <p className="text-2xl font-bold text-green-600">₹{user?.walletBalance?.toFixed(2) || '0.00'}</p>
+                  <p className="text-2xl font-bold text-green-600">PKR {user?.walletBalance?.toFixed(2) || '0.00'}</p>
                 </div>
                 <DollarSign className="w-8 h-8 text-green-500" />
               </div>
@@ -229,7 +229,7 @@ export default function ReferralsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                  <p className="text-2xl font-bold text-green-600">₹0.00</p>
+                  <p className="text-2xl font-bold text-green-600">PKR 0.00</p>
                 </div>
                 <TrendingUp className="w-8 h-8 text-green-500" />
               </div>

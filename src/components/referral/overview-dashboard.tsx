@@ -192,8 +192,8 @@ export default function OverviewDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-green-100">Total Earnings</p>
-                <p className="text-3xl font-bold">₹{overviewStats?.totalEarnings?.toFixed(2) || '0.00'}</p>
-                <p className="text-sm text-green-100">This month: ₹{overviewStats?.monthlyEarnings?.toFixed(2) || '0.00'}</p>
+                <p className="text-3xl font-bold">PKR {overviewStats?.totalEarnings?.toFixed(2) || '0.00'}</p>
+                <p className="text-sm text-green-100">This month: PKR {overviewStats?.monthlyEarnings?.toFixed(2) || '0.00'}</p>
               </div>
               <DollarSign className="w-12 h-12 text-green-200" />
             </div>

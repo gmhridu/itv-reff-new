@@ -196,8 +196,8 @@ export default function AnalyticsDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Period Earnings</p>
-                <p className="text-2xl font-bold text-orange-600">₹{analyticsData.performanceMetrics.totalPeriodEarnings.toFixed(2)}</p>
-                <p className="text-xs text-gray-500">Avg: ₹{analyticsData.performanceMetrics.averageDailyEarnings.toFixed(2)}/day</p>
+                <p className="text-2xl font-bold text-orange-600">PKR {analyticsData.performanceMetrics.totalPeriodEarnings.toFixed(2)}</p>
+                <p className="text-xs text-gray-500">Avg: PKR {analyticsData.performanceMetrics.averageDailyEarnings.toFixed(2)}/day</p>
               </div>
               <Award className="w-8 h-8 text-orange-500" />
             </div>
@@ -304,7 +304,7 @@ export default function AnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-green-600">₹{day.earnings.toFixed(2)}</p>
+                  <p className="font-semibold text-green-600">PKR {day.earnings.toFixed(2)}</p>
                   {day.date === analyticsData.performanceMetrics.bestPerformingDay.date && (
                     <Badge className="bg-yellow-100 text-yellow-800">Best Day</Badge>
                   )}
@@ -419,7 +419,7 @@ export default function AnalyticsDashboard() {
                     </p>
                   </div>
                 </div>
-                <p className="font-semibold text-green-600">₹{performer.totalEarnings.toFixed(2)}</p>
+                <p className="font-semibold text-green-600">PKR {performer.totalEarnings.toFixed(2)}</p>
               </div>
             ))}
           </div>
