@@ -86,7 +86,7 @@ export function NotificationPopover({ user }) {
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm"
+            className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
           <div className="absolute right-0 mt-2 w-96 bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/50 z-50 overflow-hidden">

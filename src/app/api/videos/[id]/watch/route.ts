@@ -94,66 +94,51 @@ export async function POST(
       "unknown";
 
     const body = await request.json();
-    const { watchDuration, verificationData, userInteractions = [] } = body;
+    const {
+      watchDuration,
+      verificationData,
+      userInteractions = [],
+      hasStarted,
+      minimumWatchTimeMet,
+    } = body;
 
-    // Enhanced anti-cheat validation with duration mismatch detection
-    console.log("Video duration debug:", {
+    // Simple 10-second validation as requested by user
+    const MINIMUM_WATCH_TIME = 10; // 10 seconds as required
+
+    console.log("Video watch validation:", {
+      watchDuration,
+      minimumRequired: MINIMUM_WATCH_TIME,
       videoDuration: video.duration,
-      videoDurationType: typeof video.duration,
-      calculatedMinimum: video.duration * 0.8,
-      verificationDuration: verificationData?.duration,
-      videoData: {
-        id: video.id,
-        title: video.title,
-        duration: video.duration,
-      },
+      verificationData,
+      hasStarted,
+      minimumWatchTimeMet,
     });
 
-    // Detect duration mismatch between database and actual video
-    let actualVideoDuration = video.duration;
-    if (
-      verificationData?.duration &&
-      Math.abs(video.duration - verificationData.duration) > 10
-    ) {
-      // Use the actual video duration from verification data
-      actualVideoDuration = verificationData.duration;
-      console.log(
-        "Using actual video duration for validation:",
-        actualVideoDuration,
-      );
-    }
-
-    const minimumWatchTime = actualVideoDuration * 0.8; // 80% of actual video duration
-
-    // Use verification data as fallback if watchDuration is 0 (new segment-based tracking)
-    let actualWatchDuration = watchDuration;
-    if (watchDuration === 0 && verificationData?.watchPercentage) {
-      actualWatchDuration = Math.floor(
-        (verificationData.watchPercentage / 100) * actualVideoDuration,
-      );
-    }
-
-    if (actualWatchDuration < minimumWatchTime) {
+    // Validate minimum watch time (10 seconds)
+    if (watchDuration < MINIMUM_WATCH_TIME) {
       return NextResponse.json(
         {
           error: "Video not watched long enough",
           details: {
-            watchDuration: actualWatchDuration,
-            minimumRequired: minimumWatchTime,
-            watchPercentage: verificationData?.watchPercentage || 0,
+            watchDuration: watchDuration,
+            minimumRequired: MINIMUM_WATCH_TIME,
+            message: "You must watch at least 10 seconds to earn the reward",
           },
         },
         { status: 400 },
       );
     }
 
-    // Check for suspicious patterns using actual video duration
-    if (actualWatchDuration > actualVideoDuration * 2) {
+    // Basic anti-cheat: ensure watch duration is not excessive (max 2x video duration)
+    if (watchDuration > video.duration * 2) {
       return NextResponse.json(
-        { error: "Invalid watch duration" },
+        { error: "Invalid watch duration detected" },
         { status: 400 },
       );
     }
+
+    // Use the actual watch duration from frontend
+    const actualWatchDuration = watchDuration;
 
     // Calculate reward
     const rewardEarned = rewardPerVideo;
@@ -194,15 +179,16 @@ export async function POST(
         status: "COMPLETED",
         metadata: JSON.stringify({
           videoId: videoId,
-          watchDuration: actualWatchDuration, // Use corrected watch duration
-          originalWatchDuration: watchDuration, // Keep original for debugging
+          watchDuration: actualWatchDuration,
           positionLevel: position.name,
           verificationData,
           userInteractions,
           ipAddress,
+          hasStarted,
+          minimumWatchTimeMet,
           securityScore: calculateSecurityScore(
             actualWatchDuration,
-            actualVideoDuration,
+            video.duration,
             userInteractions,
           ),
         }),
@@ -294,16 +280,12 @@ export async function POST(
       managementBonusDistributed: bonusResult.totalBonusDistributed,
       bonusBreakdown: bonusResult.bonusBreakdown,
       debug: {
-        originalWatchDuration: watchDuration,
-        actualWatchDuration: actualWatchDuration,
-        watchPercentage: verificationData?.watchPercentage || 0,
-        minimumRequired: minimumWatchTime,
-        databaseVideoDuration: video.duration,
-        actualVideoDuration: actualVideoDuration,
-        durationMismatchDetected:
-          Math.abs(
-            video.duration - (verificationData?.duration || video.duration),
-          ) > 10,
+        watchDuration: watchDuration,
+        minimumRequired: MINIMUM_WATCH_TIME,
+        videoDuration: video.duration,
+        hasStarted,
+        minimumWatchTimeMet,
+        verificationData,
       },
     });
   } catch (error) {
@@ -315,7 +297,7 @@ export async function POST(
   }
 }
 
-// Helper function to calculate security score
+// Helper function to calculate security score for 10-second minimum
 function calculateSecurityScore(
   watchDuration: number,
   videoDuration: number,
@@ -323,9 +305,9 @@ function calculateSecurityScore(
 ): number {
   let score = 100;
 
-  // Deduct points for short watch time
-  if (watchDuration < videoDuration * 0.8) {
-    score -= 30;
+  // Deduct points for watching less than 10 seconds
+  if (watchDuration < 10) {
+    score -= 50;
   }
 
   // Deduct points for no user interactions
@@ -333,14 +315,14 @@ function calculateSecurityScore(
     score -= 20;
   }
 
-  // Deduct points for exact duration matches (possible automation)
-  if (Math.abs(watchDuration - videoDuration) < 1) {
-    score -= 15;
+  // Deduct points for excessive watch time
+  if (watchDuration > videoDuration * 2) {
+    score -= 30;
   }
 
-  // Deduct points for excessive watch time
-  if (watchDuration > videoDuration * 1.5) {
-    score -= 10;
+  // Bonus points for reasonable watch time
+  if (watchDuration >= 10 && watchDuration <= videoDuration) {
+    score += 10;
   }
 
   return Math.max(0, score);

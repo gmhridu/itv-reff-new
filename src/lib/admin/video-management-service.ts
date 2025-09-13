@@ -16,7 +16,7 @@ export class VideoManagementService {
    */
   async getVideos(
     filters: VideoFilters = {},
-    pagination: PaginationParams = { page: 1, limit: 10 }
+    pagination: PaginationParams = { page: 1, limit: 10 },
   ): Promise<PaginatedResponse<VideoManagement>> {
     const {
       page,
@@ -93,8 +93,7 @@ export class VideoManagementService {
           availableFrom: videoData.availableFrom,
           availableTo: videoData.availableTo,
           isActive: videoData.isActive ?? true,
-          uploadMethod: videoData.uploadMethod || "file",
-          youtubeVideoId: videoData.youtubeVideoId,
+          uploadMethod: "file",
           cloudinaryPublicId: videoData.cloudinaryPublicId,
           tags: videoData.tags ? JSON.stringify(videoData.tags) : null,
         },
@@ -110,7 +109,7 @@ export class VideoManagementService {
             },
           },
         },
-      })
+      }),
     );
 
     return this.mapVideoToVideoManagement(video);
@@ -121,7 +120,7 @@ export class VideoManagementService {
    */
   async updateVideo(
     videoId: string,
-    updateData: Partial<VideoUploadData>
+    updateData: Partial<VideoUploadData>,
   ): Promise<VideoManagement> {
     // Extract and transform the update data to match Prisma schema
     const {
@@ -136,7 +135,6 @@ export class VideoManagementService {
       availableTo,
       isActive,
       uploadMethod,
-      youtubeVideoId,
       cloudinaryPublicId,
       tags,
     } = updateData;
@@ -158,9 +156,7 @@ export class VideoManagementService {
       updatePayload.availableFrom = availableFrom;
     if (availableTo !== undefined) updatePayload.availableTo = availableTo;
     if (isActive !== undefined) updatePayload.isActive = isActive;
-    if (uploadMethod !== undefined) updatePayload.uploadMethod = uploadMethod;
-    if (youtubeVideoId !== undefined)
-      updatePayload.youtubeVideoId = youtubeVideoId;
+    if (uploadMethod !== undefined) updatePayload.uploadMethod = "file";
     if (cloudinaryPublicId !== undefined)
       updatePayload.cloudinaryPublicId = cloudinaryPublicId;
     if (tags !== undefined) updatePayload.tags = JSON.stringify(tags);
@@ -181,7 +177,7 @@ export class VideoManagementService {
             },
           },
         },
-      })
+      }),
     );
 
     return this.mapVideoToVideoManagement(video);
@@ -256,7 +252,7 @@ export class VideoManagementService {
   async getVideoAnalytics(
     dateFrom?: Date,
     dateTo?: Date,
-    limit: number = 10
+    limit: number = 10,
   ): Promise<VideoAnalytics[]> {
     const endDate = dateTo || new Date();
     const startDate =
@@ -395,7 +391,7 @@ export class VideoManagementService {
    */
   async bulkUpdateVideos(
     videoIds: string[],
-    updateData: Partial<VideoUploadData>
+    updateData: Partial<VideoUploadData>,
   ): Promise<{ updated: number; failed: string[] }> {
     const failed: string[] = [];
     let updated = 0;
@@ -413,7 +409,6 @@ export class VideoManagementService {
       availableTo,
       isActive,
       uploadMethod,
-      youtubeVideoId,
       cloudinaryPublicId,
       tags,
     } = updateData;
@@ -435,9 +430,7 @@ export class VideoManagementService {
       updatePayload.availableFrom = availableFrom;
     if (availableTo !== undefined) updatePayload.availableTo = availableTo;
     if (isActive !== undefined) updatePayload.isActive = isActive;
-    if (uploadMethod !== undefined) updatePayload.uploadMethod = uploadMethod;
-    if (youtubeVideoId !== undefined)
-      updatePayload.youtubeVideoId = youtubeVideoId;
+    if (uploadMethod !== undefined) updatePayload.uploadMethod = "file";
     if (cloudinaryPublicId !== undefined)
       updatePayload.cloudinaryPublicId = cloudinaryPublicId;
     if (tags !== undefined) updatePayload.tags = JSON.stringify(tags);
@@ -463,7 +456,7 @@ export class VideoManagementService {
    */
   async getVideoWatchHistory(
     videoId: string,
-    pagination: PaginationParams = { page: 1, limit: 10 }
+    pagination: PaginationParams = { page: 1, limit: 10 },
   ) {
     const { page, limit } = pagination;
     const skip = (page - 1) * limit;
@@ -533,7 +526,7 @@ export class VideoManagementService {
 
   private buildOrderByClause(
     sortBy: string,
-    sortOrder: "asc" | "desc"
+    sortOrder: "asc" | "desc",
   ): Prisma.VideoOrderByWithRelationInput {
     const validSortFields = [
       "createdAt",
@@ -554,7 +547,7 @@ export class VideoManagementService {
     where: Prisma.VideoWhereInput,
     orderBy: Prisma.VideoOrderByWithRelationInput,
     skip: number,
-    take: number
+    take: number,
   ): Promise<VideoManagement[]> {
     const videos = await prisma.video.findMany({
       where,
@@ -583,13 +576,13 @@ export class VideoManagementService {
     const totalRewardsPaid =
       video.videoTasks?.reduce(
         (sum: number, task: any) => sum + task.rewardEarned,
-        0
+        0,
       ) || 0;
     const averageWatchDuration =
       totalViews > 0
         ? video.videoTasks.reduce(
             (sum: number, task: any) => sum + task.watchDuration,
-            0
+            0,
           ) / totalViews
         : 0;
 
@@ -620,8 +613,7 @@ export class VideoManagementService {
       totalViews,
       totalRewardsPaid,
       averageWatchDuration,
-      uploadMethod: video.uploadMethod || "file",
-      youtubeVideoId: video.youtubeVideoId || null,
+      uploadMethod: "file",
       cloudinaryPublicId: video.cloudinaryPublicId || null,
       tags: video.tags
         ? typeof video.tags === "string"

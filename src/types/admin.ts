@@ -141,8 +141,7 @@ export interface VideoManagement {
   totalViews: number;
   totalRewardsPaid: number;
   averageWatchDuration: number;
-  uploadMethod: "file" | "youtube";
-  youtubeVideoId?: string | null;
+  uploadMethod: "file";
   cloudinaryPublicId?: string | null;
   tags: string[];
 }
@@ -177,8 +176,7 @@ export interface VideoUploadData {
   availableFrom?: Date;
   availableTo?: Date;
   isActive?: boolean;
-  uploadMethod?: "file" | "youtube";
-  youtubeVideoId?: string;
+  uploadMethod?: "file";
   cloudinaryPublicId?: string;
   tags?: string[];
 }
@@ -373,14 +371,14 @@ export interface VideoUploadForm {
   title: string;
   description?: string;
   url?: string;
-  youtubeUrl?: string;
+
   duration: number;
   rewardAmount: number;
   positionLevelId?: string;
   availableFrom?: string;
   availableTo?: string;
   isActive?: boolean;
-  uploadMethod: "file" | "youtube";
+  uploadMethod: "file";
   file?: File;
   tags?: string;
   thumbnail?: File;
@@ -394,15 +392,6 @@ export interface CloudinaryUploadResponse {
   bytes: number;
   width: number;
   height: number;
-}
-
-export interface YouTubeVideoInfo {
-  id: string;
-  title: string;
-  description: string;
-  thumbnail: string;
-  duration: number;
-  embedUrl: string;
 }
 
 export interface AdminLoginForm {

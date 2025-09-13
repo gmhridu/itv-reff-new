@@ -149,7 +149,6 @@ model Video {
   cloudinaryPublicId String?
   tags               String?
   uploadMethod       String          @default("file")
-  youtubeVideoId     String?
   videoTasks         UserVideoTask[]
   positionLevel      PositionLevel?  @relation(fields: [positionLevelId], references: [id])
 

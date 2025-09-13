@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import {
-  extractYouTubeVideoId,
-  getYouTubeThumbnail,
-  convertToEmbedUrl,
-  formatDuration as formatYouTubeDuration,
-} from "@/lib/youtube";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -60,7 +55,6 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
   Upload,
-  Youtube,
   Play,
   Trash2,
   Edit,
@@ -123,12 +117,8 @@ interface UploadFormData {
   availableTo: Date | undefined;
   tags: string[];
   isActive: boolean;
-  uploadMethod: "file" | "youtube";
-  youtubeUrl: string;
+  uploadMethod: "file";
   duration: number;
-  durationHours: number;
-  durationMinutes: number;
-  durationSeconds: number;
 }
 
 export function VideoUploadClient() {
@@ -155,11 +145,7 @@ export function VideoUploadClient() {
     tags: [],
     isActive: true,
     uploadMethod: "file",
-    youtubeUrl: "",
     duration: 0,
-    durationHours: 0,
-    durationMinutes: 0,
-    durationSeconds: 0,
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -241,13 +227,13 @@ export function VideoUploadClient() {
     }));
   }, []);
 
-  // Memoized callback for upload method change
-  const handleUploadMethodChange = useCallback((value: string) => {
+  // Upload method is fixed to "file" only
+  const handleUploadMethodChange = (value: string) => {
     setFormData((prev) => ({
       ...prev,
-      uploadMethod: value as "file" | "youtube",
+      uploadMethod: "file",
     }));
-  }, []);
+  };
 
   // Memoized callbacks for form field changes
   const handleTitleChange = useCallback(
@@ -265,45 +251,6 @@ export function VideoUploadClient() {
       setFormData((prev) => ({
         ...prev,
         description: e.target.value,
-      }));
-    },
-    [],
-  );
-
-  const handleDurationHoursChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const hours = parseInt(e.target.value) || 0;
-      setFormData((prev) => ({
-        ...prev,
-        durationHours: hours,
-        duration:
-          hours * 3600 + prev.durationMinutes * 60 + prev.durationSeconds,
-      }));
-    },
-    [],
-  );
-
-  const handleDurationMinutesChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const minutes = parseInt(e.target.value) || 0;
-      setFormData((prev) => ({
-        ...prev,
-        durationMinutes: minutes,
-        duration:
-          prev.durationHours * 3600 + minutes * 60 + prev.durationSeconds,
-      }));
-    },
-    [],
-  );
-
-  const handleDurationSecondsChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const seconds = parseInt(e.target.value) || 0;
-      setFormData((prev) => ({
-        ...prev,
-        durationSeconds: seconds,
-        duration:
-          prev.durationHours * 3600 + prev.durationMinutes * 60 + seconds,
       }));
     },
     [],
@@ -417,6 +364,33 @@ export function VideoUploadClient() {
         const file = e.dataTransfer.files[0];
         if (file.type.startsWith("video/")) {
           setSelectedFile(file);
+
+          // Auto-detect duration when file is dropped
+          const video = document.createElement("video");
+          video.preload = "metadata";
+
+          video.onloadedmetadata = () => {
+            const duration = Math.round(video.duration);
+            console.log(
+              "Auto-detected video duration (drop):",
+              duration,
+              "seconds",
+            );
+            setFormData((prev) => ({
+              ...prev,
+              duration: duration,
+            }));
+            URL.revokeObjectURL(video.src);
+          };
+
+          video.onerror = () => {
+            console.warn(
+              "Failed to auto-detect video duration from dropped file",
+            );
+            URL.revokeObjectURL(video.src);
+          };
+
+          video.src = URL.createObjectURL(file);
         } else {
           toast({
             title: "Invalid file type",
@@ -433,6 +407,27 @@ export function VideoUploadClient() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+
+      // Auto-detect duration when file is selected
+      const video = document.createElement("video");
+      video.preload = "metadata";
+
+      video.onloadedmetadata = () => {
+        const duration = Math.round(video.duration);
+        console.log("Auto-detected video duration:", duration, "seconds");
+        setFormData((prev) => ({
+          ...prev,
+          duration: duration,
+        }));
+        URL.revokeObjectURL(video.src);
+      };
+
+      video.onerror = () => {
+        console.warn("Failed to auto-detect video duration");
+        URL.revokeObjectURL(video.src);
+      };
+
+      video.src = URL.createObjectURL(file);
     }
   };
 
@@ -454,17 +449,9 @@ export function VideoUploadClient() {
     if (formData.positionLevelId === "all")
       return "Please select a position level";
 
-    if (formData.uploadMethod === "file") {
-      if (!selectedFile) return "Please select a video file";
-    } else if (formData.uploadMethod === "youtube") {
-      if (!formData.youtubeUrl.trim()) return "YouTube URL is required";
-      const videoId = extractYouTubeVideoId(formData.youtubeUrl);
-      if (!videoId) {
-        return "Invalid YouTube URL";
-      }
-    }
+    if (!selectedFile) return "Please select a video file";
 
-    if (formData.duration <= 0) return "Video duration is required";
+    // Duration is auto-detected from video file, no validation needed
 
     if (formData.availableFrom && formData.availableTo) {
       const fromDate = new Date(formData.availableFrom);
@@ -533,7 +520,7 @@ export function VideoUploadClient() {
           description: "Video uploaded successfully using chunked upload!",
         });
       } else {
-        // Use traditional upload for small files or YouTube with progress simulation
+        // Use traditional upload for small files with progress simulation
         progressTracker.updateProgress(0, "Uploading...");
 
         // Create abort controller for traditional upload
@@ -569,9 +556,6 @@ export function VideoUploadClient() {
               uploadFormData.append(key, value.toISOString());
             } else if (key === "tags" && Array.isArray(value)) {
               uploadFormData.append(key, value.join(","));
-            } else if (key === "youtubeUrl" && typeof value === "string") {
-              // Store the original YouTube URL (not embed URL)
-              uploadFormData.append(key, value);
             } else if (typeof value === "string" && value !== "") {
               uploadFormData.append(key, value);
             } else if (
@@ -583,15 +567,6 @@ export function VideoUploadClient() {
           }
         });
 
-        // Add YouTube thumbnail if it's a YouTube video
-        if (formData.uploadMethod === "youtube" && formData.youtubeUrl) {
-          const videoId = extractYouTubeVideoId(formData.youtubeUrl);
-          if (videoId) {
-            const thumbnailUrl = getYouTubeThumbnail(videoId, "maxres");
-            uploadFormData.append("youtubeThumbnailUrl", thumbnailUrl);
-          }
-        }
-
         // Add files for file upload method
         if (formData.uploadMethod === "file" && selectedFile) {
           uploadFormData.append("videoFile", selectedFile);
@@ -599,6 +574,13 @@ export function VideoUploadClient() {
             uploadFormData.append("thumbnailFile", thumbnailFile);
           }
         }
+
+        // Debug logging before submission
+        console.log("Form submission debug:", {
+          uploadMethod: formData.uploadMethod,
+          title: formData.title,
+          formDataKeys: Array.from(uploadFormData.keys()),
+        });
 
         const response = await fetch("/api/admin/videos/upload", {
           method: "POST",
@@ -649,11 +631,7 @@ export function VideoUploadClient() {
         tags: [],
         isActive: true,
         uploadMethod: "file",
-        youtubeUrl: "",
         duration: 0,
-        durationHours: 0,
-        durationMinutes: 0,
-        durationSeconds: 0,
       });
       setSelectedFile(null);
       setThumbnailFile(null);
@@ -745,11 +723,7 @@ export function VideoUploadClient() {
       tags: video.tags || [],
       isActive: video.isActive,
       uploadMethod: "file",
-      youtubeUrl: "",
       duration: video.duration,
-      durationHours: hours,
-      durationMinutes: minutes,
-      durationSeconds: seconds,
     });
 
     setEditDialogOpen(true);
@@ -806,11 +780,7 @@ export function VideoUploadClient() {
         tags: [],
         isActive: true,
         uploadMethod: "file",
-        youtubeUrl: "",
         duration: 0,
-        durationHours: 0,
-        durationMinutes: 0,
-        durationSeconds: 0,
       });
 
       setState((prev) => ({ ...prev, editingVideo: null }));
@@ -862,34 +832,9 @@ export function VideoUploadClient() {
   };
 
   const formatDuration = (seconds: number): string => {
-    if (!seconds) return "Unknown";
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
-
-  // Process YouTube URL and fetch metadata
-  const processYouTubeUrl = async (url: string) => {
-    const videoId = extractYouTubeVideoId(url);
-    if (!videoId) return null;
-
-    const embedUrl = convertToEmbedUrl(url);
-    if (!embedUrl) return null;
-
-    try {
-      // Try to fetch video metadata
-      const response = await fetch(
-        `/api/admin/youtube/metadata?videoId=${videoId}`,
-      );
-      if (response.ok) {
-        const metadata = await response.json();
-        return { embedUrl, metadata: metadata.data, videoId };
-      }
-    } catch (error) {
-      console.warn("Failed to fetch YouTube metadata:", error);
-    }
-
-    return { embedUrl, metadata: null, videoId };
   };
 
   // Handle tag input
@@ -958,31 +903,21 @@ export function VideoUploadClient() {
             <CardHeader>
               <CardTitle>Upload New Video</CardTitle>
               <CardDescription>
-                Upload videos directly or embed from YouTube
+                Upload videos directly from files
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-4">
                   <Label htmlFor="upload-method">Upload Method</Label>
-                  <Tabs
-                    value={formData.uploadMethod}
-                    onValueChange={handleUploadMethodChange}
-                  >
-                    <TabsList className="grid w-full grid-cols-2">
+                  <Tabs value="file" className="w-full">
+                    <TabsList className="grid w-full grid-cols-1">
                       <TabsTrigger
                         value="file"
                         className="flex items-center gap-2"
                       >
                         <Upload className="h-4 w-4" />
                         File Upload
-                      </TabsTrigger>
-                      <TabsTrigger
-                        value="youtube"
-                        className="flex items-center gap-2"
-                      >
-                        <Youtube className="h-4 w-4" />
-                        YouTube
                       </TabsTrigger>
                     </TabsList>
 
@@ -1047,21 +982,53 @@ export function VideoUploadClient() {
                           />
                         </div>
 
-                        {selectedFile && previewUrl && (
-                          <div className="space-y-2">
-                            <Label>Video Preview</Label>
-                            <video
-                              src={previewUrl}
-                              controls
-                              className="w-full max-w-md rounded-lg"
-                              onLoadedMetadata={(e) => {
-                                const video = e.target as HTMLVideoElement;
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  duration: video.duration,
-                                }));
-                              }}
-                            />
+                        {selectedFile && (
+                          <div className="space-y-3">
+                            {/* Duration Status */}
+                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                <Label className="text-sm font-medium">
+                                  Video Duration
+                                </Label>
+                              </div>
+                              <div className="text-sm font-mono">
+                                {formData.duration > 0 ? (
+                                  <span className="text-green-600 font-semibold">
+                                    ✓ {formatDuration(formData.duration)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-500">
+                                    Detecting...
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Video Preview */}
+                            {previewUrl && (
+                              <div className="space-y-2">
+                                <Label>Video Preview</Label>
+                                <video
+                                  src={previewUrl}
+                                  controls
+                                  className="w-full max-w-md rounded-lg"
+                                  onLoadedMetadata={(e) => {
+                                    const video = e.target as HTMLVideoElement;
+                                    const duration = Math.round(video.duration);
+                                    console.log(
+                                      "Auto-detected video duration (preview):",
+                                      duration,
+                                      "seconds",
+                                    );
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      duration: duration,
+                                    }));
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -1090,129 +1057,6 @@ export function VideoUploadClient() {
                         </div>
                       </div>
                     </TabsContent>
-
-                    <TabsContent value="youtube" className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="youtube-url">YouTube URL</Label>
-                        <Input
-                          id="youtube-url"
-                          type="url"
-                          value={formData.youtubeUrl}
-                          onChange={async (e) => {
-                            const url = e.target.value;
-                            setFormData((prev) => ({
-                              ...prev,
-                              youtubeUrl: url,
-                            }));
-
-                            // Auto-process YouTube URL and show preview
-                            if (url.trim()) {
-                              const result = await processYouTubeUrl(url);
-                              if (result) {
-                                // Use embed URL only for preview, but keep original URL in form
-                                setPreviewUrl(result.embedUrl);
-                                // Auto-fill title and duration if available
-                                if (result.metadata) {
-                                  const duration =
-                                    result.metadata.duration || 0;
-                                  const hours = Math.floor(duration / 3600);
-                                  const minutes = Math.floor(
-                                    (duration % 3600) / 60,
-                                  );
-                                  const seconds = duration % 60;
-
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    title: prev.title || result.metadata.title,
-                                    description:
-                                      prev.description ||
-                                      result.metadata.description,
-                                    duration: duration,
-                                    durationHours: hours,
-                                    durationMinutes: minutes,
-                                    durationSeconds: seconds,
-                                  }));
-                                }
-                              }
-                            } else {
-                              setPreviewUrl(null);
-                            }
-                          }}
-                          placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
-                          className="flex-1"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Duration</Label>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <Label
-                              htmlFor="duration-hours"
-                              className="text-xs text-gray-500"
-                            >
-                              Hours
-                            </Label>
-                            <Input
-                              id="duration-hours"
-                              type="number"
-                              min="0"
-                              max="23"
-                              placeholder="0"
-                              value={formData.durationHours || ""}
-                              onChange={handleDurationHoursChange}
-                            />
-                          </div>
-                          <div>
-                            <Label
-                              htmlFor="duration-minutes"
-                              className="text-xs text-gray-500"
-                            >
-                              Minutes
-                            </Label>
-                            <Input
-                              id="duration-minutes"
-                              type="number"
-                              min="0"
-                              max="59"
-                              placeholder="0"
-                              value={formData.durationMinutes || ""}
-                              onChange={handleDurationMinutesChange}
-                            />
-                          </div>
-                          <div>
-                            <Label
-                              htmlFor="duration-seconds"
-                              className="text-xs text-gray-500"
-                            >
-                              Seconds
-                            </Label>
-                            <Input
-                              id="duration-seconds"
-                              type="number"
-                              min="0"
-                              max="59"
-                              placeholder="0"
-                              value={formData.durationSeconds || ""}
-                              onChange={handleDurationSecondsChange}
-                            />
-                          </div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Total: {formatYouTubeDuration(formData.duration)}
-                        </div>
-                      </div>
-
-                      {formData.youtubeUrl && previewUrl && (
-                        <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg">
-                          <iframe
-                            src={previewUrl}
-                            className="w-full h-full rounded-lg"
-                            allowFullScreen
-                          />
-                        </div>
-                      )}
-                    </TabsContent>
                   </Tabs>
                 </div>
 
@@ -1226,7 +1070,7 @@ export function VideoUploadClient() {
                         id="title"
                         value={formData.title}
                         onChange={handleTitleChange}
-                        placeholder="Enter video title (auto-filled from YouTube)"
+                        placeholder="Enter video title"
                         required
                       />
                     </div>
@@ -1237,7 +1081,7 @@ export function VideoUploadClient() {
                         id="description"
                         value={formData.description}
                         onChange={handleDescriptionChange}
-                        placeholder="Enter video description (auto-filled from YouTube)"
+                        placeholder="Enter video description"
                         rows={3}
                       />
                     </div>

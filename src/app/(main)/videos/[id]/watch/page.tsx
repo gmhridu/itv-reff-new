@@ -1,17 +1,20 @@
-import WatchVideo from '@/components/watch-video';
-import React from 'react'
+import WatchVideo from "@/components/watch-video";
+import React from "react";
 
-const WatchVideoPage = async ({ params }) => {
+interface WatchVideoPageProps {
+  params: Promise<{ id: string }>;
+}
+
+const WatchVideoPage = async ({ params }: WatchVideoPageProps) => {
   const { id } = await params;
 
-
-  if(!id) return null;
+  if (!id) return null;
 
   return (
     <div>
-      <WatchVideo videoId={id}/>
+      <WatchVideo videoId={id} />
     </div>
-  )
-}
+  );
+};
 
-export default WatchVideoPage
+export default WatchVideoPage;

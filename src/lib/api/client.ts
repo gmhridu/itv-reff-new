@@ -21,6 +21,9 @@ export interface Video {
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  isCompleted?: boolean;
+  completedAt?: Date;
+  rewardEarned?: number;
 }
 
 export interface VideosResponse {
@@ -41,6 +44,9 @@ export interface WatchVideoRequest {
   watchDuration: number;
   verificationData?: any;
   userInteractions?: any[];
+  hasStarted?: boolean;
+  completedAt?: string;
+  minimumWatchTimeMet?: boolean;
 }
 
 export interface WatchVideoResponse {
