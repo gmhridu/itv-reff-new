@@ -63,7 +63,9 @@ export const WithdrawClient = () => {
     userId: currentUser?.id || "",
   });
 
-  const predefinedAmounts = [500, 3000, 10000, 30000, 100000, 250000, 500000];
+  const predefinedAmounts = [
+    500, 3000, 10000, 30000, 70000, 100000, 250000, 500000,
+  ];
 
   const walletOptions = [
     { value: "Main Wallet", label: "Main Wallet" },

@@ -22,7 +22,7 @@ async function getCurrentUserId(
   isAdmin: boolean = false,
 ): Promise<string | null> {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     // Check for session cookies (adjust cookie names based on your auth implementation)
     const sessionToken =

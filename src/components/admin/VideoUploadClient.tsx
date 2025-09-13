@@ -1,26 +1,12 @@
 "use client";
 
-/**
- * VideoUploadClient Component
- *
- * A comprehensive video upload and management interface for the ITV Reference System.
- * Supports both file uploads via Cloudinary and YouTube link embedding.
- *
- * Features:
- * - Dual upload methods: File upload & YouTube embedding
- * - Cloudinary integration for video hosting
- * - Chunked upload support for large files
- * - Position/level-based video assignment
- * - Reward amount configuration
- * - Real-time video preview
- * - Form validation and error handling
- * - Video listing and management
- * - Drag & drop file upload
- * - Progress tracking for uploads
- * - Responsive design with modern UI
- */
-
 import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  extractYouTubeVideoId,
+  getYouTubeThumbnail,
+  convertToEmbedUrl,
+  formatDuration as formatYouTubeDuration,
+} from "@/lib/youtube";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -140,6 +126,9 @@ interface UploadFormData {
   uploadMethod: "file" | "youtube";
   youtubeUrl: string;
   duration: number;
+  durationHours: number;
+  durationMinutes: number;
+  durationSeconds: number;
 }
 
 export function VideoUploadClient() {
@@ -168,6 +157,9 @@ export function VideoUploadClient() {
     uploadMethod: "file",
     youtubeUrl: "",
     duration: 0,
+    durationHours: 0,
+    durationMinutes: 0,
+    durationSeconds: 0,
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -278,25 +270,61 @@ export function VideoUploadClient() {
     [],
   );
 
-  const handleRewardAmountChange = useCallback(
+  const handleDurationHoursChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      const hours = parseInt(e.target.value) || 0;
       setFormData((prev) => ({
         ...prev,
-        rewardAmount: parseFloat(e.target.value) || 0,
+        durationHours: hours,
+        duration:
+          hours * 3600 + prev.durationMinutes * 60 + prev.durationSeconds,
       }));
     },
     [],
   );
 
-  const handleDurationChange = useCallback(
+  const handleDurationMinutesChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      const minutes = parseInt(e.target.value) || 0;
       setFormData((prev) => ({
         ...prev,
-        duration: parseFloat(e.target.value) || 0,
+        durationMinutes: minutes,
+        duration:
+          prev.durationHours * 3600 + minutes * 60 + prev.durationSeconds,
       }));
     },
     [],
   );
+
+  const handleDurationSecondsChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const seconds = parseInt(e.target.value) || 0;
+      setFormData((prev) => ({
+        ...prev,
+        durationSeconds: seconds,
+        duration:
+          prev.durationHours * 3600 + prev.durationMinutes * 60 + seconds,
+      }));
+    },
+    [],
+  );
+
+  // Auto-calculate reward amount based on selected position level
+  const calculateRewardAmount = useCallback(() => {
+    const selectedLevel = state.positionLevels.find(
+      (level) => level.id === formData.positionLevelId,
+    );
+    return selectedLevel ? selectedLevel.unitPrice : 0;
+  }, [state.positionLevels, formData.positionLevelId]);
+
+  // Update reward amount when position level changes
+  useEffect(() => {
+    const rewardAmount = calculateRewardAmount();
+    setFormData((prev) => ({
+      ...prev,
+      rewardAmount,
+    }));
+  }, [calculateRewardAmount]);
 
   // Fetch initial data
   useEffect(() => {
@@ -423,19 +451,20 @@ export function VideoUploadClient() {
 
   const validateForm = (): string | null => {
     if (!formData.title.trim()) return "Title is required";
-    if (formData.rewardAmount <= 0)
-      return "Reward amount must be greater than 0";
+    if (formData.positionLevelId === "all")
+      return "Please select a position level";
 
     if (formData.uploadMethod === "file") {
       if (!selectedFile) return "Please select a video file";
     } else if (formData.uploadMethod === "youtube") {
       if (!formData.youtubeUrl.trim()) return "YouTube URL is required";
-      const youtubeRegex =
-        /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=|embed\/|v\/)?([a-zA-Z0-9_-]{11})/;
-      if (!youtubeRegex.test(formData.youtubeUrl)) {
+      const videoId = extractYouTubeVideoId(formData.youtubeUrl);
+      if (!videoId) {
         return "Invalid YouTube URL";
       }
     }
+
+    if (formData.duration <= 0) return "Video duration is required";
 
     if (formData.availableFrom && formData.availableTo) {
       const fromDate = new Date(formData.availableFrom);
@@ -524,7 +553,13 @@ export function VideoUploadClient() {
 
         // Add form fields
         Object.entries(formData).forEach(([key, value]) => {
-          if (value !== null && value !== undefined) {
+          if (
+            value !== null &&
+            value !== undefined &&
+            !["durationHours", "durationMinutes", "durationSeconds"].includes(
+              key,
+            )
+          ) {
             // Handle special cases
             if (key === "positionLevelId" && value === "all") {
               uploadFormData.append(key, "");
@@ -535,7 +570,7 @@ export function VideoUploadClient() {
             } else if (key === "tags" && Array.isArray(value)) {
               uploadFormData.append(key, value.join(","));
             } else if (key === "youtubeUrl" && typeof value === "string") {
-              // Use the original YouTube URL for processing on server
+              // Store the original YouTube URL (not embed URL)
               uploadFormData.append(key, value);
             } else if (typeof value === "string" && value !== "") {
               uploadFormData.append(key, value);
@@ -547,6 +582,15 @@ export function VideoUploadClient() {
             }
           }
         });
+
+        // Add YouTube thumbnail if it's a YouTube video
+        if (formData.uploadMethod === "youtube" && formData.youtubeUrl) {
+          const videoId = extractYouTubeVideoId(formData.youtubeUrl);
+          if (videoId) {
+            const thumbnailUrl = getYouTubeThumbnail(videoId, "maxres");
+            uploadFormData.append("youtubeThumbnailUrl", thumbnailUrl);
+          }
+        }
 
         // Add files for file upload method
         if (formData.uploadMethod === "file" && selectedFile) {
@@ -607,6 +651,9 @@ export function VideoUploadClient() {
         uploadMethod: "file",
         youtubeUrl: "",
         duration: 0,
+        durationHours: 0,
+        durationMinutes: 0,
+        durationSeconds: 0,
       });
       setSelectedFile(null);
       setThumbnailFile(null);
@@ -682,6 +729,10 @@ export function VideoUploadClient() {
     setState((prev) => ({ ...prev, editingVideo: video }));
 
     // Populate form with video data
+    const hours = Math.floor(video.duration / 3600);
+    const minutes = Math.floor((video.duration % 3600) / 60);
+    const seconds = video.duration % 60;
+
     setFormData({
       title: video.title,
       description: video.description || "",
@@ -696,6 +747,9 @@ export function VideoUploadClient() {
       uploadMethod: "file",
       youtubeUrl: "",
       duration: video.duration,
+      durationHours: hours,
+      durationMinutes: minutes,
+      durationSeconds: seconds,
     });
 
     setEditDialogOpen(true);
@@ -754,6 +808,9 @@ export function VideoUploadClient() {
         uploadMethod: "file",
         youtubeUrl: "",
         duration: 0,
+        durationHours: 0,
+        durationMinutes: 0,
+        durationSeconds: 0,
       });
 
       setState((prev) => ({ ...prev, editingVideo: null }));
@@ -811,31 +868,28 @@ export function VideoUploadClient() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  // Convert YouTube watch URL to embed URL and fetch metadata
+  // Process YouTube URL and fetch metadata
   const processYouTubeUrl = async (url: string) => {
-    const regex =
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
-    const match = url.match(regex);
-    if (match && match[1]) {
-      const videoId = match[1];
-      const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    const videoId = extractYouTubeVideoId(url);
+    if (!videoId) return null;
 
-      try {
-        // Try to fetch video metadata
-        const response = await fetch(
-          `/api/admin/youtube/metadata?videoId=${videoId}`,
-        );
-        if (response.ok) {
-          const metadata = await response.json();
-          return { embedUrl, metadata: metadata.data };
-        }
-      } catch (error) {
-        console.warn("Failed to fetch YouTube metadata:", error);
+    const embedUrl = convertToEmbedUrl(url);
+    if (!embedUrl) return null;
+
+    try {
+      // Try to fetch video metadata
+      const response = await fetch(
+        `/api/admin/youtube/metadata?videoId=${videoId}`,
+      );
+      if (response.ok) {
+        const metadata = await response.json();
+        return { embedUrl, metadata: metadata.data, videoId };
       }
-
-      return { embedUrl, metadata: null };
+    } catch (error) {
+      console.warn("Failed to fetch YouTube metadata:", error);
     }
-    return null;
+
+    return { embedUrl, metadata: null, videoId };
   };
 
   // Handle tag input
@@ -1055,17 +1109,28 @@ export function VideoUploadClient() {
                             if (url.trim()) {
                               const result = await processYouTubeUrl(url);
                               if (result) {
+                                // Use embed URL only for preview, but keep original URL in form
                                 setPreviewUrl(result.embedUrl);
                                 // Auto-fill title and duration if available
                                 if (result.metadata) {
+                                  const duration =
+                                    result.metadata.duration || 0;
+                                  const hours = Math.floor(duration / 3600);
+                                  const minutes = Math.floor(
+                                    (duration % 3600) / 60,
+                                  );
+                                  const seconds = duration % 60;
+
                                   setFormData((prev) => ({
                                     ...prev,
                                     title: prev.title || result.metadata.title,
                                     description:
                                       prev.description ||
                                       result.metadata.description,
-                                    duration:
-                                      result.metadata.duration || prev.duration,
+                                    duration: duration,
+                                    durationHours: hours,
+                                    durationMinutes: minutes,
+                                    durationSeconds: seconds,
                                   }));
                                 }
                               }
@@ -1079,24 +1144,69 @@ export function VideoUploadClient() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="duration">Duration (seconds)</Label>
-                        <Input
-                          id="duration"
-                          type="number"
-                          min="1"
-                          placeholder="Video duration in seconds"
-                          value={formData.duration || ""}
-                          onChange={handleDurationChange}
-                        />
+                        <Label>Duration</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label
+                              htmlFor="duration-hours"
+                              className="text-xs text-gray-500"
+                            >
+                              Hours
+                            </Label>
+                            <Input
+                              id="duration-hours"
+                              type="number"
+                              min="0"
+                              max="23"
+                              placeholder="0"
+                              value={formData.durationHours || ""}
+                              onChange={handleDurationHoursChange}
+                            />
+                          </div>
+                          <div>
+                            <Label
+                              htmlFor="duration-minutes"
+                              className="text-xs text-gray-500"
+                            >
+                              Minutes
+                            </Label>
+                            <Input
+                              id="duration-minutes"
+                              type="number"
+                              min="0"
+                              max="59"
+                              placeholder="0"
+                              value={formData.durationMinutes || ""}
+                              onChange={handleDurationMinutesChange}
+                            />
+                          </div>
+                          <div>
+                            <Label
+                              htmlFor="duration-seconds"
+                              className="text-xs text-gray-500"
+                            >
+                              Seconds
+                            </Label>
+                            <Input
+                              id="duration-seconds"
+                              type="number"
+                              min="0"
+                              max="59"
+                              placeholder="0"
+                              value={formData.durationSeconds || ""}
+                              onChange={handleDurationSecondsChange}
+                            />
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Total: {formatYouTubeDuration(formData.duration)}
+                        </div>
                       </div>
 
-                      {formData.youtubeUrl && (
+                      {formData.youtubeUrl && previewUrl && (
                         <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg">
                           <iframe
-                            src={formData.youtubeUrl.replace(
-                              "watch?v=",
-                              "embed/",
-                            )}
+                            src={previewUrl}
                             className="w-full h-full rounded-lg"
                             allowFullScreen
                           />
@@ -1170,20 +1280,24 @@ export function VideoUploadClient() {
 
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="reward-amount">Reward Amount *</Label>
+                        <Label htmlFor="reward-amount">
+                          Reward Amount (Auto-calculated)
+                        </Label>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <Input
                             id="reward-amount"
                             type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            className="pl-10"
+                            placeholder="Select position level first"
+                            className="pl-10 bg-gray-50"
                             value={formData.rewardAmount || ""}
-                            onChange={handleRewardAmountChange}
-                            required
+                            disabled
+                            readOnly
                           />
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Reward amount is automatically calculated based on the
+                          selected position level's unit price.
                         </div>
                       </div>
                     </div>
@@ -1715,15 +1829,24 @@ export function VideoUploadClient() {
             {/* Reward Amount and Position Level */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-reward">Reward Amount ($)</Label>
-                <Input
-                  id="edit-reward"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.rewardAmount}
-                  onChange={handleRewardAmountChange}
-                />
+                <Label htmlFor="edit-reward">
+                  Reward Amount (Auto-calculated)
+                </Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="edit-reward"
+                    type="number"
+                    className="pl-10 bg-gray-50"
+                    value={formData.rewardAmount}
+                    disabled
+                    readOnly
+                  />
+                </div>
+                <div className="text-xs text-gray-500">
+                  Reward amount is automatically calculated based on the
+                  selected position level's unit price.
+                </div>
               </div>
 
               <div className="space-y-2">

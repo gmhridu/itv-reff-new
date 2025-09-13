@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useVideoDetail, useVideoProgress, useWatchVideo, useVideoProgressPersistence } from "@/hooks/use-videos";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useVideoDetail,
+  useVideoProgress,
+  useWatchVideo,
+  useVideoProgressPersistence,
+} from "@/hooks/use-videos";
 import {
   VideoPlayer,
   VideoPlayerContent,
@@ -13,24 +18,29 @@ import {
   VideoPlayerMuteButton,
   VideoPlayerVolumeRange,
   VideoPlayerTimeRange,
-  VideoPlayerTimeDisplay
-} from '@/components/ui/kibo-ui/video-player';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+  VideoPlayerTimeDisplay,
+} from "@/components/ui/kibo-ui/video-player";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Play,
-  Pause,
   Clock,
   DollarSign,
   CheckCircle,
   AlertCircle,
   ArrowLeft,
-  Loader2
-} from 'lucide-react';
+  Loader2,
+} from "lucide-react";
 
 interface WatchVideoProps {
   videoId: string;
@@ -41,9 +51,14 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const watchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { data: video, isLoading: videoLoading, error: videoError } = useVideoDetail(videoId);
+  const {
+    data: video,
+    isLoading: videoLoading,
+    error: videoError,
+  } = useVideoDetail(videoId);
   const { mutate: submitWatchVideo, isPending: isSubmitting } = useWatchVideo();
-  const { saveProgress, loadProgress, clearProgress } = useVideoProgressPersistence(videoId);
+  const { saveProgress, loadProgress, clearProgress } =
+    useVideoProgressPersistence(videoId);
 
   const {
     currentTime,
@@ -71,14 +86,25 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
   const [lastSavedProgress, setLastSavedProgress] = useState(0);
   const [progressLoaded, setProgressLoaded] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
-  const [currentWatchSession, setCurrentWatchSession] = useState<{start: number, lastUpdate: number} | null>(null);
+  const [currentWatchSession, setCurrentWatchSession] = useState<{
+    start: number;
+    lastUpdate: number;
+  } | null>(null);
+
+  // Stable function references using useCallback
+  const setCurrentWatchSessionCallback = useCallback(
+    (session: { start: number; lastUpdate: number } | null) => {
+      setCurrentWatchSession(session);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (video && !progressLoaded) {
-      console.log('Loading video:', {
+      console.log("Loading video:", {
         title: video.title,
         url: video.url,
-        duration: video.duration
+        duration: video.duration,
       });
 
       // Set the duration from video data immediately
@@ -86,13 +112,12 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
 
       const savedProgress = loadProgress();
       if (savedProgress && videoRef.current) {
-        setWatchDuration(savedProgress.watchDuration);
         videoRef.current.currentTime = savedProgress.currentTime;
-        addInteraction('progress_restored', savedProgress);
+        addInteraction("progress_restored", savedProgress);
       }
       setProgressLoaded(true);
     }
-  }, [video, progressLoaded, loadProgress, setWatchDuration, setDuration, addInteraction]);
+  }, [video, progressLoaded, loadProgress, setDuration, addInteraction]);
 
   useEffect(() => {
     if (hasStarted && currentTime > 0) {
@@ -105,6 +130,16 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
     }
   }, [currentTime, watchDuration, hasStarted, saveProgress]);
 
+  // Cleanup intervals on component unmount
+  useEffect(() => {
+    return () => {
+      if (watchTimerRef.current) {
+        clearInterval(watchTimerRef.current);
+        watchTimerRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -112,25 +147,25 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
     const handleLoadedMetadata = () => {
       const videoDuration = video.duration;
       setDuration(videoDuration);
-      addInteraction('video_loaded', { duration: videoDuration });
-      console.log('Video loaded:', { duration: videoDuration, src: video.src });
+      addInteraction("video_loaded", { duration: videoDuration });
+      console.log("Video loaded:", { duration: videoDuration, src: video.src });
 
       // Debug log for progress tracking
-      console.log('Duration set for progress tracking:', videoDuration);
+      console.log("Duration set for progress tracking:", videoDuration);
     };
 
     const handleLoadedData = () => {
-      console.log('Video data loaded, ready to play');
+      console.log("Video data loaded, ready to play");
     };
 
     const handleError = (e: Event) => {
-      console.error('Video error:', e);
-      setPlaybackError('Failed to load video. Please try again.');
-      addInteraction('video_error', { error: e });
+      console.error("Video error:", e);
+      setPlaybackError("Failed to load video. Please try again.");
+      addInteraction("video_error", { error: e });
     };
 
     const handleCanPlay = () => {
-      console.log('Video can start playing');
+      console.log("Video can start playing");
     };
 
     const handleTimeUpdate = () => {
@@ -144,30 +179,37 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
 
         // Only update if less than 2 seconds have passed (to handle seeks)
         if (timeDiff < 2) {
-          setCurrentWatchSession({
+          setCurrentWatchSessionCallback({
             start: currentWatchSession.start,
-            lastUpdate: now
+            lastUpdate: now,
           });
 
           // Add this segment to watched segments
           const segmentEnd = videoCurrentTime;
-          const segmentStart = Math.max(currentWatchSession.start, videoCurrentTime - timeDiff);
+          const segmentStart = Math.max(
+            currentWatchSession.start,
+            videoCurrentTime - timeDiff,
+          );
 
           if (segmentEnd > segmentStart) {
-            setWatchedSegments(prev => {
+            setWatchedSegments((prev) => {
               const newSegment = { start: segmentStart, end: segmentEnd };
               const updated = [...prev];
 
               // Check if this segment overlaps with existing ones
-              const overlappingIndex = updated.findIndex(seg =>
-                (newSegment.start <= seg.end && newSegment.end >= seg.start)
+              const overlappingIndex = updated.findIndex(
+                (seg) =>
+                  newSegment.start <= seg.end && newSegment.end >= seg.start,
               );
 
               if (overlappingIndex >= 0) {
                 // Merge with existing segment
                 updated[overlappingIndex] = {
-                  start: Math.min(updated[overlappingIndex].start, newSegment.start),
-                  end: Math.max(updated[overlappingIndex].end, newSegment.end)
+                  start: Math.min(
+                    updated[overlappingIndex].start,
+                    newSegment.start,
+                  ),
+                  end: Math.max(updated[overlappingIndex].end, newSegment.end),
                 };
               } else {
                 // Add new segment
@@ -179,9 +221,9 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
           }
         } else {
           // Time jump detected (seek), start new session
-          setCurrentWatchSession({
+          setCurrentWatchSessionCallback({
             start: videoCurrentTime,
-            lastUpdate: now
+            lastUpdate: now,
           });
         }
       }
@@ -190,12 +232,12 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
     const handlePlay = () => {
       setIsPlaying(true);
       setHasStarted(true);
-      addInteraction('play', { currentTime: video.currentTime });
+      addInteraction("play", { currentTime: video.currentTime });
 
       // Start new watch session
-      setCurrentWatchSession({
+      setCurrentWatchSessionCallback({
         start: video.currentTime,
-        lastUpdate: Date.now()
+        lastUpdate: Date.now(),
       });
 
       // Clear any existing timer (legacy)
@@ -207,7 +249,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
 
     const handlePause = () => {
       setIsPlaying(false);
-      addInteraction('pause', { currentTime: video.currentTime });
+      addInteraction("pause", { currentTime: video.currentTime });
 
       // End current watch session
       if (currentWatchSession) {
@@ -215,20 +257,24 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
         const segmentStart = currentWatchSession.start;
 
         if (segmentEnd > segmentStart) {
-          setWatchedSegments(prev => {
+          setWatchedSegments((prev) => {
             const newSegment = { start: segmentStart, end: segmentEnd };
             const updated = [...prev];
 
             // Check if this segment overlaps with existing ones
-            const overlappingIndex = updated.findIndex(seg =>
-              (newSegment.start <= seg.end && newSegment.end >= seg.start)
+            const overlappingIndex = updated.findIndex(
+              (seg) =>
+                newSegment.start <= seg.end && newSegment.end >= seg.start,
             );
 
             if (overlappingIndex >= 0) {
               // Merge with existing segment
               updated[overlappingIndex] = {
-                start: Math.min(updated[overlappingIndex].start, newSegment.start),
-                end: Math.max(updated[overlappingIndex].end, newSegment.end)
+                start: Math.min(
+                  updated[overlappingIndex].start,
+                  newSegment.start,
+                ),
+                end: Math.max(updated[overlappingIndex].end, newSegment.end),
               };
             } else {
               // Add new segment
@@ -239,7 +285,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
           });
         }
 
-        setCurrentWatchSession(null);
+        setCurrentWatchSessionCallback(null);
       }
 
       // Clear any existing timer (legacy)
@@ -250,30 +296,30 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
     };
 
     const handleSeeked = () => {
-      addInteraction('seek', {
+      addInteraction("seek", {
         from: currentTime,
-        to: video.currentTime
+        to: video.currentTime,
       });
 
       // Reset watch session after seek
       if (isPlaying) {
-        setCurrentWatchSession({
+        setCurrentWatchSessionCallback({
           start: video.currentTime,
-          lastUpdate: Date.now()
+          lastUpdate: Date.now(),
         });
       }
     };
 
     const handleVolumeChange = () => {
-      addInteraction('volume_change', {
+      addInteraction("volume_change", {
         volume: video.volume,
-        muted: video.muted
+        muted: video.muted,
       });
     };
 
     const handleEnded = () => {
       setIsPlaying(false);
-      addInteraction('video_ended');
+      addInteraction("video_ended");
 
       // End current watch session
       if (currentWatchSession) {
@@ -281,20 +327,24 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
         const segmentStart = currentWatchSession.start;
 
         if (segmentEnd > segmentStart) {
-          setWatchedSegments(prev => {
+          setWatchedSegments((prev) => {
             const newSegment = { start: segmentStart, end: segmentEnd };
             const updated = [...prev];
 
             // Check if this segment overlaps with existing ones
-            const overlappingIndex = updated.findIndex(seg =>
-              (newSegment.start <= seg.end && newSegment.end >= seg.start)
+            const overlappingIndex = updated.findIndex(
+              (seg) =>
+                newSegment.start <= seg.end && newSegment.end >= seg.start,
             );
 
             if (overlappingIndex >= 0) {
               // Merge with existing segment
               updated[overlappingIndex] = {
-                start: Math.min(updated[overlappingIndex].start, newSegment.start),
-                end: Math.max(updated[overlappingIndex].end, newSegment.end)
+                start: Math.min(
+                  updated[overlappingIndex].start,
+                  newSegment.start,
+                ),
+                end: Math.max(updated[overlappingIndex].end, newSegment.end),
               };
             } else {
               // Add new segment
@@ -305,7 +355,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
           });
         }
 
-        setCurrentWatchSession(null);
+        setCurrentWatchSessionCallback(null);
       }
 
       if (watchTimerRef.current) {
@@ -314,63 +364,92 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
       }
     };
 
-    video.addEventListener('loadedmetadata', handleLoadedMetadata);
-    video.addEventListener('loadeddata', handleLoadedData);
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('error', handleError);
-    video.addEventListener('timeupdate', handleTimeUpdate);
-    video.addEventListener('play', handlePlay);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('seeked', handleSeeked);
-    video.addEventListener('volumechange', handleVolumeChange);
-    video.addEventListener('ended', handleEnded);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("loadeddata", handleLoadedData);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("error", handleError);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("seeked", handleSeeked);
+    video.addEventListener("volumechange", handleVolumeChange);
+    video.addEventListener("ended", handleEnded);
 
     return () => {
-      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      video.removeEventListener('loadeddata', handleLoadedData);
-      video.removeEventListener('canplay', handleCanPlay);
-      video.removeEventListener('error', handleError);
-      video.removeEventListener('timeupdate', handleTimeUpdate);
-      video.removeEventListener('play', handlePlay);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('seeked', handleSeeked);
-      video.removeEventListener('volumechange', handleVolumeChange);
-      video.removeEventListener('ended', handleEnded);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("loadeddata", handleLoadedData);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("error", handleError);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("seeked", handleSeeked);
+      video.removeEventListener("volumechange", handleVolumeChange);
+      video.removeEventListener("ended", handleEnded);
 
       if (watchTimerRef.current) {
         clearInterval(watchTimerRef.current);
       }
     };
-  }, [videoRef.current, addInteraction, setCurrentTime, setDuration, setIsPlaying, setHasStarted, setWatchDuration, currentTime, isPlaying, currentWatchSession, setWatchedSegments, setCurrentWatchSession]);
+  }, [
+    addInteraction,
+    setCurrentTime,
+    setDuration,
+    setIsPlaying,
+    setHasStarted,
+    setWatchDuration,
+    setWatchedSegments,
+    setCurrentWatchSessionCallback,
+  ]);
 
-  // Debug effect to log progress updates
+  // Debug effect to log progress updates (throttled)
   useEffect(() => {
-    console.log('Progress Update:', {
-      videoData: video,
-      watchPercentage: Math.round(watchPercentage),
-      canComplete,
-      watchedSegments: watchedSegments.length,
-      duration,
-      currentTime: Math.round(currentTime),
-      isPlaying
-    });
-  }, [watchPercentage, canComplete, watchedSegments.length, duration, currentTime, isPlaying]);
+    const throttledLog = setTimeout(() => {
+      console.log("Progress Update:", {
+        watchPercentage: Math.round(watchPercentage),
+        canComplete,
+        watchedSegments: watchedSegments.length,
+        duration,
+        currentTime: Math.round(currentTime),
+        isPlaying,
+      });
+    }, 1000);
+
+    return () => clearTimeout(throttledLog);
+  }, [
+    Math.floor(watchPercentage / 5) * 5, // Only log every 5% change
+    canComplete,
+    watchedSegments.length,
+    Math.floor(currentTime / 5) * 5, // Only log every 5 second change
+  ]);
 
   useEffect(() => {
-    if (watchPercentage >= minimumWatchPercentage && !isCompleted && canComplete) {
+    if (
+      watchPercentage >= minimumWatchPercentage &&
+      !isCompleted &&
+      canComplete
+    ) {
       const progress = Math.floor(watchPercentage);
       if (progress > lastSavedProgress && progress % 10 === 0) {
         setLastSavedProgress(progress);
-        addInteraction('progress_milestone', { progress });
+        addInteraction("progress_milestone", { progress });
       }
     }
-  }, [watchPercentage, minimumWatchPercentage, isCompleted, canComplete, lastSavedProgress, addInteraction]);
+  }, [
+    watchPercentage,
+    minimumWatchPercentage,
+    isCompleted,
+    canComplete,
+    lastSavedProgress,
+    addInteraction,
+  ]);
 
   const handleCompleteVideo = () => {
     if (!video || !canComplete) return;
 
+    const actualWatchTime = Math.floor(watchDuration);
     const watchData = {
-      watchDuration: Math.floor(watchDuration),
+      watchDuration: actualWatchTime,
       verificationData: {
         progressPercentage,
         watchPercentage,
@@ -382,20 +461,20 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
       userInteractions,
     };
 
-    console.log('Submitting video completion:', {
+    console.log("Submitting video completion:", {
       watchData,
       watchedSegments: watchedSegments.length,
-      calculatedWatchDuration: Math.floor(watchDuration),
-      videoId
+      calculatedWatchDuration: actualWatchTime,
+      videoId,
     });
 
     submitWatchVideo(
       { videoId, data: watchData },
       {
         onSuccess: (data) => {
-          console.log('Video completion successful:', data);
+          console.log("Video completion successful:", data);
           setIsCompleted(true);
-          addInteraction('video_completed');
+          addInteraction("video_completed");
           clearProgress(); // Clear saved progress after successful completion
 
           if (watchTimerRef.current) {
@@ -405,14 +484,14 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
 
           // Redirect to task after a short delay to show success message
           setTimeout(() => {
-            router.push('/task');
+            router.push("/task");
           }, 2000);
         },
         onError: (error) => {
-          console.error('Video completion failed:', error);
+          console.error("Video completion failed:", error);
           // Don't clear progress on error so user can retry
-        }
-      }
+        },
+      },
     );
   };
 
@@ -426,7 +505,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   if (videoLoading) {
@@ -458,18 +537,14 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-4xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={handleGoBack}
-            className="mb-4"
-          >
+          <Button variant="ghost" onClick={handleGoBack} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {videoError?.message || 'Video not found or no longer available.'}
+              {videoError?.message || "Video not found or no longer available."}
             </AlertDescription>
           </Alert>
         </div>
@@ -481,11 +556,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-4xl mx-auto">
-          <Button
-            variant="ghost"
-            onClick={handleGoBack}
-            className="mb-4"
-          >
+          <Button variant="ghost" onClick={handleGoBack} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Videos
           </Button>
@@ -496,8 +567,8 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
               </div>
               <CardTitle className="text-2xl">Video Completed!</CardTitle>
               <CardDescription>
-                Congratulations! You have successfully watched the video and earned your reward.
-                Redirecting to dashboard in a moment...
+                Congratulations! You have successfully watched the video and
+                earned your reward. Redirecting to dashboard in a moment...
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center space-y-4">
@@ -515,7 +586,10 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                   <div className="text-sm text-green-600">Watch Progress</div>
                 </div>
               </div>
-              <Button onClick={() => router.push('/dashboard')} className="w-full">
+              <Button
+                onClick={() => router.push("/dashboard")}
+                className="w-full"
+              >
                 Go to Dashboard
               </Button>
             </CardContent>
@@ -528,11 +602,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={handleGoBack}
-          className="mb-4"
-        >
+        <Button variant="ghost" onClick={handleGoBack} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
@@ -547,13 +617,16 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                 )}
               </div>
               <Badge variant="secondary" className="ml-4">
-                <DollarSign className="h-3 w-3 mr-1" />
-                ${video.rewardAmount.toFixed(2)}
+                <DollarSign className="h-3 w-3 mr-1" />$
+                {video.rewardAmount.toFixed(2)}
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="relative w-full mb-6 bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
+            <div
+              className="relative w-full mb-6 bg-black rounded-lg overflow-hidden"
+              style={{ aspectRatio: "16/9" }}
+            >
               {playbackError ? (
                 <div className="w-full h-full flex items-center justify-center text-white">
                   <div className="text-center">
@@ -575,6 +648,7 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                   </div>
                 </div>
               ) : (
+                // All videos use the unified VideoPlayer component
                 <VideoPlayer className="w-full h-full">
                   <VideoPlayerContent
                     ref={videoRef}
@@ -619,7 +693,9 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                     <AlertCircle className="h-4 w-4 text-orange-500" />
                   )}
                   <span className="text-sm">
-                    {canComplete ? 'Ready to complete!' : `${minimumWatchPercentage}% required`}
+                    {canComplete
+                      ? "Ready to complete!"
+                      : `${minimumWatchPercentage}% required`}
                   </span>
                 </div>
               </div>
@@ -627,7 +703,9 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Watch Progress</span>
-                  <span>{Math.round(watchPercentage)}% / {minimumWatchPercentage}%</span>
+                  <span>
+                    {Math.round(watchPercentage)}% / {minimumWatchPercentage}%
+                  </span>
                 </div>
                 <Progress
                   value={Math.min(watchPercentage, 100)}
@@ -635,13 +713,14 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                 />
                 <div className="text-xs text-gray-500">
                   {canComplete
-                    ? 'You can now complete this video to earn your reward!'
-                    : `Watch ${Math.round(minimumWatchPercentage - watchPercentage)}% more to complete`
-                  }
+                    ? "You can now complete this video to earn your reward!"
+                    : `Watch ${Math.round(minimumWatchPercentage - watchPercentage)}% more to complete`}
                 </div>
                 {/* Debug info - remove in production */}
                 <div className="text-xs text-gray-400 mt-1">
-                  Debug: Watch {Math.round(watchPercentage)}% / Duration {duration}s | Segments: {watchedSegments.length} | Current: {Math.round(currentTime)}s
+                  Debug: Watch {Math.round(watchPercentage)}% / Duration{" "}
+                  {duration}s | Segments: {watchedSegments.length} | Current:{" "}
+                  {Math.round(currentTime)}s
                 </div>
               </div>
 

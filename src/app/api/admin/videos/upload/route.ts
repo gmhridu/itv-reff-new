@@ -11,6 +11,9 @@ import {
   CloudinaryUploadResponse,
   YouTubeVideoInfo,
 } from "@/types/admin";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,32 +22,64 @@ export async function POST(req: NextRequest) {
     const uploadMethod = formData.get("uploadMethod") as string;
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
-    const rewardAmount = parseFloat(formData.get("rewardAmount") as string);
     const positionLevelId = formData.get("positionLevelId") as string;
     const availableFrom = formData.get("availableFrom") as string;
     const availableTo = formData.get("availableTo") as string;
     const tags = formData.get("tags") as string;
     const isActive = formData.get("isActive") === "true";
+    const youtubeThumbnailUrl = formData.get("youtubeThumbnailUrl") as string;
 
     // Validate required fields
-    if (!uploadMethod || !title || !rewardAmount) {
+    if (!uploadMethod || !title) {
       return NextResponse.json(
         {
           success: false,
-          error: "Upload method, title, and reward amount are required",
+          error: "Upload method and title are required",
         } as ApiResponse,
         { status: 400 },
       );
     }
 
-    if (rewardAmount <= 0) {
+    if (!positionLevelId) {
       return NextResponse.json(
         {
           success: false,
-          error: "Reward amount must be greater than 0",
+          error: "Position level is required",
         } as ApiResponse,
         { status: 400 },
       );
+    }
+
+    // Get reward amount from position level
+    let rewardAmount: number = 0;
+    if (positionLevelId) {
+      try {
+        const positionLevel = await prisma.positionLevel.findUnique({
+          where: { id: positionLevelId },
+          select: { unitPrice: true },
+        });
+
+        if (positionLevel) {
+          rewardAmount = positionLevel.unitPrice;
+        } else {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Invalid position level selected",
+            } as ApiResponse,
+            { status: 400 },
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching position level:", error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Failed to fetch position level details",
+          } as ApiResponse,
+          { status: 500 },
+        );
+      }
     }
 
     let videoUrl: string;
@@ -223,8 +258,8 @@ export async function POST(req: NextRequest) {
         const youtubeData = await processYouTubeVideo(youtubeUrl);
 
         youtubeVideoId = youtubeData.videoId;
-        videoUrl = youtubeData.embedUrl;
-        thumbnailUrl = youtubeData.thumbnailUrl;
+        videoUrl = youtubeUrl; // Store original YouTube URL, not embed URL
+        thumbnailUrl = youtubeThumbnailUrl || youtubeData.thumbnailUrl;
 
         // Use metadata duration if available, otherwise try form input
         if (youtubeData.duration && youtubeData.duration > 0) {
