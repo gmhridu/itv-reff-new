@@ -123,7 +123,7 @@ function MetricCard({
 
 export function AnalyticsClient() {
   const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>(
-    AnalyticsTimeRange.MONTHLY,
+    AnalyticsTimeRange.MONTHLY
   );
   const [customDateFrom, setCustomDateFrom] = useState<string>("");
   const [customDateTo, setCustomDateTo] = useState<string>("");
@@ -146,7 +146,7 @@ export function AnalyticsClient() {
         dateFrom = new Date(
           now.getFullYear(),
           now.getMonth() - 1,
-          now.getDate(),
+          now.getDate()
         );
         dateTo = now;
         break;
@@ -154,7 +154,7 @@ export function AnalyticsClient() {
         dateFrom = new Date(
           now.getFullYear() - 1,
           now.getMonth(),
-          now.getDate(),
+          now.getDate()
         );
         dateTo = now;
         break;
@@ -166,7 +166,7 @@ export function AnalyticsClient() {
         dateFrom = new Date(
           now.getFullYear(),
           now.getMonth() - 1,
-          now.getDate(),
+          now.getDate()
         );
         dateTo = now;
     }
@@ -221,7 +221,9 @@ export function AnalyticsClient() {
       const dataUri =
         "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
 
-      const exportFileDefaultName = `analytics-${timeRange.toLowerCase()}-${new Date().toISOString().split("T")[0]}.json`;
+      const exportFileDefaultName = `analytics-${timeRange.toLowerCase()}-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
 
       const linkElement = document.createElement("a");
       linkElement.setAttribute("href", dataUri);
@@ -491,7 +493,7 @@ export function AnalyticsClient() {
           analyticsData.topVideos.length > 0
             ? analyticsData.topVideos.reduce(
                 (sum, v) => sum + v.engagement,
-                0,
+                0
               ) / analyticsData.topVideos.length
             : 0,
         topVideos: analyticsData.topVideos.map((video) => ({
@@ -510,7 +512,7 @@ export function AnalyticsClient() {
                 item.value -
                   (index > 0
                     ? analyticsData.userIncome.monthly[index - 1]?.value || 0
-                    : 0),
+                    : 0)
               ),
               totalUsers: item.value,
             }))
@@ -525,7 +527,7 @@ export function AnalyticsClient() {
         totalRevenue: analyticsData.overview.totalRevenue,
         monthlyRevenue: analyticsData.userIncome.monthly.reduce(
           (sum, item) => sum + item.value,
-          0,
+          0
         ),
         revenueGrowth: analyticsData.overview.revenueGrowth,
         revenueBySource:
@@ -601,30 +603,6 @@ export function AnalyticsClient() {
             icon={Activity}
           />
         </div>
-
-        {/* Data Quality Indicators */}
-        {(analyticsData.overview.totalRevenue === 0 ||
-          analyticsData.overview.totalUsers === 0 ||
-          analyticsData.topVideos.length === 0) && (
-          <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/10 dark:border-amber-800">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-amber-100 dark:bg-amber-900/20 p-2">
-                  <TrendingUp className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-amber-800 dark:text-amber-200">
-                    Limited Data Available
-                  </h4>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Some metrics may be incomplete. Encourage more platform
-                    activity to get comprehensive analytics.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Custom Date Range Inputs (shown only when Custom is selected) */}
         {timeRange === AnalyticsTimeRange.CUSTOM && (

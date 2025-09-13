@@ -6,7 +6,3 @@
 */
 -- AlterTable
 ALTER TABLE "public"."position_levels" DROP COLUMN "validityDays";
-
--- AlterTable
-ALTER TABLE "public"."users" ADD COLUMN     "commissionBalance" DOUBLE PRECISION NOT NULL DEFAULT 0,
-ADD COLUMN     "fundPassword" TEXT;

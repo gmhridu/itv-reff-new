@@ -6,6 +6,7 @@ import {
   ArrowUpCircle,
   BarChart3,
   GalleryVerticalEnd,
+  MicIcon,
   Settings,
   Upload,
   Users,
@@ -56,9 +57,14 @@ const data = {
       icon: BarChart3,
     },
     {
-      title: "Video Upload",
+      title: "Video Management",
       url: "/admin/video-upload",
       icon: Upload,
+    },
+    {
+      title: "Announcements Management",
+      url: "/admin/announcements",
+      icon: MicIcon,
     },
     {
       title: "Topup Management",
