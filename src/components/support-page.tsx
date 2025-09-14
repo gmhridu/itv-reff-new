@@ -91,28 +91,6 @@ const SupportPage = () => {
       bgColor: "bg-blue-100",
       action: handleTelegramContact,
     },
-    {
-      id: "email",
-      name: "Email Support",
-      description: "Send us a detailed message",
-      icon: Mail,
-      contact: "support@itv.com",
-      availability: "Response in 2-4 hours",
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
-      action: handleEmailContact,
-    },
-    {
-      id: "phone",
-      name: "Phone Support",
-      description: "Talk to our support team",
-      icon: Phone,
-      contact: "+92 300 1234567",
-      availability: "Mon-Fri, 9AM-6PM",
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-      action: handlePhoneContact,
-    },
   ];
 
   const faqItems = [
@@ -265,40 +243,27 @@ const SupportPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageCircle className="w-4 h-4 text-green-600" />
                     <span className="text-xs sm:text-sm font-medium text-gray-700">
-                      WhatsApp & Telegram
+                      WhatsApp
                     </span>
                   </div>
                   <span className="text-sm sm:text-base font-semibold text-green-600">
-                    24/7
+                    24/7 (2-4h response)
                   </span>
                 </div>
-
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
                   <div className="flex items-center gap-2 mb-1">
-                    <Mail className="w-4 h-4 text-blue-600" />
+                    <MessageCircle className="w-4 h-4 text-blue-600" />
                     <span className="text-xs sm:text-sm font-medium text-gray-700">
-                      Email Support
+                      Telegram
                     </span>
                   </div>
                   <span className="text-sm sm:text-base font-semibold text-blue-600">
                     24/7 (2-4h response)
-                  </span>
-                </div>
-
-                <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 sm:col-span-2 lg:col-span-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Phone className="w-4 h-4 text-orange-600" />
-                    <span className="text-xs sm:text-sm font-medium text-gray-700">
-                      Phone Support
-                    </span>
-                  </div>
-                  <span className="text-sm sm:text-base font-semibold text-orange-600">
-                    Mon-Fri, 9AM-6PM
                   </span>
                 </div>
               </div>
@@ -307,7 +272,7 @@ const SupportPage = () => {
         </Card>
 
         {/* Emergency Contact */}
-        <Card className="border-red-200 bg-red-50 shadow-lg">
+        {/*<Card className="border-red-200 bg-red-50 shadow-lg">
           <CardContent className="p-4 sm:p-5 md:p-6">
             <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -332,7 +297,7 @@ const SupportPage = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card>*/}
       </div>
 
       {/* Bottom spacing */}
