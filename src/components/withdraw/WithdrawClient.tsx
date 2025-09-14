@@ -763,8 +763,7 @@ export const WithdrawClient = () => {
                                         {card.accountNumber.slice(-8)}
                                       </div>
                                       <div className="text-xs text-gray-500 mt-1">
-                                        {card.cardHolderName} • 0-30 min • No
-                                        fees
+                                        {card.cardHolderName} • No fees
                                       </div>
                                     </div>
                                   </div>
