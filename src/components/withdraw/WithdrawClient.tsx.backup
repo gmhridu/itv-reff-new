@@ -279,7 +279,7 @@ export const WithdrawClient = () => {
     }
 
     // Validate USDT TRC20 address
-    if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(usdtAddress)) {
+    if (!/^T[A-Za-z1-9]{33}$/.test(usdtAddress)) {
       toast({
         title: "Error",
         description: "Invalid USDT TRC20 address format",

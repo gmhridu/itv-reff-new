@@ -452,7 +452,7 @@ export const WithdrawClient = () => {
     }
 
     // Validate USDT TRC20 address
-    if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(usdtAddress)) {
+    if (!/^T[A-Za-z1-9]{33}$/.test(usdtAddress)) {
       toast({
         title: "Error",
         description: "Invalid USDT TRC20 address format",
@@ -641,9 +641,9 @@ export const WithdrawClient = () => {
                           <div className="font-semibold text-gray-900">
                             USDT (TRC20)
                           </div>
-                          <div className="text-sm text-gray-600">
+                          {/*<div className="text-sm text-gray-600">
                             Fast withdrawal • 0-30 minutes • 5% fee
-                          </div>
+                          </div>*/}
                         </div>
                       </div>
                       <Button
@@ -1080,7 +1080,10 @@ export const WithdrawClient = () => {
                 2. Withdrawals are not available on weekends and public
                 holidays.
               </p>
-              <p>3. A 10% handling fee will be deducted for each withdrawal.</p>
+              <p>
+                3. A 10% handling fee will be deducted for Jazz cash and Easy
+                Paisa..
+              </p>
               <p>
                 4. If you encounter any other problems, please contact online
                 customer service.
@@ -1227,10 +1230,7 @@ export const WithdrawClient = () => {
                 <div className="text-2xl">₮</div>
                 Add USDT Wallet
               </DialogTitle>
-              <DialogDescription>
-                Add your USDT TRC20 wallet for fast withdrawals (0-30 minutes
-                processing)
-              </DialogDescription>
+              <DialogDescription></DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
@@ -1260,7 +1260,7 @@ export const WithdrawClient = () => {
                 </p>
               </div>
 
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              {/*<div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                 <div className="flex items-start gap-2">
                   <Info className="w-4 h-4 text-orange-600 mt-0.5" />
                   <div className="text-sm text-orange-800">
@@ -1271,7 +1271,7 @@ export const WithdrawClient = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div>*/}
 
               <div className="flex gap-2">
                 <Button

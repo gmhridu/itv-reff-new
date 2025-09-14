@@ -21,7 +21,7 @@ const bankCardSchema = z
 
     if (bankName === "USDT_TRC20") {
       // USDT TRC20 address validation (starts with T and is 34 characters)
-      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(accountNumber)) {
+      if (!/^T[A-Za-z1-9]{33}$/.test(accountNumber)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["accountNumber"],

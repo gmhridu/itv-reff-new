@@ -80,7 +80,7 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
   const validateAccountNumber = (value: string, bankName: string) => {
     if (bankName === "USDT_TRC20") {
       // USDT TRC20 address validation (starts with T and is 34 characters)
-      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(value)) {
+      if (!/^T[A-Za-z1-9]{33}$/.test(value)) {
         return "Invalid USDT TRC20 address format";
       }
     } else {
