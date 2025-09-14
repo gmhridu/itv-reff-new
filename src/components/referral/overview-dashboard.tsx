@@ -347,8 +347,8 @@ export default function OverviewDashboard() {
                 <h3 className="font-semibold">A-Level (Direct)</h3>
               </div>
               <ul className="text-sm space-y-1">
-                <li>• Position upgrade rewards</li>
-                <li>• 6% daily management bonus</li>
+                <li>• Position upgrade rewards (10% of deposit)</li>
+                <li>• 8% daily management bonus</li>
                 <li>• Highest earning potential</li>
               </ul>
             </div>
@@ -359,7 +359,7 @@ export default function OverviewDashboard() {
                 <h3 className="font-semibold">B-Level (2nd Gen)</h3>
               </div>
               <ul className="text-sm space-y-1">
-                <li>• Position upgrade rewards</li>
+                <li>• Position upgrade rewards (3% of deposit)</li>
                 <li>• 3% daily management bonus</li>
                 <li>• Passive income stream</li>
               </ul>
@@ -371,7 +371,7 @@ export default function OverviewDashboard() {
                 <h3 className="font-semibold">C-Level (3rd Gen)</h3>
               </div>
               <ul className="text-sm space-y-1">
-                <li>• Position upgrade rewards</li>
+                <li>• Position upgrade rewards (1% of deposit)</li>
                 <li>• 1% daily management bonus</li>
                 <li>• Long-term residual income</li>
               </ul>

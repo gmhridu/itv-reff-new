@@ -2,16 +2,17 @@ import { db } from '@/lib/db';
 import { ReferralLevel } from '@prisma/client';
 
 export interface ReferralRewardRates {
-  P1: { A: 312, B: 117, C: 39 };
-  P2: { A: 1440, B: 540, C: 180 };
-  P3: { A: 4160, B: 1560, C: 520 };
-  P4: { A: 9600, B: 3600, C: 1200 };
-  P5: { A: 20000, B: 7500, C: 2500 };
-  P6: { A: 44000, B: 16500, C: 5500 };
-  P7: { A: 88000, B: 33000, C: 11000 };
-  P8: { A: 176000, B: 66000, C: 22000 };
-  P9: { A: 320000, B: 120000, C: 40000 };
-  P10: { A: 560000, B: 210000, C: 70000 };
+  L1: { A: 200, B: 60, C: 20 };
+  L2: { A: 500, B: 150, C: 50 };
+  L3: { A: 2000, B: 600, C: 200 };
+  L4: { A: 5000, B: 1500, C: 500 };
+  L5: { A: 10000, B: 3000, C: 1000 };
+  L6: { A: 25000, B: 7500, C: 2500 };
+  L7: { A: 50000, B: 15000, C: 5000 };
+  L8: { A: 100000, B: 30000, C: 10000 };
+  L9: { A: 200000, B: 60000, C: 20000 };
+  L10: { A: 400000, B: 120000, C: 40000 };
+  L11: { A: 800000, B: 240000, C: 80000 };
 }
 
 export interface ThreeTierRewardResult {
@@ -27,16 +28,17 @@ export interface ThreeTierRewardResult {
 export class EnhancedReferralService {
   
   private static readonly REWARD_RATES: ReferralRewardRates = {
-    P1: { A: 312, B: 117, C: 39 },
-    P2: { A: 1440, B: 540, C: 180 },
-    P3: { A: 4160, B: 1560, C: 520 },
-    P4: { A: 9600, B: 3600, C: 1200 },
-    P5: { A: 20000, B: 7500, C: 2500 },
-    P6: { A: 44000, B: 16500, C: 5500 },
-    P7: { A: 88000, B: 33000, C: 11000 },
-    P8: { A: 176000, B: 66000, C: 22000 },
-    P9: { A: 320000, B: 120000, C: 40000 },
-    P10: { A: 560000, B: 210000, C: 70000 }
+    L1: { A: 200, B: 60, C: 20 },
+    L2: { A: 500, B: 150, C: 50 },
+    L3: { A: 2000, B: 600, C: 200 },
+    L4: { A: 5000, B: 1500, C: 500 },
+    L5: { A: 10000, B: 3000, C: 1000 },
+    L6: { A: 25000, B: 7500, C: 2500 },
+    L7: { A: 50000, B: 15000, C: 5000 },
+    L8: { A: 100000, B: 30000, C: 10000 },
+    L9: { A: 200000, B: 60000, C: 20000 },
+    L10: { A: 400000, B: 120000, C: 40000 },
+    L11: { A: 800000, B: 240000, C: 80000 }
   };
 
   static async buildReferralHierarchy(userId: string): Promise<void> {

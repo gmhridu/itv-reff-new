@@ -246,80 +246,80 @@ const ProfitOverview: React.FC = () => {
     rows: [
       {
         position: "L1",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "5",
-        bLevelRewards: "2",
-        cLevelRewards: "1",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "200",
+        bLevelRewards: "60",
+        cLevelRewards: "20",
       },
       {
         position: "L2",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "13",
-        bLevelRewards: "5",
-        cLevelRewards: "2",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "500",
+        bLevelRewards: "150",
+        cLevelRewards: "50",
       },
       {
         position: "L3",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "58",
-        bLevelRewards: "22",
-        cLevelRewards: "7",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "2,000",
+        bLevelRewards: "600",
+        cLevelRewards: "200",
       },
       {
         position: "L4",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "148",
-        bLevelRewards: "55",
-        cLevelRewards: "18",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "5,000",
+        bLevelRewards: "1,500",
+        cLevelRewards: "500",
       },
       {
         position: "L5",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "307",
-        bLevelRewards: "115",
-        cLevelRewards: "38",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "10,000",
+        bLevelRewards: "3,000",
+        cLevelRewards: "1,000",
       },
       {
         position: "L6",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "799",
-        bLevelRewards: "300",
-        cLevelRewards: "100",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "25,000",
+        bLevelRewards: "7,500",
+        cLevelRewards: "2,500",
       },
       {
         position: "L7",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "1,672",
-        bLevelRewards: "627",
-        cLevelRewards: "209",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "50,000",
+        bLevelRewards: "15,000",
+        cLevelRewards: "5,000",
       },
       {
         position: "L8",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "3,480",
-        bLevelRewards: "1,305",
-        cLevelRewards: "435",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "100,000",
+        bLevelRewards: "30,000",
+        cLevelRewards: "10,000",
       },
       {
         position: "L9",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "7,279",
-        bLevelRewards: "2,730",
-        cLevelRewards: "910",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "200,000",
+        bLevelRewards: "60,000",
+        cLevelRewards: "20,000",
       },
       {
         position: "L10",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "15,200",
-        bLevelRewards: "5,700",
-        cLevelRewards: "1,900",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "400,000",
+        bLevelRewards: "120,000",
+        cLevelRewards: "40,000",
       },
       {
         position: "L11",
-        incomeRatio: "8%-3%-1%",
-        aLevelRewards: "32,000",
-        bLevelRewards: "12,000",
-        cLevelRewards: "4,000",
+        incomeRatio: "10%-3%-1%",
+        aLevelRewards: "800,000",
+        bLevelRewards: "240,000",
+        cLevelRewards: "80,000",
       },
     ],
   };
@@ -331,7 +331,7 @@ const ProfitOverview: React.FC = () => {
       "For example: Subordinate completes Per Task of 1,000 PKR",
     ],
     rows: [
-      { level: "A-level", ratio: "6%", example: "60 PKR" },
+      { level: "A-level", ratio: "8%", example: "80 PKR" },
       { level: "B-level", ratio: "3%", example: "30 PKR" },
       { level: "C-level", ratio: "1%", example: "10 PKR" },
     ],
@@ -699,7 +699,7 @@ const ProfitOverview: React.FC = () => {
                   </span>
                 </div>
                 <span className="bg-red-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-red-700 text-sm sm:text-base">
-                  6% of daily income
+                  8% of daily income
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 gap-2">
@@ -785,10 +785,10 @@ const ProfitOverview: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200 gap-2">
                   <span className="font-semibold text-gray-700 text-sm sm:text-base">
-                    A-level: {formatNumber(1000)} × {formatNumber(10)} × 6%
+                    A-level: {formatNumber(1000)} × {formatNumber(10)} × 8%
                   </span>
                   <span className="bg-red-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-red-700 font-mono text-sm sm:text-base">
-                    {formatNumber(600)} PKR
+                    {formatNumber(800)} PKR
                   </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 gap-2">
@@ -814,15 +814,15 @@ const ProfitOverview: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <span className="text-xl sm:text-2xl">✅</span>
                 <div className="text-center">
-                  <div className="text-base sm:text-lg font-bold text-green-700 mb-2">
+                  <div className="text-xl sm:text-2xl font-bold text-green-700 mb-2">
                     Total Daily Management Bonus
                   </div>
                   <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-800 break-words">
                     <span className="block sm:inline">
-                      {`${formatNumber(600)} + ${formatNumber(3000)} + ${formatNumber(10000)} = `}
+                      {`${formatNumber(800)} + ${formatNumber(3000)} + ${formatNumber(10000)} = `}
                     </span>
                     <span className="bg-green-200 px-3 sm:px-4 py-2 rounded-lg font-mono inline-block mt-2 sm:mt-0">
-                      {formatNumber(13600)} PKR
+                      {formatNumber(13800)} PKR
                     </span>
                   </div>
                 </div>

@@ -102,14 +102,17 @@ export class PositionService {
         };
       }
 
-      // Check if user can upgrade (must be sequential or same level)
+      // Check if user can upgrade (must be to a higher or same level)
       const currentLevel = user.currentPosition?.level || 0;
-      if (targetPosition.level > currentLevel + 1) {
+      if (targetPosition.level < currentLevel) {
         return {
           success: false,
-          message: 'Cannot skip position levels. Must upgrade sequentially.'
+          message: 'Cannot downgrade position levels. You can only upgrade to the same or a higher position level.'
         };
       }
+
+      // Allow upgrading to any higher position, not just the next level
+      // Removed the sequential upgrade restriction
 
       // Check wallet balance for deposit
       if (user.walletBalance < targetPosition.deposit) {
