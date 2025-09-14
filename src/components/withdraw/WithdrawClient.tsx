@@ -301,19 +301,21 @@ export const WithdrawClient = () => {
       return;
     }
 
-    // Check balance including 10% handling fee
+    // Check balance - no fee for USDT withdrawals, 10% handling fee for others
     const currentBalance =
       selectedWallet === "Main Wallet"
         ? walletBalances.mainWallet
         : walletBalances.commissionWallet;
 
-    const handlingFee = withdrawalAmount * 0.1;
+    const isUsdtWithdrawal = isUsdtMethod();
+    const handlingFee = isUsdtWithdrawal ? 0 : withdrawalAmount * 0.1;
     const totalRequired = withdrawalAmount + handlingFee;
 
     if (currentBalance < totalRequired) {
+      const feeDescription = isUsdtWithdrawal ? "no fees" : "10% handling fee";
       toast({
         title: "Insufficient Balance",
-        description: `Insufficient balance including 10% handling fee. Required: PKR ${totalRequired.toFixed(2)}, Available: PKR ${currentBalance.toFixed(2)}`,
+        description: `Insufficient balance including ${feeDescription}. Required: PKR ${totalRequired.toFixed(2)}, Available: PKR ${currentBalance.toFixed(2)}`,
         variant: "destructive",
       });
       return;
@@ -642,7 +644,7 @@ export const WithdrawClient = () => {
                             USDT (TRC20)
                           </div>
                           {/*<div className="text-sm text-gray-600">
-                            Fast withdrawal • 0-30 minutes • 5% fee
+                            Fast withdrawal • 0-30 minutes • No fees
                           </div>*/}
                         </div>
                       </div>
@@ -761,8 +763,8 @@ export const WithdrawClient = () => {
                                         {card.accountNumber.slice(-8)}
                                       </div>
                                       <div className="text-xs text-gray-500 mt-1">
-                                        {card.cardHolderName} • 0-30 min • 5%
-                                        fee
+                                        {card.cardHolderName} • 0-30 min • No
+                                        fees
                                       </div>
                                     </div>
                                   </div>
@@ -898,22 +900,14 @@ export const WithdrawClient = () => {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Network Fee (5%):</span>
-                      <span className="text-red-600">
-                        -
-                        {(
-                          calculateUsdtAmount(parseFloat(amount)) * 0.05
-                        ).toFixed(4)}{" "}
-                        USDT
-                      </span>
+                      <span className="text-gray-600">Network Fee:</span>
+                      <span className="text-green-600">FREE (No fees)</span>
                     </div>
                     <hr className="border-orange-200" />
                     <div className="flex justify-between font-medium">
                       <span className="text-gray-900">You'll receive:</span>
                       <span className="text-green-600">
-                        {(
-                          calculateUsdtAmount(parseFloat(amount)) * 0.95
-                        ).toFixed(4)}{" "}
+                        {calculateUsdtAmount(parseFloat(amount)).toFixed(4)}{" "}
                         USDT
                       </span>
                     </div>
@@ -969,7 +963,7 @@ export const WithdrawClient = () => {
                       ? walletBalances.mainWallet
                       : walletBalances.commissionWallet;
                   const isUsdtWithdrawal = isUsdtMethod();
-                  const feePercentage = isUsdtWithdrawal ? 0.05 : 0.1;
+                  const feePercentage = isUsdtWithdrawal ? 0 : 0.1;
                   const totalRequired = isUsdtWithdrawal
                     ? value
                     : value * (1 + feePercentage);
@@ -1267,7 +1261,7 @@ export const WithdrawClient = () => {
                     <div className="font-medium">Fast Processing</div>
                     <div className="text-xs text-orange-700 mt-1">
                       USDT withdrawals are processed within 0-30 minutes with
-                      only 5% network fee
+                      no fees
                     </div>
                   </div>
                 </div>

@@ -695,12 +695,18 @@ export const WithdrawalHistory = () => {
                                 ? "Network Fee"
                                 : "Handling Fee"}
                             </p>
-                            <p className="font-medium text-red-600 truncate">
-                              {request.paymentDetails.isUsdtWithdrawal
-                                ? `${(request.paymentDetails.usdtNetworkFee || 0).toFixed(4)} USDT`
-                                : formatCurrency(
+                            <p className="font-medium truncate">
+                              {request.paymentDetails.isUsdtWithdrawal ? (
+                                <span className="text-green-600">
+                                  FREE (No fees)
+                                </span>
+                              ) : (
+                                <span className="text-red-600">
+                                  {formatCurrency(
                                     request.paymentDetails.handlingFee,
                                   )}
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
@@ -965,13 +971,10 @@ export const WithdrawalHistory = () => {
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm sm:text-base text-gray-600">
-                          Network Fee (5%):
+                          Network Fee:
                         </span>
-                        <span className="font-medium text-red-600 text-sm sm:text-base truncate ml-2">
-                          {(
-                            selectedRequest.paymentDetails.usdtNetworkFee || 0
-                          ).toFixed(4)}{" "}
-                          USDT
+                        <span className="font-medium text-green-600 text-sm sm:text-base truncate ml-2">
+                          FREE (No fees)
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-3 border-t font-bold">
