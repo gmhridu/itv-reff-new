@@ -7,18 +7,38 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Schema for validating bank card data
-const bankCardSchema = z.object({
-  cardHolderName: z
-    .string()
-    .min(2, "Card holder name must be at least 2 characters")
-    .max(50, "Card holder name must not exceed 50 characters"),
-  bankName: z.enum(["JAZZCASH", "EASYPAISA"]),
-  accountNumber: z
-    .string()
-    .min(10, "Account number must be at least 10 digits")
-    .max(15, "Account number must not exceed 15 digits")
-    .regex(/^\d+$/, "Account number must contain only digits"),
-});
+const bankCardSchema = z
+  .object({
+    cardHolderName: z
+      .string()
+      .min(2, "Card holder name must be at least 2 characters")
+      .max(50, "Card holder name must not exceed 50 characters"),
+    bankName: z.enum(["JAZZCASH", "EASYPAISA", "USDT_TRC20"]),
+    accountNumber: z.string().min(1, "Account number is required"),
+  })
+  .superRefine((data, ctx) => {
+    const { bankName, accountNumber } = data;
+
+    if (bankName === "USDT_TRC20") {
+      // USDT TRC20 address validation (starts with T and is 34 characters)
+      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(accountNumber)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["accountNumber"],
+          message: "Invalid USDT TRC20 address format",
+        });
+      }
+    } else {
+      // Traditional bank account validation (10-15 digits)
+      if (!/^\d{10,15}$/.test(accountNumber)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["accountNumber"],
+          message: "Account number must be 10-15 digits",
+        });
+      }
+    }
+  });
 
 // Authentication middleware function
 async function authenticate(request: NextRequest) {
@@ -79,7 +99,7 @@ export async function GET(request: NextRequest) {
     // Mask account numbers for security
     const maskedBankCards = bankCards.map((card) => ({
       ...card,
-      accountNumber: maskAccountNumber(card.accountNumber),
+      accountNumber: maskAccountNumber(card.accountNumber, card.bankName),
     }));
 
     response = NextResponse.json({
@@ -164,7 +184,10 @@ export async function POST(request: NextRequest) {
     // Return masked account number
     const maskedBankCard = {
       ...bankCard,
-      accountNumber: maskAccountNumber(bankCard.accountNumber),
+      accountNumber: maskAccountNumber(
+        bankCard.accountNumber,
+        bankCard.bankName,
+      ),
     };
 
     response = NextResponse.json({
@@ -259,7 +282,19 @@ export async function DELETE(request: NextRequest) {
 }
 
 // Utility function to mask account number
-function maskAccountNumber(accountNumber: string): string {
+function maskAccountNumber(accountNumber: string, bankName?: string): string {
+  if (bankName === "USDT_TRC20") {
+    // For USDT addresses, show first 6 and last 6 characters
+    if (accountNumber.length <= 12) {
+      return accountNumber;
+    }
+    const start = accountNumber.slice(0, 6);
+    const end = accountNumber.slice(-6);
+    const middle = "*".repeat(6);
+    return `${start}${middle}${end}`;
+  }
+
+  // For traditional bank accounts
   if (accountNumber.length <= 4) {
     return accountNumber;
   }

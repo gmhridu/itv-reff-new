@@ -54,6 +54,11 @@ interface WithdrawalRequest {
     cardHolderName: string;
     walletType: string;
     handlingFee: number;
+    isUsdtWithdrawal?: boolean;
+    usdtRate?: number;
+    usdtAmount?: number;
+    usdtNetworkFee?: number;
+    usdtAmountAfterFee?: number;
   };
   status: "PENDING" | "APPROVED" | "REJECTED";
   adminNotes?: string;
@@ -159,6 +164,32 @@ export const WithdrawalHistory = () => {
   const handleRefresh = () => {
     setPagination((prev) => ({ ...prev, page: 1 }));
     fetchWithdrawalHistory(true);
+  };
+
+  const getBankDisplayName = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "JazzCash";
+      case "EASYPAISA":
+        return "EasyPaisa";
+      case "USDT_TRC20":
+        return "USDT (TRC20)";
+      default:
+        return bankName;
+    }
+  };
+
+  const getBankIcon = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "📱";
+      case "EASYPAISA":
+        return "💳";
+      case "USDT_TRC20":
+        return "₮";
+      default:
+        return "💳";
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -596,7 +627,9 @@ export const WithdrawalHistory = () => {
                           <div
                             className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                               request.status === "PENDING"
-                                ? "bg-yellow-100"
+                                ? request.paymentDetails.isUsdtWithdrawal
+                                  ? "bg-orange-100"
+                                  : "bg-yellow-100"
                                 : request.status === "APPROVED"
                                   ? "bg-green-100"
                                   : "bg-red-100"
@@ -626,14 +659,21 @@ export const WithdrawalHistory = () => {
                       {/* Details Grid */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
                         <div className="flex items-center gap-2">
-                          <CreditCard className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm flex-shrink-0">
+                            {getBankIcon(request.paymentMethod)}
+                          </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-gray-600">Payment Method</p>
-                            <p className="font-medium truncate">
-                              {request.paymentMethod === "JAZZCASH"
-                                ? "JazzCash"
-                                : "EasyPaisa"}
-                            </p>
+                            <div className="flex items-center gap-1">
+                              <p className="font-medium truncate">
+                                {getBankDisplayName(request.paymentMethod)}
+                              </p>
+                              {request.paymentDetails.isUsdtWithdrawal && (
+                                <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-1 py-0.5 rounded">
+                                  Crypto
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -650,11 +690,17 @@ export const WithdrawalHistory = () => {
                         <div className="flex items-center gap-2">
                           <DollarSign className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <p className="text-gray-600">Handling Fee</p>
+                            <p className="text-gray-600">
+                              {request.paymentDetails.isUsdtWithdrawal
+                                ? "Network Fee"
+                                : "Handling Fee"}
+                            </p>
                             <p className="font-medium text-red-600 truncate">
-                              {formatCurrency(
-                                request.paymentDetails.handlingFee,
-                              )}
+                              {request.paymentDetails.isUsdtWithdrawal
+                                ? `${(request.paymentDetails.usdtNetworkFee || 0).toFixed(4)} USDT`
+                                : formatCurrency(
+                                    request.paymentDetails.handlingFee,
+                                  )}
                             </p>
                           </div>
                         </div>
@@ -675,21 +721,33 @@ export const WithdrawalHistory = () => {
                       </div>
 
                       {/* Account Information */}
-                      <div className="bg-gray-50 rounded-lg p-3">
+                      <div
+                        className={`rounded-lg p-3 ${
+                          request.paymentDetails.isUsdtWithdrawal
+                            ? "bg-orange-50"
+                            : "bg-gray-50"
+                        }`}
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <span className="text-base sm:text-lg flex-shrink-0">
-                              {request.paymentMethod === "JAZZCASH"
-                                ? "📱"
-                                : "💳"}
+                              {getBankIcon(request.paymentMethod)}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <p className="font-medium text-sm sm:text-base truncate">
-                                {request.paymentDetails.accountNumber}
+                              <p className="font-medium text-sm sm:text-base break-all">
+                                {request.paymentDetails.isUsdtWithdrawal
+                                  ? `${request.paymentDetails.accountNumber.slice(0, 8)}...${request.paymentDetails.accountNumber.slice(-8)}`
+                                  : request.paymentDetails.accountNumber}
                               </p>
                               <p className="text-xs sm:text-sm text-gray-600 truncate">
                                 {request.paymentDetails.cardHolderName}
                               </p>
+                              {request.paymentDetails.isUsdtWithdrawal && (
+                                <p className="text-xs text-orange-600 mt-1">
+                                  Rate: 1 USDT = PKR{" "}
+                                  {request.paymentDetails.usdtRate || 295}
+                                </p>
+                              )}
                             </div>
                           </div>
                           <Button
@@ -756,15 +814,41 @@ export const WithdrawalHistory = () => {
 
                       {/* Total Breakdown */}
                       <div className="border-t pt-3">
-                        <div className="flex justify-between text-xs sm:text-sm">
-                          <span className="text-gray-600">Total Deducted:</span>
-                          <span className="font-semibold truncate ml-2">
-                            {formatCurrency(
-                              request.amount +
-                                request.paymentDetails.handlingFee,
-                            )}
-                          </span>
-                        </div>
+                        {request.paymentDetails.isUsdtWithdrawal ? (
+                          <div className="space-y-1 text-xs sm:text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">
+                                PKR Deducted:
+                              </span>
+                              <span className="font-semibold truncate ml-2">
+                                {formatCurrency(request.amount)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-orange-600">
+                                USDT Sent:
+                              </span>
+                              <span className="font-semibold text-orange-600 truncate ml-2">
+                                {(
+                                  request.paymentDetails.usdtAmountAfterFee || 0
+                                ).toFixed(4)}{" "}
+                                USDT
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-xs sm:text-sm">
+                            <span className="text-gray-600">
+                              Total Deducted:
+                            </span>
+                            <span className="font-semibold truncate ml-2">
+                              {formatCurrency(
+                                request.amount +
+                                  request.paymentDetails.handlingFee,
+                              )}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* View Details Button */}
@@ -849,35 +933,93 @@ export const WithdrawalHistory = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base text-gray-600">
-                      Withdrawal Amount:
-                    </span>
-                    <span className="font-medium text-sm sm:text-base truncate ml-2">
-                      {formatCurrency(selectedRequest.amount)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm sm:text-base text-gray-600">
-                      Handling Fee (10%):
-                    </span>
-                    <span className="font-medium text-red-600 text-sm sm:text-base truncate ml-2">
-                      {formatCurrency(
-                        selectedRequest.paymentDetails.handlingFee,
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pt-3 border-t font-bold">
-                    <span className="text-sm sm:text-base text-gray-900">
-                      Total Deducted:
-                    </span>
-                    <span className="text-base sm:text-lg truncate ml-2">
-                      {formatCurrency(
-                        selectedRequest.amount +
-                          selectedRequest.paymentDetails.handlingFee,
-                      )}
-                    </span>
-                  </div>
+                  {selectedRequest.paymentDetails.isUsdtWithdrawal ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm sm:text-base text-gray-600">
+                          PKR Amount:
+                        </span>
+                        <span className="font-medium text-sm sm:text-base truncate ml-2">
+                          {formatCurrency(selectedRequest.amount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm sm:text-base text-gray-600">
+                          USDT Equivalent:
+                        </span>
+                        <span className="font-medium text-orange-600 text-sm sm:text-base truncate ml-2">
+                          {(
+                            selectedRequest.paymentDetails.usdtAmount || 0
+                          ).toFixed(4)}{" "}
+                          USDT
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm sm:text-base text-gray-600">
+                          Conversion Rate:
+                        </span>
+                        <span className="font-medium text-sm sm:text-base truncate ml-2">
+                          1 USDT = PKR{" "}
+                          {selectedRequest.paymentDetails.usdtRate || 295}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm sm:text-base text-gray-600">
+                          Network Fee (5%):
+                        </span>
+                        <span className="font-medium text-red-600 text-sm sm:text-base truncate ml-2">
+                          {(
+                            selectedRequest.paymentDetails.usdtNetworkFee || 0
+                          ).toFixed(4)}{" "}
+                          USDT
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-3 border-t font-bold">
+                        <span className="text-sm sm:text-base text-gray-900">
+                          USDT Received:
+                        </span>
+                        <span className="text-base sm:text-lg text-orange-600 truncate ml-2">
+                          {(
+                            selectedRequest.paymentDetails.usdtAmountAfterFee ||
+                            0
+                          ).toFixed(4)}{" "}
+                          USDT
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm sm:text-base text-gray-600">
+                          Withdrawal Amount:
+                        </span>
+                        <span className="font-medium text-sm sm:text-base truncate ml-2">
+                          {formatCurrency(selectedRequest.amount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm sm:text-base text-gray-600">
+                          Handling Fee (10%):
+                        </span>
+                        <span className="font-medium text-red-600 text-sm sm:text-base truncate ml-2">
+                          {formatCurrency(
+                            selectedRequest.paymentDetails.handlingFee,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pt-3 border-t font-bold">
+                        <span className="text-sm sm:text-base text-gray-900">
+                          Total Deducted:
+                        </span>
+                        <span className="text-base sm:text-lg truncate ml-2">
+                          {formatCurrency(
+                            selectedRequest.amount +
+                              selectedRequest.paymentDetails.handlingFee,
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -894,11 +1036,16 @@ export const WithdrawalHistory = () => {
                       <label className="text-xs sm:text-sm font-medium text-gray-600">
                         Payment Method
                       </label>
-                      <p className="text-sm sm:text-lg font-semibold truncate">
-                        {selectedRequest.paymentMethod === "JAZZCASH"
-                          ? "JazzCash"
-                          : "EasyPaisa"}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm sm:text-lg font-semibold truncate">
+                          {getBankDisplayName(selectedRequest.paymentMethod)}
+                        </p>
+                        {selectedRequest.paymentDetails.isUsdtWithdrawal && (
+                          <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full">
+                            Crypto
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs sm:text-sm font-medium text-gray-600">
@@ -912,7 +1059,9 @@ export const WithdrawalHistory = () => {
 
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-gray-600">
-                      Account Holder Name
+                      {selectedRequest.paymentDetails.isUsdtWithdrawal
+                        ? "Wallet Label"
+                        : "Account Holder Name"}
                     </label>
                     <p className="text-sm sm:text-lg font-semibold break-words">
                       {selectedRequest.paymentDetails.cardHolderName}
@@ -921,10 +1070,18 @@ export const WithdrawalHistory = () => {
 
                   <div>
                     <label className="text-xs sm:text-sm font-medium text-gray-600">
-                      Account Number
+                      {selectedRequest.paymentDetails.isUsdtWithdrawal
+                        ? "USDT Address"
+                        : "Account Number"}
                     </label>
-                    <div className="flex items-center justify-between bg-gray-50 p-2 sm:p-3 rounded-lg gap-2">
-                      <p className="text-sm sm:text-lg font-mono truncate flex-1">
+                    <div
+                      className={`flex items-center justify-between p-2 sm:p-3 rounded-lg gap-2 ${
+                        selectedRequest.paymentDetails.isUsdtWithdrawal
+                          ? "bg-orange-50"
+                          : "bg-gray-50"
+                      }`}
+                    >
+                      <p className="text-sm sm:text-lg font-mono break-all flex-1">
                         {selectedRequest.paymentDetails.accountNumber}
                       </p>
                       <Button
@@ -940,6 +1097,12 @@ export const WithdrawalHistory = () => {
                         <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
                     </div>
+                    {selectedRequest.paymentDetails.isUsdtWithdrawal && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        Rate: 1 USDT = PKR{" "}
+                        {selectedRequest.paymentDetails.usdtRate || 295}
+                      </p>
+                    )}
                   </div>
                 </CardContent>
               </Card>

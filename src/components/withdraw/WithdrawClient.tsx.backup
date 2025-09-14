@@ -8,8 +8,10 @@ import {
   ExternalLink,
   Shield,
   Settings,
-  Plus,
+  Zap,
   Info,
+  Gift,
+  Plus,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -100,7 +102,12 @@ export const WithdrawClient = () => {
   useEffect(() => {
     if (bankCards.length > 0 && !selectedMethod) {
       const firstCard = bankCards[0];
-      const displayName = `${firstCard.bankName === "JAZZCASH" ? "JazzCash" : "EasyPaisa"} ${firstCard.accountNumber}`;
+      const displayName =
+        formatBankName(firstCard.bankName) +
+        " " +
+        (firstCard.bankName === "USDT_TRC20"
+          ? `${firstCard.accountNumber.slice(0, 6)}...${firstCard.accountNumber.slice(-6)}`
+          : firstCard.accountNumber);
       setSelectedMethod(displayName);
     }
   }, [bankCards, selectedMethod]);
@@ -111,19 +118,6 @@ export const WithdrawClient = () => {
       setUsdtHolderName(currentUser.realName);
     }
   }, [currentUser, usdtHolderName]);
-
-  // Fetch USDT rate
-  const fetchUsdtRate = async () => {
-    try {
-      const response = await fetch("/api/user/topup");
-      const data = await response.json();
-      if (data.success && data.data.usdtToPkrRate) {
-        setUsdtToPkrRate(data.data.usdtToPkrRate);
-      }
-    } catch (error) {
-      console.error("Error fetching USDT rate:", error);
-    }
-  };
 
   // Refresh bank cards when window gains focus (user returns from bank-card page)
   useEffect(() => {
@@ -207,6 +201,19 @@ export const WithdrawClient = () => {
     }
   };
 
+  // Fetch USDT rate
+  const fetchUsdtRate = async () => {
+    try {
+      const response = await fetch("/api/user/topup");
+      const data = await response.json();
+      if (data.success && data.data.usdtToPkrRate) {
+        setUsdtToPkrRate(data.data.usdtToPkrRate);
+      }
+    } catch (error) {
+      console.error("Error fetching USDT rate:", error);
+    }
+  };
+
   const checkFundPasswordStatus = async () => {
     try {
       const response = await fetch("/api/user/fund-password/status", {
@@ -234,10 +241,17 @@ export const WithdrawClient = () => {
         ? walletBalances.mainWallet
         : walletBalances.commissionWallet;
 
-    if (currentBalance < value) {
+    // Calculate required balance including fees
+    const isUsdtWithdrawal = isUsdtMethod();
+    const feePercentage = isUsdtWithdrawal ? 0.05 : 0.1; // 5% for USDT, 10% for traditional
+    const totalRequired = isUsdtWithdrawal
+      ? value
+      : value * (1 + feePercentage);
+
+    if (currentBalance < totalRequired) {
       toast({
         title: "Insufficient Balance",
-        description: `Your ${selectedWallet} balance (PKR ${currentBalance.toFixed(2)}) is insufficient for this withdrawal amount.`,
+        description: `Your ${selectedWallet} balance (PKR ${currentBalance.toFixed(2)}) is insufficient for this withdrawal amount including fees.`,
         variant: "destructive",
       });
       return;
@@ -252,193 +266,6 @@ export const WithdrawClient = () => {
 
   const handleMethodSelect = (method: string) => {
     setSelectedMethod(method);
-  };
-
-  const handleWithdrawalMethodClick = () => {
-    // Check if user has any bank cards
-    if (bankCards.length === 0 && !isLoadingCards) {
-      setShowNoBankCardsModal(true);
-      return;
-    }
-  };
-
-  const handleRedirectToBankCard = () => {
-    setShowNoBankCardsModal(false);
-    router.push("/user/bank-card");
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedMethod) {
-      toast({
-        title: "Error",
-        description: "Please select a withdrawal method.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (bankCards.length === 0) {
-      setShowNoBankCardsModal(true);
-      return;
-    }
-
-    if (!amount || !fundPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter withdrawal amount and fund password.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const withdrawalAmount = parseFloat(amount);
-    if (withdrawalAmount < 500) {
-      toast({
-        title: "Minimum Withdrawal",
-        description: "Minimum withdrawal amount is PKR 500.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check balance including 10% handling fee
-    const currentBalance =
-      selectedWallet === "Main Wallet"
-        ? walletBalances.mainWallet
-        : walletBalances.commissionWallet;
-
-    const handlingFee = withdrawalAmount * 0.1;
-    const totalRequired = withdrawalAmount + handlingFee;
-
-    if (currentBalance < totalRequired) {
-      toast({
-        title: "Insufficient Balance",
-        description: `Insufficient balance including 10% handling fee. Required: PKR ${totalRequired.toFixed(2)}, Available: PKR ${currentBalance.toFixed(2)}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Find the selected bank card
-      const selectedCard = bankCards.find((card) => {
-        const displayName = `${card.bankName === "JAZZCASH" ? "JazzCash" : "EasyPaisa"} ${card.accountNumber}`;
-        return displayName === selectedMethod;
-      });
-
-      if (!selectedCard) {
-        throw new Error("Selected payment method not found");
-      }
-
-      const response = await fetch("/api/user/withdrawal", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          walletType: selectedWallet,
-          amount: withdrawalAmount,
-          fundPassword: fundPassword,
-          paymentMethodId: selectedCard.id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Check if we should show success modal
-        if (data.showSuccessModal && data.modalData) {
-          setSuccessModalData(data.modalData);
-          setShowSuccessModal(true);
-        } else {
-          toast({
-            title: "Withdrawal Submitted",
-            description: `Your withdrawal request of PKR ${withdrawalAmount} has been submitted successfully. Processing time: ${data.data.estimatedProcessingTime}`,
-            variant: "default",
-          });
-        }
-
-        // Reset form
-        setAmount("");
-        setFundPassword("");
-
-        // Refresh wallet balances
-        fetchWalletBalances();
-
-        // Refresh notifications to show the new withdrawal notification
-        try {
-          setTimeout(() => {
-            refetchNotifications();
-          }, 1000); // Small delay to ensure notification is created
-        } catch (error) {
-          console.log("Failed to refresh notifications:", error);
-        }
-      } else {
-        toast({
-          title: "Withdrawal Failed",
-          description: data.error || "Failed to submit withdrawal request.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Withdrawal submission error:", error);
-      toast({
-        title: "Error",
-        description:
-          "An error occurred while submitting your withdrawal request.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getBankIcon = (bankName: string) => {
-    switch (bankName) {
-      case "JAZZCASH":
-        return "📱";
-      case "EASYPAISA":
-        return "💳";
-      case "USDT_TRC20":
-        return "₮";
-      default:
-        return "💳";
-    }
-  };
-
-  const formatBankName = (bankName: string) => {
-    switch (bankName) {
-      case "JAZZCASH":
-        return "JazzCash";
-      case "EASYPAISA":
-        return "EasyPaisa";
-      case "USDT_TRC20":
-        return "USDT (TRC20)";
-      default:
-        return bankName;
-    }
-  };
-
-  // Check if selected method is USDT
-  const isUsdtMethod = () => {
-    if (!selectedMethod || bankCards.length === 0) return false;
-    const selectedCard = bankCards.find((card) => {
-      const displayName =
-        formatBankName(card.bankName) +
-        " " +
-        (card.bankName === "USDT_TRC20"
-          ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
-          : card.accountNumber);
-      return displayName === selectedMethod;
-    });
-    return selectedCard?.bankName === "USDT_TRC20";
-  };
-
-  // Calculate USDT equivalent
-  const calculateUsdtAmount = (pkrAmount: number) => {
-    return pkrAmount / usdtToPkrRate;
   };
 
   const handleAddUsdtWallet = async () => {
@@ -497,6 +324,7 @@ export const WithdrawClient = () => {
           const displayName = `USDT (TRC20) ${usdtAddress.slice(0, 6)}...${usdtAddress.slice(-6)}`;
           setSelectedMethod(displayName);
         }, 500);
+
       } else {
         toast({
           title: "Error",
@@ -514,6 +342,205 @@ export const WithdrawClient = () => {
     } finally {
       setIsAddingUsdtWallet(false);
     }
+  };
+
+  const handleWithdrawalMethodClick = () => {
+    // Check if user has any bank cards
+    if (bankCards.length === 0 && !isLoadingCards) {
+      setShowNoBankCardsModal(true);
+      return;
+    }
+  };
+
+  const handleRedirectToBankCard = () => {
+    setShowNoBankCardsModal(false);
+    router.push("/user/bank-card");
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedMethod) {
+      toast({
+        title: "Error",
+        description: "Please select a withdrawal method.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (bankCards.length === 0) {
+      setShowNoBankCardsModal(true);
+      return;
+    }
+
+    if (!amount || !fundPassword) {
+      toast({
+        title: "Error",
+        description: "Please enter withdrawal amount and fund password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const withdrawalAmount = parseFloat(amount);
+    if (withdrawalAmount < 500) {
+      toast({
+        title: "Minimum Withdrawal",
+        description: "Minimum withdrawal amount is PKR 500.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check balance including fees
+    const currentBalance =
+      selectedWallet === "Main Wallet"
+        ? walletBalances.mainWallet
+        : walletBalances.commissionWallet;
+
+    const isUsdtWithdrawal = selectedMethod.includes("USDT");
+    const feePercentage = isUsdtWithdrawal ? 0.05 : 0.1; // 5% for USDT, 10% for traditional
+    const totalRequired = isUsdtWithdrawal
+      ? withdrawalAmount
+      : withdrawalAmount * (1 + feePercentage);
+
+    if (currentBalance < totalRequired) {
+      const feeDescription = isUsdtWithdrawal
+        ? "5% network fee"
+        : "10% handling fee";
+      toast({
+        title: "Insufficient Balance",
+        description: `Insufficient balance including ${feeDescription}. Required: PKR ${totalRequired.toFixed(2)}, Available: PKR ${currentBalance.toFixed(2)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Find the selected bank card
+      const selectedCard = bankCards.find((card) => {
+        const displayName =
+          formatBankName(card.bankName) +
+          " " +
+          (card.bankName === "USDT_TRC20"
+            ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
+            : card.accountNumber);
+        return displayName === selectedMethod;
+      });
+
+      if (!selectedCard) {
+        throw new Error("Selected payment method not found");
+      }
+
+      const response = await fetch("/api/user/withdrawal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          walletType: selectedWallet,
+          amount: withdrawalAmount,
+          fundPassword: fundPassword,
+          paymentMethodId: selectedCard.id,
+          usdtToPkrRate: usdtToPkrRate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Check if we should show success modal
+        if (data.showSuccessModal && data.modalData) {
+          setSuccessModalData(data.modalData);
+          setShowSuccessModal(true);
+        } else {
+          toast({
+            title: "Withdrawal Submitted",
+            description: `Your withdrawal request of PKR ${withdrawalAmount} has been submitted successfully. Processing time: ${data.data.estimatedProcessingTime}`,
+            variant: "default",
+          });
+        }
+
+        // Reset form
+        setAmount("");
+        setFundPassword("");
+
+        // Refresh wallet balances
+        fetchWalletBalances();
+
+        // Refresh notifications to show the new withdrawal notification
+        try {
+          setTimeout(() => {
+            refetchNotifications();
+          }, 1000); // Small delay to ensure notification is created
+        } catch (error) {
+          console.log("Failed to refresh notifications:", error);
+        }
+      } else {
+        toast({
+          title: "Withdrawal Failed",
+          description: data.error || "Failed to submit withdrawal request.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Withdrawal submission error:", error);
+      toast({
+        title: "Error",
+        description:
+          "An error occurred while submitting your withdrawal request.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const formatBankName = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "JazzCash";
+      case "EASYPAISA":
+        return "EasyPaisa";
+      case "USDT_TRC20":
+        return "USDT (TRC20)";
+      default:
+        return bankName;
+    }
+  };
+
+  const getBankIcon = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "📱";
+      case "EASYPAISA":
+        return "💳";
+      case "USDT_TRC20":
+        return "₮";
+      default:
+        return "💳";
+    }
+  };
+
+  // Check if selected method is USDT
+  const isUsdtMethod = () => {
+    if (!selectedMethod || bankCards.length === 0) return false;
+    const selectedCard = bankCards.find((card) => {
+      const displayName =
+        formatBankName(card.bankName) +
+        " " +
+        (card.bankName === "USDT_TRC20"
+          ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
+          : card.accountNumber);
+      return displayName === selectedMethod;
+    });
+    return selectedCard?.bankName === "USDT_TRC20";
+  };
+
+  // Calculate USDT equivalent
+  const calculateUsdtAmount = (pkrAmount: number) => {
+    return pkrAmount / usdtToPkrRate;
   };
 
   return (
@@ -623,14 +650,12 @@ export const WithdrawClient = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700">Withdrawal method</span>
                   <span className="text-sm text-gray-500">
-                    {bankCards.length === 0
-                      ? "No methods added"
-                      : `${bankCards.length} method(s)`}
+                    {bankCards.length === 0 ? "No methods added" : `${bankCards.length} method(s)`}
                   </span>
                 </div>
 
                 {/* USDT Quick Access Section */}
-                {!bankCards.some((card) => card.bankName === "USDT_TRC20") && (
+                {!bankCards.some(card => card.bankName === "USDT_TRC20") && (
                   <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -638,12 +663,13 @@ export const WithdrawClient = () => {
                           <span className="text-white text-xl">₮</span>
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900">
-                            USDT (TRC20)
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Fast withdrawal • 0-30 minutes • 5% fee
-                          </div>
+                          <div className="font-semibold text-gray-900">USDT (TRC20)</div>
+                          <div className="text-sm text-gray-600">Fast withdrawal • 0-30 minutes • 5% fee</div>
+                          {bankCards.length > 0 && (
+                            <div className="text-xs text-orange-600 mt-1">
+                              ⚡ Faster than traditional methods
+                            </div>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -658,6 +684,7 @@ export const WithdrawClient = () => {
                   </div>
                 )}
 
+                {/* Payment Method Drawer */}
                 <Drawer>
                   <DrawerTrigger
                     className="w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -666,48 +693,33 @@ export const WithdrawClient = () => {
                     <div className="flex items-center justify-between">
                       <div className="text-left">
                         {isLoadingCards ? (
-                          <div className="text-gray-500">
-                            Loading methods...
-                          </div>
+                          <div className="text-gray-500">Loading methods...</div>
                         ) : selectedMethod ? (
                           <div className="flex items-center gap-3">
                             <span className="text-lg">
-                              {bankCards.find((card) => {
-                                const displayName =
-                                  formatBankName(card.bankName) +
-                                  " " +
+                              {bankCards.find(card => {
+                                const displayName = formatBankName(card.bankName) + " " +
                                   (card.bankName === "USDT_TRC20"
                                     ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
                                     : card.accountNumber);
                                 return displayName === selectedMethod;
-                              })?.bankName &&
-                                getBankIcon(
-                                  bankCards.find((card) => {
-                                    const displayName =
-                                      formatBankName(card.bankName) +
-                                      " " +
-                                      (card.bankName === "USDT_TRC20"
-                                        ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
-                                        : card.accountNumber);
-                                    return displayName === selectedMethod;
-                                  })?.bankName || "",
-                                )}
+                              })?.bankName && getBankIcon(bankCards.find(card => {
+                                const displayName = formatBankName(card.bankName) + " " +
+                                  (card.bankName === "USDT_TRC20"
+                                    ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
+                                    : card.accountNumber);
+                                return displayName === selectedMethod;
+                              })?.bankName || "")}
                             </span>
                             <div>
-                              <div className="font-medium">
-                                {selectedMethod}
-                              </div>
+                              <div className="font-medium">{selectedMethod}</div>
                               {selectedMethod.includes("USDT") && (
-                                <div className="text-xs text-orange-600">
-                                  Fast processing • Low fees
-                                </div>
+                                <div className="text-xs text-orange-600">Fast processing • Low fees</div>
                               )}
                             </div>
                           </div>
                         ) : (
-                          <div className="text-gray-500">
-                            Select withdrawal method
-                          </div>
+                          <div className="text-gray-500">Select withdrawal method</div>
                         )}
                       </div>
                       <ArrowRight className="w-4 h-4 text-gray-400" />
@@ -723,11 +735,9 @@ export const WithdrawClient = () => {
                       <div className="px-4 pb-6 space-y-3">
                         {/* Group USDT methods first */}
                         {bankCards
-                          .filter((card) => card.bankName === "USDT_TRC20")
+                          .filter(card => card.bankName === "USDT_TRC20")
                           .map((card) => {
-                            const displayName =
-                              formatBankName(card.bankName) +
-                              " " +
+                            const displayName = formatBankName(card.bankName) + " " +
                               `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`;
                             return (
                               <DrawerClose key={card.id} asChild>
@@ -737,32 +747,24 @@ export const WithdrawClient = () => {
                                       ? "bg-gradient-to-r from-orange-50 to-red-50 border-orange-300 shadow-md"
                                       : "hover:bg-gray-50 border-gray-200 hover:border-orange-200"
                                   }`}
-                                  onClick={() =>
-                                    handleMethodSelect(displayName)
-                                  }
+                                  onClick={() => handleMethodSelect(displayName)}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
-                                      <span className="text-white text-lg">
-                                        ₮
-                                      </span>
+                                      <span className="text-white text-lg">₮</span>
                                     </div>
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <div className="font-semibold">
-                                          USDT (TRC20)
-                                        </div>
+                                        <div className="font-semibold">USDT (TRC20)</div>
                                         <Badge className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
                                           Fast
                                         </Badge>
                                       </div>
                                       <div className="text-sm text-gray-600 font-mono">
-                                        {card.accountNumber.slice(0, 8)}...
-                                        {card.accountNumber.slice(-8)}
+                                        {card.accountNumber.slice(0, 8)}...{card.accountNumber.slice(-8)}
                                       </div>
                                       <div className="text-xs text-gray-500 mt-1">
-                                        {card.cardHolderName} • 0-30 min • 5%
-                                        fee
+                                        {card.cardHolderName} • 0-30 min • 5% fee
                                       </div>
                                     </div>
                                   </div>
@@ -773,12 +775,9 @@ export const WithdrawClient = () => {
 
                         {/* Traditional payment methods */}
                         {bankCards
-                          .filter((card) => card.bankName !== "USDT_TRC20")
+                          .filter(card => card.bankName !== "USDT_TRC20")
                           .map((card) => {
-                            const displayName =
-                              formatBankName(card.bankName) +
-                              " " +
-                              card.accountNumber;
+                            const displayName = formatBankName(card.bankName) + " " + card.accountNumber;
                             return (
                               <DrawerClose key={card.id} asChild>
                                 <button
@@ -787,9 +786,7 @@ export const WithdrawClient = () => {
                                       ? "bg-blue-50 border-blue-200"
                                       : "hover:bg-gray-50 border-gray-200"
                                   }`}
-                                  onClick={() =>
-                                    handleMethodSelect(displayName)
-                                  }
+                                  onClick={() => handleMethodSelect(displayName)}
                                 >
                                   <div className="flex items-center gap-3">
                                     <span className="text-lg">
@@ -803,8 +800,7 @@ export const WithdrawClient = () => {
                                         {card.accountNumber}
                                       </div>
                                       <div className="text-xs text-gray-400">
-                                        {card.cardHolderName} • 0-72 hours • 10%
-                                        fee
+                                        {card.cardHolderName} • 0-72 hours • 10% fee
                                       </div>
                                     </div>
                                   </div>
@@ -856,8 +852,7 @@ export const WithdrawClient = () => {
                   </div>
                   {isUsdtMethod() && amount && (
                     <div className="text-xs text-orange-600 mt-1">
-                      ≈ {calculateUsdtAmount(parseFloat(amount)).toFixed(4)}{" "}
-                      USDT
+                      ≈ {calculateUsdtAmount(parseFloat(amount)).toFixed(4)} USDT
                     </div>
                   )}
                 </div>
@@ -879,47 +874,34 @@ export const WithdrawClient = () => {
                 <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-lg">₮</span>
-                    <span className="font-medium text-gray-900">
-                      USDT Conversion
-                    </span>
+                    <span className="font-medium text-gray-900">USDT Conversion</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">PKR Amount:</span>
-                      <span className="font-medium">
-                        PKR {parseFloat(amount).toLocaleString()}
-                      </span>
+                      <span className="font-medium">PKR {parseFloat(amount).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">USDT Equivalent:</span>
                       <span className="font-medium text-orange-600">
-                        {calculateUsdtAmount(parseFloat(amount)).toFixed(4)}{" "}
-                        USDT
+                        {calculateUsdtAmount(parseFloat(amount)).toFixed(4)} USDT
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Network Fee (5%):</span>
                       <span className="text-red-600">
-                        -
-                        {(
-                          calculateUsdtAmount(parseFloat(amount)) * 0.05
-                        ).toFixed(4)}{" "}
-                        USDT
+                        -{(calculateUsdtAmount(parseFloat(amount)) * 0.05).toFixed(4)} USDT
                       </span>
                     </div>
                     <hr className="border-orange-200" />
                     <div className="flex justify-between font-medium">
                       <span className="text-gray-900">You'll receive:</span>
                       <span className="text-green-600">
-                        {(
-                          calculateUsdtAmount(parseFloat(amount)) * 0.95
-                        ).toFixed(4)}{" "}
-                        USDT
+                        {(calculateUsdtAmount(parseFloat(amount)) * 0.95).toFixed(4)} USDT
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 mt-2">
-                      Rate: 1 USDT = PKR {usdtToPkrRate} • Processing: 0-30
-                      minutes
+                      Rate: 1 USDT = PKR {usdtToPkrRate} • Processing: 0-30 minutes
                     </div>
                   </div>
                 </div>
@@ -930,16 +912,12 @@ export const WithdrawClient = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <CreditCard className="w-4 h-4 text-blue-600" />
-                    <span className="font-medium text-gray-900">
-                      Traditional Withdrawal
-                    </span>
+                    <span className="font-medium text-gray-900">Traditional Withdrawal</span>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Withdrawal Amount:</span>
-                      <span className="font-medium">
-                        PKR {parseFloat(amount).toLocaleString()}
-                      </span>
+                      <span className="font-medium">PKR {parseFloat(amount).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Handling Fee (10%):</span>
@@ -991,9 +969,7 @@ export const WithdrawClient = () => {
                       }`}
                       title={isInsufficient ? "Insufficient balance" : ""}
                     >
-                      <div className="font-medium">
-                        {value.toLocaleString()}
-                      </div>
+                      <div className="font-medium">{value.toLocaleString()}</div>
                       {isUsdtWithdrawal && !isInsufficient && (
                         <div className="text-xs mt-1 opacity-80">
                           ≈{calculateUsdtAmount(value).toFixed(2)} USDT
@@ -1023,7 +999,11 @@ export const WithdrawClient = () => {
 
             {/* Submit Button */}
             <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+              className={`w-full py-3 text-lg transition-all ${
+                isUsdtMethod()
+                  ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
               onClick={handleSubmit}
               disabled={
                 !amount ||
@@ -1039,52 +1019,154 @@ export const WithdrawClient = () => {
                   Processing...
                 </div>
               ) : (
-                "Submit"
+                <div className="flex items-center justify-center gap-2">
+                  {isUsdtMethod() && <span className="text-lg">₮</span>}
+                  <span>
+                    {isUsdtMethod() ? "Withdraw USDT" : "Submit Withdrawal"}
+                  </span>
+                </div>
               )}
             </Button>
 
             {/* Balance warning for current selection */}
             {amount && (
-              <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                <div className="flex justify-between items-center mb-1">
-                  <span>Withdrawal Amount:</span>
-                  <span className="font-medium">
-                    PKR {parseFloat(amount).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mb-1">
-                  <span>Handling Fee (10%):</span>
-                  <span className="font-medium">
-                    PKR {(parseFloat(amount) * 0.1).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center border-t pt-1">
-                  <span className="font-medium">Total Deduction:</span>
-                  <span className="font-semibold">
-                    PKR {(parseFloat(amount) * 1.1).toLocaleString()}
-                  </span>
-                </div>
+              <div
+                className={`text-sm text-gray-600 p-3 rounded-lg ${
+                  isUsdtMethod() ? "bg-orange-50" : "bg-blue-50"
+                }`}
+              >
+                {isUsdtMethod() ? (
+                  <>
+                    <div className="flex justify-between items-center mb-1">
+                      <span>Withdrawal Amount (PKR):</span>
+                      <span className="font-medium">
+                        PKR {parseFloat(amount).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span>USDT Equivalent:</span>
+                      <span className="font-medium text-orange-600">
+                        {calculateUsdtAmount(parseFloat(amount)).toFixed(4)}{" "}
+                        USDT
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span>Conversion Rate:</span>
+                      <span className="font-medium">
+                        1 USDT = PKR {usdtToPkrRate}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span>Network Fee (5%):</span>
+                      <span className="font-medium">
+                        {(
+                          calculateUsdtAmount(parseFloat(amount)) * 0.05
+                        ).toFixed(4)}{" "}
+                        USDT
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-1">
+                      <span className="font-medium">You will receive:</span>
+                      <span className="font-semibold text-orange-600">
+                        {(
+                          calculateUsdtAmount(parseFloat(amount)) * 0.95
+                        ).toFixed(4)}{" "}
+                        USDT
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center mb-1">
+                      <span>Withdrawal Amount:</span>
+                      <span className="font-medium">
+                        PKR {parseFloat(amount).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span>Handling Fee (10%):</span>
+                      <span className="font-medium">
+                        PKR {(parseFloat(amount) * 0.1).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-1">
+                      <span className="font-medium">Total Deduction:</span>
+                      <span className="font-semibold">
+                        PKR {(parseFloat(amount) * 1.1).toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
             {/* Withdrawal Information */}
-            <div className="space-y-2 text-sm text-gray-600">
-              <p>
-                1. Withdrawal time is from 9:00 to 17:00 from Monday to Friday.
-              </p>
-              <p className="text-red-500">
-                (After submitting the withdrawal application, it will arrive in
-                your account within 0 to72 hours.)
-              </p>
-              <p>
-                2. Withdrawals are not available on weekends and public
-                holidays.
-              </p>
-              <p>3. A 10% handling fee will be deducted for each withdrawal.</p>
-              <p>
-                4. If you encounter any other problems, please contact online
-                customer service.
-              </p>
+            <div className={`space-y-3 text-sm rounded-lg p-4 ${
+              isUsdtMethod()
+                ? "bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200"
+                : "bg-blue-50 border border-blue-200"
+            }`}>
+              <div className="flex items-center gap-2 mb-2">
+                {isUsdtMethod() ? (
+                  <>
+                    <span className="text-lg">₮</span>
+                    <span className="font-semibold text-orange-800">USDT Withdrawal Information</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 text-blue-600" />
+                    <span className="font-semibold text-blue-800">Traditional Withdrawal Information</span>
+                  </>
+                )}
+              </div>
+
+              {isUsdtMethod() ? (
+                <div className="space-y-2 text-orange-800">
+                  <div className="flex items-start gap-2">
+                    <span className="text-orange-600">•</span>
+                    <span>USDT withdrawals are processed 24/7 automatically within <strong>0-30 minutes</strong></span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-orange-600">•</span>
+                    <span>Network fee: <strong>5%</strong> (deducted from USDT amount)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-orange-600">•</span>
+                    <span>Ensure your USDT TRC20 address is correct - <strong>incorrect addresses may result in permanent loss</strong></span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-orange-600">•</span>
+                    <span>Current rate: <strong>1 USDT = PKR {usdtToPkrRate}</strong></span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-orange-600">•</span>
+                    <span>For any issues, please contact online customer service</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 text-blue-800">
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Withdrawal processing: <strong>Monday to Friday, 9:00-17:00</strong></span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Processing time: <strong>0-72 hours</strong> after submission</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Weekends and public holidays: <strong>No processing</strong></span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>Handling fee: <strong>10%</strong> (deducted from balance)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600">•</span>
+                    <span>For any issues, please contact online customer service</span>
+                  </div>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -1133,6 +1215,10 @@ export const WithdrawClient = () => {
                     <span>💳</span>
                     <span>EasyPaisa</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span>₮</span>
+                    <span>USDT (TRC20)</span>
+                  </div>
                 </div>
               </div>
 
@@ -1178,14 +1264,47 @@ export const WithdrawClient = () => {
 
             {successModalData && (
               <div className="space-y-4 pt-4">
-                <div className="bg-green-50 p-4 rounded-lg">
+                <div
+                  className={`p-4 rounded-lg ${
+                    successModalData.isUsdtWithdrawal
+                      ? "bg-orange-50"
+                      : "bg-green-50"
+                  }`}
+                >
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Amount:</span>
+                      <span className="text-gray-600">PKR Amount:</span>
                       <span className="font-medium">
                         PKR {successModalData.amount?.toLocaleString()}
                       </span>
                     </div>
+                    {successModalData.isUsdtWithdrawal && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">
+                            USDT Equivalent:
+                          </span>
+                          <span className="font-medium text-orange-600">
+                            {successModalData.usdtAmount?.toFixed(4)} USDT
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Network Fee:</span>
+                          <span className="font-medium text-red-600">
+                            {successModalData.usdtNetworkFee?.toFixed(4)} USDT
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">
+                            You will receive:
+                          </span>
+                          <span className="font-medium text-orange-600">
+                            {successModalData.usdtAmountAfterFee?.toFixed(4)}{" "}
+                            USDT
+                          </span>
+                        </div>
+                      </>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-600">Payment Method:</span>
                       <span className="font-medium">
@@ -1194,23 +1313,47 @@ export const WithdrawClient = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Processing Time:</span>
-                      <span className="font-medium text-green-600">
+                      <span
+                        className={`font-medium ${
+                          successModalData.isUsdtWithdrawal
+                            ? "text-orange-600"
+                            : "text-green-600"
+                        }`}
+                      >
                         {successModalData.estimatedTime}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <p className="text-xs text-blue-800">
-                    <strong>Note:</strong> You will receive a confirmation once
-                    your withdrawal has been processed by our admin team.
+                <div
+                  className={`p-3 rounded-lg ${
+                    successModalData.isUsdtWithdrawal
+                      ? "bg-orange-50"
+                      : "bg-blue-50"
+                  }`}
+                >
+                  <p
+                    className={`text-xs ${
+                      successModalData.isUsdtWithdrawal
+                        ? "text-orange-800"
+                        : "text-blue-800"
+                    }`}
+                  >
+                    <strong>Note:</strong>{" "}
+                    {successModalData.isUsdtWithdrawal
+                      ? "Your USDT will be sent to your wallet address after admin approval. Please ensure your address is correct."
+                      : "You will receive a confirmation once your withdrawal has been processed by our admin team."}
                   </p>
                 </div>
 
                 <Button
                   onClick={() => setShowSuccessModal(false)}
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className={`w-full ${
+                    successModalData.isUsdtWithdrawal
+                      ? "bg-orange-600 hover:bg-orange-700"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
                 >
                   Got It!
                 </Button>
@@ -1218,82 +1361,80 @@ export const WithdrawClient = () => {
             )}
           </DialogContent>
         </Dialog>
+      )}
 
-        {/* USDT Wallet Addition Form */}
-        <Dialog open={showUsdtForm} onOpenChange={setShowUsdtForm}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <div className="text-2xl">₮</div>
-                Add USDT Wallet
-              </DialogTitle>
-              <DialogDescription>
-                Add your USDT TRC20 wallet for fast withdrawals (0-30 minutes
-                processing)
-              </DialogDescription>
-            </DialogHeader>
+      {/* USDT Wallet Addition Form */}
+      <Dialog open={showUsdtForm} onOpenChange={setShowUsdtForm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="text-2xl">₮</div>
+              Add USDT Wallet
+            </DialogTitle>
+            <DialogDescription>
+              Add your USDT TRC20 wallet for fast withdrawals (0-30 minutes processing)
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="usdtHolderName">Wallet Label</Label>
-                <Input
-                  id="usdtHolderName"
-                  placeholder="e.g., My USDT Wallet"
-                  value={usdtHolderName}
-                  onChange={(e) => setUsdtHolderName(e.target.value)}
-                  disabled={isAddingUsdtWallet}
-                />
-              </div>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="usdtHolderName">Wallet Label</Label>
+              <Input
+                id="usdtHolderName"
+                placeholder="e.g., My USDT Wallet"
+                value={usdtHolderName}
+                onChange={(e) => setUsdtHolderName(e.target.value)}
+                disabled={isAddingUsdtWallet}
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="usdtAddress">USDT TRC20 Address</Label>
-                <Input
-                  id="usdtAddress"
-                  placeholder="T..."
-                  value={usdtAddress}
-                  onChange={(e) => setUsdtAddress(e.target.value)}
-                  disabled={isAddingUsdtWallet}
-                  className="font-mono text-sm"
-                />
-                <p className="text-xs text-gray-500">
-                  Must be a valid TRC20 USDT address (starts with 'T')
-                </p>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="usdtAddress">USDT TRC20 Address</Label>
+              <Input
+                id="usdtAddress"
+                placeholder="T..."
+                value={usdtAddress}
+                onChange={(e) => setUsdtAddress(e.target.value)}
+                disabled={isAddingUsdtWallet}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500">
+                Must be a valid TRC20 USDT address (starts with 'T')
+              </p>
+            </div>
 
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-orange-600 mt-0.5" />
-                  <div className="text-sm text-orange-800">
-                    <div className="font-medium">Fast Processing</div>
-                    <div className="text-xs text-orange-700 mt-1">
-                      USDT withdrawals are processed within 0-30 minutes with
-                      only 5% network fee
-                    </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-orange-600 mt-0.5" />
+                <div className="text-sm text-orange-800">
+                  <div className="font-medium">Fast Processing</div>
+                  <div className="text-xs text-orange-700 mt-1">
+                    USDT withdrawals are processed within 0-30 minutes with only 5% network fee
                   </div>
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowUsdtForm(false)}
-                  disabled={isAddingUsdtWallet}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddUsdtWallet}
-                  disabled={isAddingUsdtWallet}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                >
-                  {isAddingUsdtWallet ? "Adding..." : "Add Wallet"}
-                </Button>
-              </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowUsdtForm(false)}
+                disabled={isAddingUsdtWallet}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddUsdtWallet}
+                disabled={isAddingUsdtWallet}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+              >
+                {isAddingUsdtWallet ? "Adding..." : "Add Wallet"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -47,29 +47,7 @@ import WalletTab from "./wallet-tab";
 import Link from "next/link";
 import AnnouncementPopup from "@/components/announcement-popup";
 import { useMembershipList } from "@/hooks/use-membership-list";
-
-const sliderImages = [
-  {
-    id: 1,
-    src: "/slide1.jpg",
-    alt: "Slider 1",
-  },
-  {
-    id: 2,
-    src: "/slide2.png",
-    alt: "Slider 2",
-  },
-  {
-    id: 3,
-    src: "/slide3.jpg",
-    alt: "Slider 3",
-  },
-  {
-    id: 4,
-    src: "/slide4.png",
-    alt: "Slider 4",
-  },
-];
+import { useSliderImages } from "@/hooks/use-slider-images";
 
 export default function DashboardOverview() {
   const router = useRouter();
@@ -91,11 +69,17 @@ export default function DashboardOverview() {
     isLoading: membershipLoading,
     error: membershipError,
   } = useMembershipList("weekly", 5);
+  const {
+    data: sliderImages,
+    isLoading: sliderLoading,
+    error: sliderError,
+  } = useSliderImages();
 
   // Handle authentication errors using the global handler
   useAuthErrorHandler(dashboardError);
   useAuthErrorHandler(videosError);
   useAuthErrorHandler(membershipError);
+  useAuthErrorHandler(sliderError);
 
   if (dashboardLoading) {
     return (
@@ -168,17 +152,33 @@ export default function DashboardOverview() {
           preventClicksPropagation={true}
           className="h-full"
         >
-          {sliderImages.map((image) => (
-            <SwiperSlide key={image.id}>
-              <Image
-                src={image.src}
-                alt={image.alt}
-                fill
-                className="object-cover"
-                priority
-              />
+          {sliderImages && sliderImages.length > 0 ? (
+            sliderImages.map((image) => (
+              <SwiperSlide key={image.id}>
+                <Image
+                  src={image.url}
+                  alt={image.altText || "Slider image"}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              </SwiperSlide>
+            ))
+          ) : (
+            // Fallback content when no slider images are available
+            <SwiperSlide>
+              <div className="w-full h-full bg-gradient-to-r from-emerald-500 to-emerald-600 flex items-center justify-center">
+                <div className="text-center text-white">
+                  <h2 className="text-2xl font-bold mb-2">
+                    Welcome to Cocoon Films
+                  </h2>
+                  <p className="text-emerald-100">
+                    Your entertainment destination
+                  </p>
+                </div>
+              </div>
             </SwiperSlide>
-          ))}
+          )}
         </Swiper>
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
         <div className="absolute bottom-4 left-4 text-white">

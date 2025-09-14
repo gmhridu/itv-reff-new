@@ -6,6 +6,7 @@ import {
   ArrowUpCircle,
   BarChart3,
   GalleryVerticalEnd,
+  Image,
   MicIcon,
   Settings,
   Upload,
@@ -60,6 +61,11 @@ const data = {
       title: "Video Management",
       url: "/admin/video-upload",
       icon: Upload,
+    },
+    {
+      title: "Slider Management",
+      url: "/admin/slider-management",
+      icon: Image,
     },
     {
       title: "Announcements Management",

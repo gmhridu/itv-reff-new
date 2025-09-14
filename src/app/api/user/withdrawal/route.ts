@@ -25,7 +25,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is an Intern - Intern users cannot withdraw
-    if (user.isIntern || (user.currentPosition && user.currentPosition.name === "Intern")) {
+    if (
+      user.isIntern ||
+      (user.currentPosition && user.currentPosition.name === "Intern")
+    ) {
       response = NextResponse.json(
         { error: "Intern position earnings cannot be withdrawn" },
         { status: 400 },
@@ -34,7 +37,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { walletType, amount, fundPassword, paymentMethodId } = body;
+    const { walletType, amount, fundPassword, paymentMethodId, usdtToPkrRate } =
+      body;
 
     // Validate required fields
     if (!walletType || !amount || !fundPassword || !paymentMethodId) {
@@ -153,9 +157,21 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Calculate handling fee (10%)
-    const handlingFee = withdrawalAmount * 0.1;
-    const totalDeduction = withdrawalAmount + handlingFee;
+    // Calculate fees based on withdrawal type
+    const isUsdtWithdrawal = bankCard.bankName === "USDT_TRC20";
+    let handlingFee: number;
+    let totalDeduction: number;
+
+    if (isUsdtWithdrawal) {
+      // For USDT: 5% network fee, but we don't deduct from PKR balance
+      // PKR amount stays the same, USDT amount is reduced by fee
+      handlingFee = 0; // No PKR deduction for fees
+      totalDeduction = withdrawalAmount;
+    } else {
+      // For traditional: 10% handling fee
+      handlingFee = withdrawalAmount * 0.1;
+      totalDeduction = withdrawalAmount + handlingFee;
+    }
 
     // Check if user has enough balance including handling fee
     if (availableBalance < totalDeduction) {
@@ -180,6 +196,17 @@ export async function POST(request: NextRequest) {
           cardHolderName: bankCard.cardHolderName,
           walletType: walletType,
           handlingFee: handlingFee,
+          isUsdtWithdrawal: isUsdtWithdrawal,
+          usdtRate: usdtToPkrRate || 295,
+          usdtAmount: isUsdtWithdrawal
+            ? withdrawalAmount / (usdtToPkrRate || 295)
+            : null,
+          usdtNetworkFee: isUsdtWithdrawal
+            ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+            : null,
+          usdtAmountAfterFee: isUsdtWithdrawal
+            ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+            : null,
         }),
         status: "PENDING",
       },
@@ -210,7 +237,9 @@ export async function POST(request: NextRequest) {
           walletType === "Main Wallet"
             ? userData[0].walletBalance - totalDeduction
             : userData[0].commissionBalance - totalDeduction,
-        description: `Withdrawal request - ${bankCard.bankName} ${bankCard.accountNumber} (including 10% handling fee)`,
+        description: isUsdtWithdrawal
+          ? `USDT withdrawal request - ${bankCard.accountNumber.slice(0, 8)}...${bankCard.accountNumber.slice(-8)}`
+          : `Withdrawal request - ${bankCard.bankName} ${bankCard.accountNumber} (including 10% handling fee)`,
         referenceId: withdrawalRequest.id,
         status: "COMPLETED",
         metadata: JSON.stringify({
@@ -219,6 +248,17 @@ export async function POST(request: NextRequest) {
           handlingFee: handlingFee,
           paymentMethod: bankCard.bankName,
           accountNumber: bankCard.accountNumber,
+          isUsdtWithdrawal: isUsdtWithdrawal,
+          usdtRate: usdtToPkrRate || 295,
+          usdtAmount: isUsdtWithdrawal
+            ? withdrawalAmount / (usdtToPkrRate || 295)
+            : null,
+          usdtNetworkFee: isUsdtWithdrawal
+            ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+            : null,
+          usdtAmountAfterFee: isUsdtWithdrawal
+            ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+            : null,
         }),
       },
     });
@@ -228,7 +268,9 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         activity: "withdrawal_request",
-        description: `User requested withdrawal of PKR ${withdrawalAmount} from ${walletType}`,
+        description: isUsdtWithdrawal
+          ? `User requested USDT withdrawal equivalent to PKR ${withdrawalAmount} from ${walletType}`
+          : `User requested withdrawal of PKR ${withdrawalAmount} from ${walletType}`,
         ipAddress:
           request.headers.get("x-forwarded-for") ||
           request.headers.get("x-real-ip") ||
@@ -241,6 +283,17 @@ export async function POST(request: NextRequest) {
           walletType: walletType,
           paymentMethod: bankCard.bankName,
           accountNumber: bankCard.accountNumber,
+          isUsdtWithdrawal: isUsdtWithdrawal,
+          usdtRate: usdtToPkrRate || 295,
+          usdtAmount: isUsdtWithdrawal
+            ? withdrawalAmount / (usdtToPkrRate || 295)
+            : null,
+          usdtNetworkFee: isUsdtWithdrawal
+            ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+            : null,
+          usdtAmountAfterFee: isUsdtWithdrawal
+            ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+            : null,
         }),
       },
     });
@@ -256,7 +309,9 @@ export async function POST(request: NextRequest) {
       await notificationService.createNotification(
         NotificationType.WITHDRAWAL_REQUEST,
         "New Withdrawal Request",
-        `User ${userDetails?.name || userDetails?.phone || user.id} has requested withdrawal of PKR ${withdrawalAmount}`,
+        isUsdtWithdrawal
+          ? `User ${userDetails?.name || userDetails?.phone || user.id} has requested USDT withdrawal equivalent to PKR ${withdrawalAmount}`
+          : `User ${userDetails?.name || userDetails?.phone || user.id} has requested withdrawal of PKR ${withdrawalAmount}`,
         {
           severity: NotificationSeverity.INFO,
           targetType: "admin",
@@ -273,6 +328,17 @@ export async function POST(request: NextRequest) {
             paymentMethod: bankCard.bankName,
             accountNumber: bankCard.accountNumber,
             status: "PENDING",
+            isUsdtWithdrawal: isUsdtWithdrawal,
+            usdtRate: usdtToPkrRate || 295,
+            usdtAmount: isUsdtWithdrawal
+              ? withdrawalAmount / (usdtToPkrRate || 295)
+              : null,
+            usdtNetworkFee: isUsdtWithdrawal
+              ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+              : null,
+            usdtAmountAfterFee: isUsdtWithdrawal
+              ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+              : null,
           },
         },
       );
@@ -287,7 +353,9 @@ export async function POST(request: NextRequest) {
         {
           type: "WITHDRAWAL_REQUEST",
           title: "Withdrawal Request Submitted",
-          message: `Your withdrawal request of PKR ${withdrawalAmount} has been submitted successfully. Processing time: 0-72 hours.`,
+          message: isUsdtWithdrawal
+            ? `Your USDT withdrawal request equivalent to PKR ${withdrawalAmount} has been submitted successfully. Processing time: 0-30 minutes.`
+            : `Your withdrawal request of PKR ${withdrawalAmount} has been submitted successfully. Processing time: 0-72 hours.`,
           severity: "SUCCESS",
           actionUrl: `/withdraw`,
           metadata: {
@@ -297,7 +365,20 @@ export async function POST(request: NextRequest) {
             walletType: walletType,
             paymentMethod: `${bankCard.bankName} ${bankCard.accountNumber}`,
             status: "PENDING",
-            estimatedProcessingTime: "0-72 hours",
+            estimatedProcessingTime: isUsdtWithdrawal
+              ? "0-30 minutes"
+              : "0-72 hours",
+            isUsdtWithdrawal: isUsdtWithdrawal,
+            usdtRate: usdtToPkrRate || 295,
+            usdtAmount: isUsdtWithdrawal
+              ? withdrawalAmount / (usdtToPkrRate || 295)
+              : null,
+            usdtNetworkFee: isUsdtWithdrawal
+              ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+              : null,
+            usdtAmountAfterFee: isUsdtWithdrawal
+              ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+              : null,
           },
         },
         user.id,
@@ -315,21 +396,47 @@ export async function POST(request: NextRequest) {
       message: "Withdrawal request submitted successfully",
       showSuccessModal: true,
       modalData: {
-        title: "Withdrawal Submitted Successfully!",
-        message:
-          "Your withdrawal application has been submitted and will arrive to your account within 0-72 hours.",
+        title: isUsdtWithdrawal
+          ? "USDT Withdrawal Submitted Successfully!"
+          : "Withdrawal Submitted Successfully!",
+        message: isUsdtWithdrawal
+          ? "Your USDT withdrawal application has been submitted and will be processed within 0-30 minutes."
+          : "Your withdrawal application has been submitted and will arrive to your account within 0-72 hours.",
         amount: withdrawalAmount,
-        paymentMethod: `${bankCard.bankName} ${bankCard.accountNumber}`,
-        estimatedTime: "0-72 hours",
+        paymentMethod: `${bankCard.bankName} ${isUsdtWithdrawal ? bankCard.accountNumber.slice(0, 8) + "..." + bankCard.accountNumber.slice(-8) : bankCard.accountNumber}`,
+        estimatedTime: isUsdtWithdrawal ? "0-30 minutes" : "0-72 hours",
+        isUsdtWithdrawal: isUsdtWithdrawal,
+        usdtAmount: isUsdtWithdrawal
+          ? withdrawalAmount / (usdtToPkrRate || 295)
+          : null,
+        usdtNetworkFee: isUsdtWithdrawal
+          ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+          : null,
+        usdtAmountAfterFee: isUsdtWithdrawal
+          ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+          : null,
       },
       data: {
         withdrawalRequestId: withdrawalRequest.id,
         amount: withdrawalAmount,
         handlingFee: handlingFee,
         totalDeduction: totalDeduction,
-        paymentMethod: `${bankCard.bankName} ${bankCard.accountNumber}`,
+        paymentMethod: `${bankCard.bankName} ${isUsdtWithdrawal ? bankCard.accountNumber.slice(0, 8) + "..." + bankCard.accountNumber.slice(-8) : bankCard.accountNumber}`,
         status: "PENDING",
-        estimatedProcessingTime: "0-72 hours",
+        estimatedProcessingTime: isUsdtWithdrawal
+          ? "0-30 minutes"
+          : "0-72 hours",
+        isUsdtWithdrawal: isUsdtWithdrawal,
+        usdtRate: usdtToPkrRate || 295,
+        usdtAmount: isUsdtWithdrawal
+          ? withdrawalAmount / (usdtToPkrRate || 295)
+          : null,
+        usdtNetworkFee: isUsdtWithdrawal
+          ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.05
+          : null,
+        usdtAmountAfterFee: isUsdtWithdrawal
+          ? (withdrawalAmount / (usdtToPkrRate || 295)) * 0.95
+          : null,
       },
     });
 

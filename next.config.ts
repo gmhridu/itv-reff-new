@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     if (dev) {
       // 禁用 webpack 的热模块替换
       config.watchOptions = {
-        ignored: ['**/*'], // 忽略所有文件变化
+        ignored: ["**/*"], // 忽略所有文件变化
       };
     }
     return config;
@@ -19,6 +19,23 @@ const nextConfig: NextConfig = {
   eslint: {
     // 构建时忽略ESLint错误
     ignoreDuringBuilds: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cloudinary.com",
+        port: "",
+        pathname: "/**",
+      },
+    ],
+    domains: ["res.cloudinary.com", "cloudinary.com"],
   },
 };
 

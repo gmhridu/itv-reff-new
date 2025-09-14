@@ -39,11 +39,11 @@ const bankCardSchema = z.object({
   cardHolderName: z
     .string()
     .min(2, "Card holder name must be at least 2 characters"),
-  bankName: z.enum(["JAZZCASH", "EASYPAISA"]),
+  bankName: z.enum(["JAZZCASH", "EASYPAISA", "USDT_TRC20"]),
   accountNumber: z
     .string()
-    .min(10, "Account number must be at least 10 digits")
-    .regex(/^\d+$/, "Account number must contain only digits"),
+    .min(1, "Account number is required")
+    .max(50, "Account number is too long"),
 });
 
 type BankCardFormData = z.infer<typeof bankCardSchema>;
@@ -72,6 +72,25 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
       accountNumber: "",
     },
   });
+
+  // Watch bankName to apply conditional validation
+  const watchedBankName = form.watch("bankName");
+
+  // Custom validation for account number based on bank type
+  const validateAccountNumber = (value: string, bankName: string) => {
+    if (bankName === "USDT_TRC20") {
+      // USDT TRC20 address validation (starts with T and is 34 characters)
+      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(value)) {
+        return "Invalid USDT TRC20 address format";
+      }
+    } else {
+      // Traditional bank account validation
+      if (!/^\d{10,15}$/.test(value)) {
+        return "Account number must be 10-15 digits";
+      }
+    }
+    return true;
+  };
 
   // Update form when userRealName changes
   useEffect(() => {
@@ -116,6 +135,8 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
         return <Smartphone className="h-6 w-6" />;
       case "EASYPAISA":
         return <Wallet className="h-6 w-6" />;
+      case "USDT_TRC20":
+        return <span className="text-2xl">₮</span>;
       default:
         return <CreditCard className="h-6 w-6" />;
     }
@@ -127,8 +148,23 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
         return "from-purple-600 to-blue-600";
       case "EASYPAISA":
         return "from-green-600 to-emerald-600";
+      case "USDT_TRC20":
+        return "from-orange-500 to-red-500";
       default:
         return "from-gray-600 to-slate-600";
+    }
+  };
+
+  const getBankDisplayName = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "JazzCash";
+      case "EASYPAISA":
+        return "EasyPaisa";
+      case "USDT_TRC20":
+        return "USDT (TRC20)";
+      default:
+        return bankName;
     }
   };
 
@@ -157,7 +193,7 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl font-bold flex items-center gap-2">
                   {getBankIcon(card.bankName)}
-                  {card.bankName === "JAZZCASH" ? "JazzCash" : "EasyPaisa"}
+                  {getBankDisplayName(card.bankName)}
                 </CardTitle>
                 <button
                   onClick={() => handleDeleteCard(card.id)}
@@ -170,9 +206,15 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm opacity-80">Bank Account</p>
-                  <p className="text-lg font-mono font-semibold">
-                    {card.accountNumber}
+                  <p className="text-sm opacity-80">
+                    {card.bankName === "USDT_TRC20"
+                      ? "USDT Address"
+                      : "Bank Account"}
+                  </p>
+                  <p className="text-lg font-mono font-semibold break-all">
+                    {card.bankName === "USDT_TRC20"
+                      ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
+                      : card.accountNumber}
                   </p>
                 </div>
                 <div className="text-right">
@@ -182,8 +224,17 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-white/20">
                 <div className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
-                  <span className="text-sm">E-Wallet</span>
+                  {card.bankName === "USDT_TRC20" ? (
+                    <>
+                      <span className="text-lg">₿</span>
+                      <span className="text-sm">Crypto Wallet</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="h-4 w-4" />
+                      <span className="text-sm">E-Wallet</span>
+                    </>
+                  )}
                 </div>
                 <div className="text-xs opacity-70">Active</div>
               </div>
@@ -206,7 +257,11 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
 
         <DrawerContent className="max-h-[80vh]">
           <DrawerHeader>
-            <DrawerTitle>Bind Bank Card</DrawerTitle>
+            <DrawerTitle>
+              {watchedBankName === "USDT_TRC20"
+                ? "Add USDT Wallet"
+                : "Bind Bank Card"}
+            </DrawerTitle>
           </DrawerHeader>
 
           <div className="px-4 pb-6 space-y-6">
@@ -225,11 +280,17 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                       <FormControl>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-gray-600">
-                            Card Holder Name
+                            {watchedBankName === "USDT_TRC20"
+                              ? "Wallet Label"
+                              : "Card Holder Name"}
                           </span>
                           <Input
                             {...field}
-                            placeholder="Enter card holder name"
+                            placeholder={
+                              watchedBankName === "USDT_TRC20"
+                                ? "Enter wallet label"
+                                : "Enter card holder name"
+                            }
                             disabled={isSubmitting}
                             className="max-w-[200px] text-right"
                           />
@@ -246,13 +307,37 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                   name="accountNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bank Account</FormLabel>
+                      <FormLabel>
+                        {watchedBankName === "USDT_TRC20"
+                          ? "USDT TRC20 Address"
+                          : "Bank Account"}
+                      </FormLabel>
                       <FormControl>
                         <Input
                           {...field}
-                          placeholder="Please enter the Bank account"
+                          placeholder={
+                            watchedBankName === "USDT_TRC20"
+                              ? "Enter USDT TRC20 address (starts with T)"
+                              : "Please enter the Bank account"
+                          }
                           disabled={isSubmitting}
-                          type="tel"
+                          type={
+                            watchedBankName === "USDT_TRC20" ? "text" : "tel"
+                          }
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                            const validation = validateAccountNumber(
+                              e.target.value,
+                              watchedBankName,
+                            );
+                            if (validation !== true) {
+                              form.setError("accountNumber", {
+                                message: validation,
+                              });
+                            } else {
+                              form.clearErrors("accountNumber");
+                            }
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -266,7 +351,7 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                   name="bankName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bank Name</FormLabel>
+                      <FormLabel>Payment Method</FormLabel>
                       <div className="grid grid-cols-2 gap-3">
                         <button
                           type="button"
@@ -303,19 +388,53 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                           </div>
                         </button>
                       </div>
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange("USDT_TRC20")}
+                          className={`w-full p-4 rounded-lg border-2 transition-all ${
+                            field.value === "USDT_TRC20"
+                              ? "border-orange-500 bg-orange-50"
+                              : "border-gray-200 hover:border-gray-300"
+                          }`}
+                          disabled={isSubmitting}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-2xl text-orange-600">₮</span>
+                            <div className="text-left">
+                              <span className="text-sm font-medium block">
+                                USDT (TRC20)
+                              </span>
+                              <span className="text-xs text-orange-600">
+                                Crypto Wallet
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
                 {/* Information Text */}
-                <div className="bg-green-100 p-4 rounded-lg">
-                  <p className="text-sm text-green-800 text-center">
-                    The account opening phone of your bound bank card must be
-                    the same as your contact mobile phone, otherwise you will
-                    not be able to withdraw money.
-                  </p>
-                </div>
+                {watchedBankName === "USDT_TRC20" ? (
+                  <div className="bg-orange-100 p-4 rounded-lg">
+                    <p className="text-sm text-orange-800 text-center">
+                      ⚠️ Make sure your USDT TRC20 address is correct. Incorrect
+                      addresses may result in permanent loss of funds. Only
+                      TRC20 USDT addresses are supported.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-green-100 p-4 rounded-lg">
+                    <p className="text-sm text-green-800 text-center">
+                      The account opening phone of your bound bank card must be
+                      the same as your contact mobile phone, otherwise you will
+                      not be able to withdraw money.
+                    </p>
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <Button
@@ -328,8 +447,10 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Adding...
                     </>
+                  ) : watchedBankName === "USDT_TRC20" ? (
+                    "Add USDT Wallet"
                   ) : (
-                    "Add it now"
+                    "Add Bank Card"
                   )}
                 </Button>
               </form>
@@ -343,7 +464,9 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
         <CardContent className="p-4">
           <div className="flex items-center gap-3 text-sm text-gray-600">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span>Secure payment methods powered by JazzCash & EasyPaisa</span>
+            <span>
+              Secure payment methods: JazzCash, EasyPaisa & USDT (TRC20)
+            </span>
           </div>
         </CardContent>
       </Card>

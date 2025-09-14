@@ -623,3 +623,15 @@ enum AnnouncementTargetType {
   SPECIFIC_LEVELS
   SPECIFIC_ROLES
 }
+
+model SliderImage {
+  id        String   @id @default(cuid())
+  url       String // Cloudinary URL
+  altText   String? // Alt text for accessibility
+  order     Int      @default(0) // Order for sorting
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("slider_images")
+}

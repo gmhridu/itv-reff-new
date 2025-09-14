@@ -82,6 +82,11 @@ interface WithdrawalRequest {
     cardHolderName: string;
     walletType: string;
     handlingFee: number;
+    isUsdtWithdrawal?: boolean;
+    usdtRate?: number;
+    usdtAmount?: number;
+    usdtNetworkFee?: number;
+    usdtAmountAfterFee?: number;
   };
   status: "PENDING" | "APPROVED" | "REJECTED" | "PROCESSED";
   adminNotes?: string;
@@ -316,6 +321,32 @@ export const WithdrawalManagement = () => {
 
   const formatCurrency = (amount: number) => {
     return `PKR ${amount.toLocaleString()}`;
+  };
+
+  const getBankDisplayName = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "JazzCash";
+      case "EASYPAISA":
+        return "EasyPaisa";
+      case "USDT_TRC20":
+        return "USDT (TRC20)";
+      default:
+        return bankName;
+    }
+  };
+
+  const getBankIcon = (bankName: string) => {
+    switch (bankName) {
+      case "JAZZCASH":
+        return "📱";
+      case "EASYPAISA":
+        return "💳";
+      case "USDT_TRC20":
+        return "₮";
+      default:
+        return "💳";
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -610,26 +641,43 @@ export const WithdrawalManagement = () => {
                               {formatCurrency(request.amount)}
                             </div>
                             <div className="text-xs text-gray-500">
-                              Fee:{" "}
-                              {formatCurrency(
-                                request.paymentDetails.handlingFee,
-                              )}
+                              {request.paymentDetails.isUsdtWithdrawal
+                                ? `Network Fee: ${(request.paymentDetails.usdtNetworkFee || 0).toFixed(4)} USDT`
+                                : `Fee: ${formatCurrency(request.paymentDetails.handlingFee)}`}
                             </div>
                             <div className="text-xs text-gray-400">
                               From: {request.paymentDetails.walletType}
                             </div>
+                            {request.paymentDetails.isUsdtWithdrawal && (
+                              <div className="text-xs text-orange-600">
+                                USDT:{" "}
+                                {(
+                                  request.paymentDetails.usdtAmountAfterFee || 0
+                                ).toFixed(4)}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
 
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="font-medium">
-                              {request.paymentMethod === "JAZZCASH"
-                                ? "JazzCash"
-                                : "EasyPaisa"}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">
+                                {getBankIcon(request.paymentMethod)}
+                              </span>
+                              <div className="font-medium">
+                                {getBankDisplayName(request.paymentMethod)}
+                              </div>
+                              {request.paymentDetails.isUsdtWithdrawal && (
+                                <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-1 py-0.5 rounded">
+                                  Crypto
+                                </span>
+                              )}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {request.paymentDetails.accountNumber}
+                            <div className="text-sm text-gray-500 font-mono">
+                              {request.paymentDetails.isUsdtWithdrawal
+                                ? `${request.paymentDetails.accountNumber.slice(0, 8)}...${request.paymentDetails.accountNumber.slice(-8)}`
+                                : request.paymentDetails.accountNumber}
                             </div>
                             <div className="text-xs text-gray-400">
                               {request.paymentDetails.cardHolderName}
@@ -847,32 +895,92 @@ export const WithdrawalManagement = () => {
                 {/* Request Information */}
                 <div>
                   <h4 className="font-medium mb-2">Request Information</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Amount:</span>
-                        <span className="font-medium">
-                          {formatCurrency(selectedRequest.amount)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Handling Fee:</span>
-                        <span>
-                          {formatCurrency(
-                            selectedRequest.paymentDetails.handlingFee,
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Total Deducted:</span>
-                        <span className="font-medium">
-                          {formatCurrency(
-                            selectedRequest.amount +
-                              selectedRequest.paymentDetails.handlingFee,
-                          )}
-                        </span>
-                      </div>
+                  <div className="space-y-4">
+                    <div className="space-y-2 text-sm">
+                      {selectedRequest.paymentDetails.isUsdtWithdrawal ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">PKR Amount:</span>
+                            <span className="font-medium">
+                              {formatCurrency(selectedRequest.amount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">
+                              USDT Equivalent:
+                            </span>
+                            <span className="font-medium text-orange-600">
+                              {(
+                                selectedRequest.paymentDetails.usdtAmount || 0
+                              ).toFixed(4)}{" "}
+                              USDT
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">
+                              Conversion Rate:
+                            </span>
+                            <span className="font-medium">
+                              1 USDT = PKR{" "}
+                              {selectedRequest.paymentDetails.usdtRate || 295}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">
+                              Network Fee (5%):
+                            </span>
+                            <span className="font-medium text-red-600">
+                              {(
+                                selectedRequest.paymentDetails.usdtNetworkFee ||
+                                0
+                              ).toFixed(4)}{" "}
+                              USDT
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">
+                              User Receives:
+                            </span>
+                            <span className="font-medium text-orange-600">
+                              {(
+                                selectedRequest.paymentDetails
+                                  .usdtAmountAfterFee || 0
+                              ).toFixed(4)}{" "}
+                              USDT
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Amount:</span>
+                            <span className="font-medium">
+                              {formatCurrency(selectedRequest.amount)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Handling Fee:</span>
+                            <span>
+                              {formatCurrency(
+                                selectedRequest.paymentDetails.handlingFee,
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">
+                              Total Deducted:
+                            </span>
+                            <span className="font-medium">
+                              {formatCurrency(
+                                selectedRequest.amount +
+                                  selectedRequest.paymentDetails.handlingFee,
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
+
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-gray-500">Wallet Type:</span>
@@ -896,16 +1004,28 @@ export const WithdrawalManagement = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Method:</span>
-                      <span>
-                        {selectedRequest.paymentMethod === "JAZZCASH"
-                          ? "JazzCash"
-                          : "EasyPaisa"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">
+                          {getBankIcon(selectedRequest.paymentMethod)}
+                        </span>
+                        <span>
+                          {getBankDisplayName(selectedRequest.paymentMethod)}
+                        </span>
+                        {selectedRequest.paymentDetails.isUsdtWithdrawal && (
+                          <span className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white px-2 py-0.5 rounded-full">
+                            Crypto
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Account:</span>
+                      <span className="text-gray-500">
+                        {selectedRequest.paymentDetails.isUsdtWithdrawal
+                          ? "USDT Address:"
+                          : "Account:"}
+                      </span>
                       <div className="flex items-center gap-2">
-                        <span>
+                        <span className="font-mono break-all">
                           {selectedRequest.paymentDetails.accountNumber}
                         </span>
                         <Button
@@ -922,11 +1042,24 @@ export const WithdrawalManagement = () => {
                       </div>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Account Holder:</span>
+                      <span className="text-gray-500">
+                        {selectedRequest.paymentDetails.isUsdtWithdrawal
+                          ? "Wallet Label:"
+                          : "Account Holder:"}
+                      </span>
                       <span>
                         {selectedRequest.paymentDetails.cardHolderName}
                       </span>
                     </div>
+                    {selectedRequest.paymentDetails.isUsdtWithdrawal && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Conversion Rate:</span>
+                        <span className="text-orange-600">
+                          1 USDT = PKR{" "}
+                          {selectedRequest.paymentDetails.usdtRate || 295}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

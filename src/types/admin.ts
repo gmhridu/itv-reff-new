@@ -424,3 +424,43 @@ export type Video = {
   views: number;
   engagement: number;
 };
+
+// Slider Management Types
+export interface SliderImage {
+  id: string;
+  url: string;
+  altText: string | null;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SliderImageUploadData {
+  url: string;
+  altText?: string;
+  order?: number;
+  isActive?: boolean;
+  cloudinaryPublicId?: string;
+}
+
+export interface SliderImageUpdateData {
+  url?: string;
+  altText?: string;
+  order?: number;
+  isActive?: boolean;
+}
+
+export interface SliderImageFilters {
+  isActive?: boolean;
+  searchTerm?: string;
+}
+
+export interface PaginatedSliderImages {
+  sliderImages: SliderImage[];
+  totalCount: number;
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
