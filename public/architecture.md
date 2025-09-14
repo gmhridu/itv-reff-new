@@ -1,62 +1,64 @@
 # Position Level System
 
 ## Overview
-The system consists of 11 levels: Intern and P1 to P10. Each level requires a job security deposit (except Intern) and offers a fixed number of tasks per day with a unit price per task. The income is calculated as:
+The system consists of 12 levels: Intern and L1 to L11. Each level requires a job security deposit (except Intern) and offers a fixed number of tasks per day with a unit price per task. The income is calculated as:
 - Daily Income = Number of Tasks × Unit Price
 - Monthly Income = Daily Income × 30
 - Annual Income = Daily Income × 365
 
-Note: The validity period for P1-P10 is one year (365 days). Internship lasts 4 days.
+Note: The validity period for L1-L11 is one year (365 days). Internship lasts 4 days.
 
 ## Position Level Details
 
 | Position | Deposit (PKR) | Tasks/Day | Unit Price (PKR) | Daily Income (PKR) | Monthly Income (PKR) | Annual Income (PKR) |
 |----------|---------------|-----------|------------------|--------------------|----------------------|---------------------|
-| Intern   | 0             | 5         | 26               | 130                | -                    | -                   |
-| P1       | 3,900         | 5         | 26               | 130                | 3,900                | 47,450              |
-| P2       | 18,000        | 10        | 62               | 620                | 18,600               | 226,300             |
-| P3       | 52,000        | 20        | 93               | 1,860              | 55,800               | 678,900             |
-| P4       | 120,000       | 30        | 145              | 4,350              | 130,500              | 1,587,750           |
-| P5       | 250,000       | 50        | 210              | 10,500             | 315,000              | 3,832,500           |
-| P6       | 550,000       | 60        | 350              | 21,000             | 630,000              | 7,665,000           |
-| P7       | 1,100,000     | 80        | 720              | 57,600             | 1,728,000            | 21,024,000          |
-| P8       | 2,200,000     | 100       | 1,300            | 130,000            | 3,900,000            | 47,450,000          |
-| P9       | 4,000,000     | 120       | 2,000            | 240,000            | 7,200,000            | 87,600,000          |
-| P10      | 7,000,000     | 150       | 2,800            | 420,000            | 12,600,000           | 153,300,000         |
+| Intern   | 0             | 5         | 13               | 65                 | -                    | -                   |
+| L1       | 2,000         | 5         | 13               | 65                 | 1,950                | 23,725              |
+| L2       | 5,000         | 8         | 21               | 168                | 5,040                | 61,320              |
+| L3       | 20,000        | 10        | 72               | 720                | 21,600               | 262,800             |
+| L4       | 50,000        | 15        | 123              | 1,845              | 55,350               | 673,425             |
+| L5       | 100,000       | 20        | 192              | 3,840              | 115,200              | 1,401,600           |
+| L6       | 250,000       | 22        | 454              | 9,988              | 299,640              | 3,645,620           |
+| L7       | 500,000       | 25        | 836              | 20,900             | 627,000              | 7,628,250           |
+| L8       | 1,000,000     | 27        | 1,611            | 43,497             | 1,304,910            | 15,875,962          |
+| L9       | 2,000,000     | 30        | 3,033            | 90,990             | 2,729,700            | 33,208,875          |
+| L10      | 4,000,000     | 31        | 6,129            | 190,000            | 5,700,000            | 69,350,000          |
+| L11      | 8,000,000     | 32        | 12,500           | 400,000            | 12,000,000           | 146,000,000         |
 
 Note: The annual income is calculated as daily income multiplied by 365, which is the validity period.
 
 # Referral (Invitation) Rewards
 
 ## Overview
-When you invite someone to join, you receive a one-time reward based on your current position level and the level of the person you invited (but note the rule: if you invite someone at a higher level, you only get 8% of your own level's reward). The rewards are structured in three tiers (A, B, C):
-- **A-level**: Direct invite (you get 8% of a base reward that depends on your level)
+When you invite someone to join, you receive a one-time reward based on your current position level and the level of the person you invited (but note the rule: if you invite someone at a higher level, you only get 10% of your own level's reward). The rewards are structured in three tiers (A, B, C):
+- **A-level**: Direct invite (you get 10% of a base reward that depends on your level)
 - **B-level**: Invite by your A-level (you get 3% of the base reward)
 - **C-level**: Invite by your B-level (you get 1% of the base reward)
 
-The base reward for each level is given in the table. The reward percentages (8%, 3%, 1%) are fixed across levels.
+The base reward for each level is given in the table. The reward percentages (10%, 3%, 1%) are fixed across levels.
 
 ## Referral Reward Table
 
-| Job Level | Income Ratio | A-level (8%) | B-level (3%) | C-level (1%) |
-|-----------|--------------|--------------|--------------|--------------|
-| P1        | 8%-3%-1%     | 312          | 117          | 39           |
-| P2        | 8%-3%-1%     | 1,440        | 540          | 180          |
-| P3        | 8%-3%-1%     | 4,160        | 1,560        | 520          |
-| P4        | 8%-3%-1%     | 9,600        | 3,600        | 1,200        |
-| P5        | 8%-3%-1%     | 20,000       | 7,500        | 2,500        |
-| P6        | 8%-3%-1%     | 44,000       | 16,500       | 5,500        |
-| P7        | 8%-3%-1%     | 88,000       | 33,000       | 11,000       |
-| P8        | 8%-3%-1%     | 176,000      | 66,000       | 22,000       |
-| P9        | 8%-3%-1%     | 320,000      | 120,000      | 40,000       |
-| P10       | 8%-3%-1%     | 560,000      | 210,000      | 70,000       |
+| Job Level | Income Ratio | A-level (10%) | B-level (3%) | C-level (1%) |
+|-----------|--------------|---------------|--------------|--------------|
+| L1        | 10%-3%-1%    | 200           | 60           | 20           |
+| L2        | 10%-3%-1%    | 500           | 150          | 50           |
+| L3        | 10%-3%-1%    | 2,000         | 600          | 200          |
+| L4        | 10%-3%-1%    | 5,000         | 1,500        | 500          |
+| L5        | 10%-3%-1%    | 10,000        | 3,000        | 1,000        |
+| L6        | 10%-3%-1%    | 25,000        | 7,500        | 2,500        |
+| L7        | 10%-3%-1%    | 50,000        | 15,000       | 5,000        |
+| L8        | 10%-3%-1%    | 100,000       | 30,000       | 10,000       |
+| L9        | 10%-3%-1%    | 200,000       | 60,000       | 20,000       |
+| L10       | 10%-3%-1%    | 400,000       | 120,000      | 40,000       |
+| L11       | 10%-3%-1%    | 800,000       | 240,000      | 80,000       |
 
 ### Rules and Examples:
 1. **Rule 1**: If you invite someone at the same or lower level, you get the full reward for your level as per the table.
-2. **Rule 2**: If you invite someone at a higher level, you only get 8% of the reward for your own current level (the A-level reward for your level).
-   - Example: If you are at P1 and you invite someone who becomes P2 (higher than you), you get only 312 PKR (which is the A-level reward for P1).
-3. **Example 1**: As a P1 member, if you invite a subordinate A who becomes P1, you get 312 PKR (A-level). If that A-level subordinate then invites a B-level (who becomes P1), you get 117 PKR (B-level). If that B-level invites a C-level (who becomes P1), you get 39 PKR (C-level).
-4. **Example 2**: As a P4 member, if you invite a subordinate A who becomes P4, you get 9,600 PKR (A-level).
+2. **Rule 2**: If you invite someone at a higher level, you only get 10% of the reward for your own current level (the A-level reward for your level).
+   - Example: If you are at L1 and you invite someone who becomes L2 (higher than you), you get only 200 PKR (which is the A-level reward for L1).
+3. **Example 1**: As a L1 member, if you invite a subordinate A who becomes L1, you get 200 PKR (A-level). If that A-level subordinate then invites a B-level (who becomes L1), you get 60 PKR (B-level). If that B-level invites a C-level (who becomes L1), you get 20 PKR (C-level).
+4. **Example 2**: As a L4 member, if you invite a subordinate A who becomes L4, you get 5,000 PKR (A-level).
 
 # Task Management Bonus
 
