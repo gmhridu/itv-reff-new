@@ -215,7 +215,7 @@ export default function RewardsTracking() {
               </div>
               <p className="text-2xl font-bold text-yellow-600">PKR {rewardsData.totalRewards.aLevel.toFixed(2)}</p>
               <p className="text-sm text-gray-600">{rewardsData.totalCounts.aLevel} transactions</p>
-              <p className="text-xs text-gray-500 mt-1">Direct referrals (6% bonus rate)</p>
+              <p className="text-xs text-gray-500 mt-1">Direct referrals (8% bonus rate)</p>
             </div>
 
             <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">

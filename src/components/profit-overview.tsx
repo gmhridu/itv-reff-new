@@ -331,7 +331,7 @@ const ProfitOverview: React.FC = () => {
       "For example: Subordinate completes Per Task of 1,000 PKR",
     ],
     rows: [
-      { level: "A-level", ratio: "6%", example: "60 PKR" },
+      { level: "A-level", ratio: "8%", example: "80 PKR" },
       { level: "B-level", ratio: "3%", example: "30 PKR" },
       { level: "C-level", ratio: "1%", example: "10 PKR" },
     ],
@@ -699,7 +699,7 @@ const ProfitOverview: React.FC = () => {
                   </span>
                 </div>
                 <span className="bg-red-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-red-700 text-sm sm:text-base">
-                  6% of daily income
+                  8% of daily income
                 </span>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 gap-2">
@@ -785,10 +785,10 @@ const ProfitOverview: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-red-50 p-3 sm:p-4 rounded-lg border border-red-200 gap-2">
                   <span className="font-semibold text-gray-700 text-sm sm:text-base">
-                    A-level: {formatNumber(1000)} × {formatNumber(10)} × 6%
+                    A-level: {formatNumber(1000)} × {formatNumber(10)} × 8%
                   </span>
                   <span className="bg-red-200 px-3 sm:px-4 py-2 rounded-lg font-bold text-red-700 font-mono text-sm sm:text-base">
-                    {formatNumber(600)} PKR
+                    {formatNumber(800)} PKR
                   </span>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200 gap-2">
@@ -814,15 +814,15 @@ const ProfitOverview: React.FC = () => {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <span className="text-xl sm:text-2xl">✅</span>
                 <div className="text-center">
-                  <div className="text-base sm:text-lg font-bold text-green-700 mb-2">
+                  <div className="text-xl sm:text-2xl font-bold text-green-700 mb-2">
                     Total Daily Management Bonus
                   </div>
                   <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-800 break-words">
                     <span className="block sm:inline">
-                      {`${formatNumber(600)} + ${formatNumber(3000)} + ${formatNumber(10000)} = `}
+                      {`${formatNumber(800)} + ${formatNumber(3000)} + ${formatNumber(10000)} = `}
                     </span>
                     <span className="bg-green-200 px-3 sm:px-4 py-2 rounded-lg font-mono inline-block mt-2 sm:mt-0">
-                      {formatNumber(13600)} PKR
+                      {formatNumber(13800)} PKR
                     </span>
                   </div>
                 </div>

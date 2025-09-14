@@ -64,7 +64,7 @@ The base reward for each level is given in the table. The reward percentages (10
 
 ## Overview
 After your subordinates complete their daily tasks, you earn a bonus based on their level in your downline and their task income. The bonus ratios are:
-- **A-level subordinates**: 6% of their daily task income
+- **A-level subordinates**: 8% of their daily task income
 - **B-level subordinates**: 3% of their daily task income
 - **C-level subordinates**: 1% of their daily task income
 
@@ -74,7 +74,7 @@ This bonus is recurring and earned every day that the subordinate completes task
 
 | Subordinate Level | Bonus Ratio | Example: Per Task of 1,000 PKR |
 |-------------------|-------------|--------------------------------|
-| A-level           | 6%          | 60 PKR                         |
+| A-level           | 8%          | 80 PKR                         |
 | B-level           | 3%          | 30 PKR                         |
 | C-level           | 1%          | 10 PKR                         |
 
@@ -84,10 +84,10 @@ Assume:
 - Each subordinate has an average daily task income of 1,000 PKR.
 
 Then:
-- A-level bonus: `10 * 1,000 * 6% = 600 PKR`
+- A-level bonus: `10 * 1,000 * 8% = 800 PKR`
 - B-level bonus: `100 * 1,000 * 3% = 3,000 PKR`
 - C-level bonus: `1,000 * 1,000 * 1% = 10,000 PKR`
-- **Total daily bonus**: `600 + 3,000 + 10,000 = 13,600 PKR`
+- **Total daily bonus**: `800 + 3,000 + 10,000 = 13,800 PKR`
 
 Note: The example uses 1,000 PKR as the average daily income per subordinate, but in reality, the income of each subordinate depends on their own position level.
 

@@ -348,7 +348,7 @@ export default function OverviewDashboard() {
               </div>
               <ul className="text-sm space-y-1">
                 <li>• Position upgrade rewards (10% of deposit)</li>
-                <li>• 6% daily management bonus</li>
+                <li>• 8% daily management bonus</li>
                 <li>• Highest earning potential</li>
               </ul>
             </div>
