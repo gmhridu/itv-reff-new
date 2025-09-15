@@ -5,19 +5,29 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // 禁用 Next.js 热重载，由 nodemon 处理重编译
+  // Disable React strict mode for production stability
   reactStrictMode: false,
-  webpack: (config, { dev }) => {
+  // Production optimizations
+  webpack: (config, { dev, isServer }) => {
     if (dev) {
-      // 禁用 webpack 的热模块替换
+      // Disable webpack hot module replacement in development
       config.watchOptions = {
-        ignored: ["**/*"], // 忽略所有文件变化
+        ignored: ["**/*"], // Ignore all file changes
       };
     }
+
+    // Production optimizations
+    if (!dev && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        sideEffects: false,
+      };
+    }
+
     return config;
   },
   eslint: {
-    // 构建时忽略ESLint错误
+    // Ignore ESLint errors during builds
     ignoreDuringBuilds: true,
   },
   images: {
@@ -36,6 +46,37 @@ const nextConfig: NextConfig = {
       },
     ],
     domains: ["res.cloudinary.com", "cloudinary.com"],
+  },
+  // Production settings
+  poweredByHeader: false,
+  generateEtags: false,
+  // Compress pages
+  compress: true,
+  // Custom server compatibility
+  experimental: {
+    serverComponentsExternalPackages: ["prisma", "@prisma/client"],
+  },
+  // Headers for security
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+        ],
+      },
+    ];
   },
 };
 
