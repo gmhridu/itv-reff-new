@@ -7,13 +7,25 @@ const globalForPrisma = globalThis as unknown as {
 // Database connection configuration with retry mechanism
 const createPrismaClient = () => {
   return new PrismaClient({
-    log: ["query", "info", "warn", "error"],
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "info", "warn", "error"]
+        : ["error"],
     datasources: {
       db: {
         url: process.env.DATABASE_URL,
       },
     },
     errorFormat: "pretty",
+    // Optimized connection pool for Neon
+    __internal: {
+      engine: {
+        connectionLimit: 10,
+        poolTimeout: 10000,
+        binaryPath: undefined,
+        logQueries: process.env.NODE_ENV === "development",
+      },
+    },
   });
 };
 
@@ -48,26 +60,60 @@ async function connectWithRetry(
 // Create database client with connection retry
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-// Initialize connection with retry mechanism
+// Initialize connection with retry mechanism in production
 if (!globalForPrisma.prisma) {
-  connectWithRetry(db).catch((error) => {
-    console.error("Fatal database connection error:", error);
-  });
+  if (process.env.NODE_ENV === "production") {
+    connectWithRetry(db).catch((error) => {
+      console.error("Fatal database connection error:", error);
+      process.exit(1);
+    });
+  }
 }
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;
 }
 
-// Graceful shutdown
+// Graceful shutdown with error handling
 process.on("SIGINT", async () => {
-  await db.$disconnect();
+  try {
+    await db.$disconnect();
+    console.log("Database connection closed.");
+  } catch (error) {
+    console.error("Error closing database connection:", error);
+  }
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  await db.$disconnect();
+  try {
+    await db.$disconnect();
+    console.log("Database connection closed.");
+  } catch (error) {
+    console.error("Error closing database connection:", error);
+  }
   process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", async (error) => {
+  console.error("Uncaught Exception:", error);
+  try {
+    await db.$disconnect();
+  } catch (disconnectError) {
+    console.error("Error disconnecting database:", disconnectError);
+  }
+  process.exit(1);
+});
+
+process.on("unhandledRejection", async (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  try {
+    await db.$disconnect();
+  } catch (disconnectError) {
+    console.error("Error disconnecting database:", disconnectError);
+  }
+  process.exit(1);
 });
 
 // Health check function

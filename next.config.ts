@@ -53,9 +53,7 @@ const nextConfig: NextConfig = {
   // Compress pages
   compress: true,
   // Custom server compatibility
-  experimental: {
-    serverComponentsExternalPackages: ["prisma", "@prisma/client"],
-  },
+  serverExternalPackages: ["prisma", "@prisma/client"],
   // Headers for security
   async headers() {
     return [

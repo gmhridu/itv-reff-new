@@ -4,6 +4,11 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import next from "next";
 
+// Fix SSL certificate issues in production
+if (process.env.NODE_ENV === "production") {
+  process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
+}
+
 const dev = process.env.NODE_ENV !== "production";
 const currentPort = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 const hostname =
@@ -17,7 +22,15 @@ async function createCustomServer() {
       dev,
       dir: process.cwd(),
       // In production, use the current directory where .next is located
-      conf: dev ? undefined : { distDir: "./.next" },
+      conf: dev
+        ? undefined
+        : {
+            distDir: "./.next",
+            // Handle SSL issues in production
+            experimental: {
+              serverComponentsExternalPackages: ["@prisma/client", "prisma"],
+            },
+          },
     });
 
     await nextApp.prepare();
@@ -38,7 +51,10 @@ async function createCustomServer() {
       cors: {
         origin: "*",
         methods: ["GET", "POST"],
+        credentials: true,
       },
+      transports: ["websocket", "polling"],
+      allowEIO3: true,
     });
 
     setupSocket(io);
@@ -49,6 +65,27 @@ async function createCustomServer() {
       console.log(
         `> Socket.IO server running at ws://${hostname}:${currentPort}/api/socketio`,
       );
+      console.log(`> Environment: ${process.env.NODE_ENV}`);
+      console.log(
+        `> Database: ${process.env.DATABASE_URL ? "Connected" : "Not configured"}`,
+      );
+    });
+
+    // Graceful shutdown handlers
+    process.on("SIGTERM", () => {
+      console.log("SIGTERM received, shutting down gracefully");
+      server.close(() => {
+        console.log("Process terminated");
+        process.exit(0);
+      });
+    });
+
+    process.on("SIGINT", () => {
+      console.log("SIGINT received, shutting down gracefully");
+      server.close(() => {
+        console.log("Process terminated");
+        process.exit(0);
+      });
     });
   } catch (err) {
     console.error("Server startup error:", err);
