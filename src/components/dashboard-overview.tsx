@@ -48,7 +48,6 @@ import Link from "next/link";
 import AnnouncementPopup from "@/components/announcement-popup";
 import { useMembershipList } from "@/hooks/use-membership-list";
 import { useSliderImages } from "@/hooks/use-slider-images";
-import ModernAnalyticsDashboard from "@/components/modern-analytics-dashboard";
 
 export default function DashboardOverview() {
   const router = useRouter();
@@ -292,8 +291,8 @@ export default function DashboardOverview() {
                   level.name === (user?.currentPosition?.name || "Intern")
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
                     : level.isUnlocked
-                      ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
-                      : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
+                    ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                    : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 <Play className="w-4 h-4 mr-1" />
@@ -411,14 +410,6 @@ export default function DashboardOverview() {
             )}
           </CardContent>
         </Card>
-
-        {/* Ultra-Modern Analytics Dashboard Section */}
-        <div className="mb-8">
-          <ModernAnalyticsDashboard
-            className="w-full"
-            dashboardData={dashboardData}
-          />
-        </div>
 
         {/* Membership List Section */}
         <div className="mb-6 mt-5">
