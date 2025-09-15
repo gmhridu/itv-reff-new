@@ -1,0 +1,93 @@
+# Headers for Hostinger deployment
+
+/*
+  # Security Headers
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+  # CORS Headers for API routes
+  Access-Control-Allow-Credentials: true
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization, Cookie
+
+# API routes - disable caching for dynamic content
+/api/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+# Static assets - long term caching
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images and media - medium term caching
+/images/*
+  Cache-Control: public, max-age=86400
+
+# Fonts - long term caching
+/_next/static/chunks/pages/_app-*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/_next/static/css/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Socket.IO endpoint - no caching
+/api/socketio/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization
+
+# Admin routes - additional security
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Authentication endpoints - no caching
+/api/auth/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Set-Cookie: SameSite=Strict; Secure; HttpOnly
+
+# Main pages - short term caching
+/dashboard/*
+  Cache-Control: private, max-age=300
+
+/settings/*
+  Cache-Control: private, max-age=300
+
+/profile/*
+  Cache-Control: private, max-age=300
+
+/plans/*
+  Cache-Control: private, max-age=300
+
+/positions/*
+  Cache-Control: private, max-age=300
+
+/referral/*
+  Cache-Control: private, max-age=300
+
+/referrals/*
+  Cache-Control: private, max-age=300
+
+/videos/*
+  Cache-Control: private, max-age=300
+
+/wallet/*
+  Cache-Control: private, max-age=300
+
+/withdraw/*
+  Cache-Control: private, max-age=300
+
+# Public pages - short term caching
+/
+  Cache-Control: public, max-age=300
+
+/register
+  Cache-Control: public, max-age=300
+
+/forgot-password
+  Cache-Control: public, max-age=300

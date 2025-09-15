@@ -48,6 +48,7 @@ import Link from "next/link";
 import AnnouncementPopup from "@/components/announcement-popup";
 import { useMembershipList } from "@/hooks/use-membership-list";
 import { useSliderImages } from "@/hooks/use-slider-images";
+import ModernAnalyticsDashboard from "@/components/modern-analytics-dashboard";
 
 export default function DashboardOverview() {
   const router = useRouter();
@@ -410,6 +411,14 @@ export default function DashboardOverview() {
             )}
           </CardContent>
         </Card>
+
+        {/* Ultra-Modern Analytics Dashboard Section */}
+        <div className="mb-8">
+          <ModernAnalyticsDashboard
+            className="w-full"
+            dashboardData={dashboardData}
+          />
+        </div>
 
         {/* Membership List Section */}
         <div className="mb-6 mt-5">

@@ -1,0 +1,136 @@
+# .htaccess for Next.js deployment on Apache servers
+
+# Enable rewrite engine
+RewriteEngine On
+
+# Force HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Remove www from domain
+RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Frame-Options "DENY"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    # CORS headers for API requests
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, Cookie"
+</IfModule>
+
+# Handle OPTIONS requests for CORS
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# Cache control for different file types
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # Static assets - 1 year
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpg "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+
+    # HTML files - 5 minutes
+    ExpiresByType text/html "access plus 300 seconds"
+
+    # API responses - no cache
+    ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# Cache control headers
+<IfModule mod_headers.c>
+    # Cache static assets for 1 year
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|eot|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # Cache HTML for 5 minutes
+    <FilesMatch "\.html$">
+        Header set Cache-Control "public, max-age=300"
+    </FilesMatch>
+
+    # No cache for API routes
+    <If "%{REQUEST_URI} =~ m#^/api/#">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </If>
+
+    # No cache for admin routes
+    <If "%{REQUEST_URI} =~ m#^/admin/#">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set X-Robots-Tag "noindex, nofollow"
+    </If>
+</IfModule>
+
+# Redirect trailing slashes
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} (.+)/$
+RewriteRule ^(.+)/$ /$1 [R=301,L]
+
+# Admin routes protection - redirect to admin login
+RewriteCond %{REQUEST_URI} ^/admin(?!/login)
+RewriteCond %{HTTP_COOKIE} !admin_token= [NC]
+RewriteRule ^admin/(.*)$ /admin/login [R=302,L]
+
+# Authentication redirects
+RewriteRule ^login/?$ / [R=301,L]
+RewriteRule ^signin/?$ / [R=301,L]
+
+# Legacy route redirects
+RewriteRule ^user/(.*)$ /dashboard/$1 [R=301,L]
+RewriteRule ^account/(.*)$ /settings/$1 [R=301,L]
+
+# Handle Next.js dynamic routes and API routes
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteRule ^(.*)$ /index.html [QSA,L]
+
+# Prevent access to sensitive files
+<Files ~ "^\.">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files ~ "(\.env|\.env\.local|\.env\.production|package\.json|package-lock\.json|yarn\.lock|bun\.lock)$">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Prevent access to Next.js build files
+RedirectMatch 404 ^/\.next/.*$
+RedirectMatch 404 ^/node_modules/.*$
+
+# Enable compression
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Set content types
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType image/svg+xml .svg
+    AddType font/woff .woff
+    AddType font/woff2 .woff2
+</IfModule>
+
+# Error pages
+ErrorDocument 404 /404.html
+ErrorDocument 500 /500.html

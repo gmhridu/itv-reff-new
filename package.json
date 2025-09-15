@@ -6,6 +6,7 @@
     "dev": "nodemon --exec \"npx tsx server.ts\" --watch server.ts --watch src --ext ts,tsx,js,jsx",
     "build": "next build",
     "start": "NODE_ENV=production tsx server.ts",
+    "build:hostinger": "node scripts/build-for-hostinger.js",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",

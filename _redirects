@@ -1,0 +1,49 @@
+# Redirects for Hostinger deployment
+
+# Force HTTPS (if not already handled by Hostinger)
+http://yourdomain.com/* https://yourdomain.com/:splat 301!
+http://www.yourdomain.com/* https://yourdomain.com/:splat 301!
+https://www.yourdomain.com/* https://yourdomain.com/:splat 301!
+
+# API routes - proxy to your backend if needed
+# /api/* https://your-backend-url/api/:splat 200
+
+# Socket.IO proxy (if using separate socket server)
+# /socket.io/* https://your-socket-server/socket.io/:splat 200
+
+# Admin login redirect (if admin tries to access admin routes without auth)
+/admin /admin/login 302
+
+# Authentication redirects
+/login / 301
+/signin / 301
+
+# Old routes that might exist - redirect to new structure
+/user/* /dashboard/:splat 301
+/account/* /settings/:splat 301
+
+# Trailing slash redirects
+/dashboard/ /dashboard 301
+/settings/ /settings 301
+/profile/ /profile 301
+/plans/ /plans 301
+/positions/ /positions 301
+/referral/ /referral 301
+/referrals/ /referrals 301
+/videos/ /videos 301
+/wallet/ /wallet 301
+/withdraw/ /withdraw 301
+/admin/ /admin 301
+
+# Handle case variations
+/Dashboard/* /dashboard/:splat 301
+/Settings/* /settings/:splat 301
+/Profile/* /profile/:splat 301
+/Admin/* /admin/:splat 301
+
+# SPA fallback - this should be at the end
+# All unmatched routes should serve the index.html for client-side routing
+/* /index.html 200
+
+# 404 fallback for truly missing pages
+# /404 /404.html 404
