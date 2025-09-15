@@ -1,8 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "bun"]
+
 [phases.install]
-cmds = ["bun install --frozen-lockfile"]
+cmd = "bun install"
 
 [phases.build]
-cmds = ["bun run build"]
+cmd = "bun run build"
 
 [start]
 cmd = "bun start"
