@@ -8,6 +8,7 @@ interface UseAnalyticsParams {
   dateTo?: Date;
   timePeriod?: "daily" | "weekly" | "monthly" | "yearly";
   autoFetch?: boolean;
+  initialData?: AnalyticsData;
 }
 
 interface UseAnalyticsReturn {
@@ -22,8 +23,9 @@ export function useAnalytics({
   dateTo,
   timePeriod = "monthly",
   autoFetch = true,
+  initialData,
 }: UseAnalyticsParams = {}): UseAnalyticsReturn {
-  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [data, setData] = useState<AnalyticsData | null>(initialData || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

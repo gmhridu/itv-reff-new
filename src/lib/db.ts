@@ -17,15 +17,6 @@ const createPrismaClient = () => {
       },
     },
     errorFormat: "pretty",
-    // Optimized connection pool for Neon
-    __internal: {
-      engine: {
-        connectionLimit: 10,
-        poolTimeout: 10000,
-        binaryPath: undefined,
-        logQueries: process.env.NODE_ENV === "development",
-      },
-    },
   });
 };
 

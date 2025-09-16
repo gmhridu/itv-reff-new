@@ -34,6 +34,7 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { AnalyticsData } from "@/types/admin";
 
 interface EmptyStateProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -84,9 +85,9 @@ function MetricCard({
 }) {
   const formatValue = (val: number) => {
     if (format === "currency") {
-      return new Intl.NumberFormat("en-US", {
+      return new Intl.NumberFormat("en-PK", {
         style: "currency",
-        currency: "USD",
+        currency: "PKR",
       }).format(val);
     }
     return new Intl.NumberFormat("en-US").format(val);
@@ -121,9 +122,13 @@ function MetricCard({
   );
 }
 
-export function AnalyticsClient() {
+interface AnalyticsClientProps {
+  initialData?: AnalyticsData;
+}
+
+export function AnalyticsClient({ initialData }: AnalyticsClientProps = {}) {
   const [timeRange, setTimeRange] = useState<AnalyticsTimeRange>(
-    AnalyticsTimeRange.MONTHLY
+    AnalyticsTimeRange.MONTHLY,
   );
   const [customDateFrom, setCustomDateFrom] = useState<string>("");
   const [customDateTo, setCustomDateTo] = useState<string>("");
@@ -146,7 +151,7 @@ export function AnalyticsClient() {
         dateFrom = new Date(
           now.getFullYear(),
           now.getMonth() - 1,
-          now.getDate()
+          now.getDate(),
         );
         dateTo = now;
         break;
@@ -154,7 +159,7 @@ export function AnalyticsClient() {
         dateFrom = new Date(
           now.getFullYear() - 1,
           now.getMonth(),
-          now.getDate()
+          now.getDate(),
         );
         dateTo = now;
         break;
@@ -166,7 +171,7 @@ export function AnalyticsClient() {
         dateFrom = new Date(
           now.getFullYear(),
           now.getMonth() - 1,
-          now.getDate()
+          now.getDate(),
         );
         dateTo = now;
     }
@@ -183,7 +188,8 @@ export function AnalyticsClient() {
     dateFrom,
     dateTo,
     timePeriod,
-    autoFetch: true,
+    autoFetch: !initialData, // Don't auto-fetch if we have initial data
+    initialData, // Pass initial data to the hook
   });
 
   const handleTimeRangeChange = (value: string) => {
@@ -332,28 +338,6 @@ export function AnalyticsClient() {
   if (isDataEmpty) {
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-            <p className="text-muted-foreground">
-              Monitor your platform's performance and growth
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
-        </div>
-
         {/* Time Range Controls */}
         <Card>
           <CardHeader>
@@ -493,7 +477,7 @@ export function AnalyticsClient() {
           analyticsData.topVideos.length > 0
             ? analyticsData.topVideos.reduce(
                 (sum, v) => sum + v.engagement,
-                0
+                0,
               ) / analyticsData.topVideos.length
             : 0,
         topVideos: analyticsData.topVideos.map((video) => ({
@@ -512,7 +496,7 @@ export function AnalyticsClient() {
                 item.value -
                   (index > 0
                     ? analyticsData.userIncome.monthly[index - 1]?.value || 0
-                    : 0)
+                    : 0),
               ),
               totalUsers: item.value,
             }))
@@ -527,7 +511,7 @@ export function AnalyticsClient() {
         totalRevenue: analyticsData.overview.totalRevenue,
         monthlyRevenue: analyticsData.userIncome.monthly.reduce(
           (sum, item) => sum + item.value,
-          0
+          0,
         ),
         revenueGrowth: analyticsData.overview.revenueGrowth,
         revenueBySource:
@@ -549,61 +533,6 @@ export function AnalyticsClient() {
 
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-            <p className="text-muted-foreground">
-              Monitor your platform's performance and growth
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-            <Button variant="outline" onClick={handleExportData}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </div>
-
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Total Revenue"
-            value={analyticsData.overview.totalRevenue}
-            growth={analyticsData.overview.revenueGrowth}
-            icon={DollarSign}
-            format="currency"
-          />
-          <MetricCard
-            title="Total Users"
-            value={analyticsData.overview.totalUsers}
-            growth={analyticsData.overview.userGrowth}
-            icon={Users}
-          />
-          <MetricCard
-            title="Video Views"
-            value={analyticsData.overview.totalVideoViews}
-            growth={analyticsData.overview.videoViewGrowth}
-            icon={Eye}
-          />
-          <MetricCard
-            title="Active Users"
-            value={analyticsData.overview.activeUsers}
-            growth={analyticsData.overview.activeUserChange}
-            icon={Activity}
-          />
-        </div>
-
         {/* Custom Date Range Inputs (shown only when Custom is selected) */}
         {timeRange === AnalyticsTimeRange.CUSTOM && (
           <Card>

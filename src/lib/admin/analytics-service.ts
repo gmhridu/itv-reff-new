@@ -23,6 +23,17 @@ export class AnalyticsService {
       const endDate = dateTo || new Date();
       const startDate = dateFrom || this.getDefaultStartDate(timePeriod);
 
+      // Validate date range
+      if (startDate > endDate) {
+        throw new Error("Start date cannot be after end date");
+      }
+
+      // Ensure reasonable date range (not more than 5 years)
+      const maxRange = 5 * 365 * 24 * 60 * 60 * 1000; // 5 years in milliseconds
+      if (endDate.getTime() - startDate.getTime() > maxRange) {
+        throw new Error("Date range cannot exceed 5 years");
+      }
+
       console.log("AnalyticsService: Fetching data for period", {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
@@ -257,12 +268,14 @@ export class AnalyticsService {
       const groupedData: { [key: string]: number } = {};
 
       transactions.forEach((transaction) => {
-        const periodKey = this.formatDateByPeriod(
-          transaction.createdAt,
-          period,
-        );
-        groupedData[periodKey] =
-          (groupedData[periodKey] || 0) + transaction.amount;
+        if (transaction.createdAt) {
+          const periodKey = this.formatDateByPeriod(
+            transaction.createdAt,
+            period,
+          );
+          groupedData[periodKey] =
+            (groupedData[periodKey] || 0) + (transaction.amount || 0);
+        }
       });
 
       return Object.entries(groupedData)
@@ -308,8 +321,10 @@ export class AnalyticsService {
       const groupedData: { [key: string]: number } = {};
 
       videoTasks.forEach((task) => {
-        const periodKey = this.formatDateByPeriod(task.watchedAt, period);
-        groupedData[periodKey] = (groupedData[periodKey] || 0) + 1;
+        if (task.watchedAt) {
+          const periodKey = this.formatDateByPeriod(task.watchedAt, period);
+          groupedData[periodKey] = (groupedData[periodKey] || 0) + 1;
+        }
       });
 
       return Object.entries(groupedData)
@@ -357,26 +372,28 @@ export class AnalyticsService {
 
       const videoAnalytics: VideoAnalytics[] = videos
         .map((video) => {
-          const tasks = video.videoTasks;
+          const tasks = video.videoTasks || [];
           const views = tasks.length;
           const totalRewardsPaid = tasks.reduce(
-            (sum, task) => sum + task.rewardEarned,
+            (sum, task) => sum + (task.rewardEarned || 0),
             0,
           );
           const averageWatchTime =
             tasks.length > 0
-              ? tasks.reduce((sum, task) => sum + task.watchDuration, 0) /
-                tasks.length
+              ? tasks.reduce(
+                  (sum, task) => sum + (task.watchDuration || 0),
+                  0,
+                ) / tasks.length
               : 0;
           const completedTasks = tasks.filter(
-            (task) => task.watchDuration >= video.duration * 0.8,
+            (task) => (task.watchDuration || 0) >= (video.duration || 0) * 0.8,
           ).length;
           const completionRate =
             tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
           return {
             id: video.id,
-            title: video.title,
+            title: video.title || "Untitled Video",
             views,
             engagement: completionRate,
             totalRewardsPaid,
@@ -445,12 +462,12 @@ export class AnalyticsService {
       return users.map((user) => ({
         id: user.id,
         name: user.name || "Unknown",
-        email: user.email,
-        totalEarnings: user.totalEarnings,
-        videoTasksCompleted: user.videoTasks.length,
-        referralCount: user.referrals.length,
+        email: user.email || "No email",
+        totalEarnings: user.totalEarnings || 0,
+        videoTasksCompleted: user.videoTasks?.length || 0,
+        referralCount: user.referrals?.length || 0,
         engagement:
-          user.videoTasks.length > 0
+          user.videoTasks && user.videoTasks.length > 0
             ? Math.min((user.videoTasks.length / 30) * 100, 100)
             : 0,
       }));
