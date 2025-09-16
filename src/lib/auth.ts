@@ -36,30 +36,36 @@ async function getCurrentUserId(
       // For now, we'll extract user ID from token if it's a simple format
       try {
         const decoded = JSON.parse(atob(sessionToken));
-        return decoded.userId || decoded.sub || decoded.id;
-      } catch {
+        const userId = decoded.userId || decoded.sub || decoded.id;
+        if (userId && typeof userId === "string") {
+          return userId;
+        }
+      } catch (error) {
         // Token is not simple JSON, might be JWT - you'd need to decode it properly
         console.log(
           "Session token found but cannot decode:",
           sessionToken.substring(0, 20) + "...",
+          error,
         );
       }
     }
 
-    // Fallback: Check for user-specific cookies
+    // Check for user-specific cookies
     const userIdCookie = cookieStore.get("user-id")?.value;
-    if (userIdCookie) {
+    if (userIdCookie && typeof userIdCookie === "string") {
       return userIdCookie;
     }
 
-    // Development fallback: Use environment variable or hardcoded user
-    const devUserId = process.env.DEV_USER_ID;
-    if (devUserId && process.env.NODE_ENV === "development") {
-      console.log("Using DEV_USER_ID:", devUserId);
-      return devUserId;
+    // Development fallback: Use environment variable (only for development)
+    if (process.env.NODE_ENV === "development") {
+      const devUserId = process.env.DEV_USER_ID;
+      if (devUserId) {
+        console.warn("Using DEV_USER_ID for development:", devUserId);
+        return devUserId;
+      }
     }
 
-    // Final fallback: Try to determine from request headers or other means
+    // No valid session found
     return null;
   } catch (error) {
     console.error("Error getting current user ID:", error);
@@ -136,6 +142,12 @@ export async function getServerSession(
       const currentUserId = await getCurrentUserId(false);
       console.log("Getting user session for user ID:", currentUserId);
 
+      // If no valid user ID found, return null (no valid session)
+      if (!currentUserId) {
+        console.log("No valid session token found");
+        return null;
+      }
+
       let regularUser;
       if (currentUserId) {
         regularUser = await prisma.user.findUnique({
@@ -150,88 +162,10 @@ export async function getServerSession(
         console.log("Found user by ID:", regularUser);
       }
 
-      // If no specific user found, try to get the intended user (hasanhridoymahabub9@gmail.com)
+      // If no user found with the session ID, return null (invalid session)
       if (!regularUser) {
-        console.log(
-          "No user found by session ID, trying to find intended user...",
-        );
-        regularUser = await prisma.user.findFirst({
-          where: {
-            OR: [
-              { email: "hasanhridoymahabub9@gmail.com" },
-              { phone: "01905147305" },
-            ],
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        });
-        console.log("Found intended user:", regularUser);
-      }
-
-      // Final fallback: get first non-test user
-      if (!regularUser) {
-        console.log("No intended user found, looking for non-test user...");
-        regularUser = await prisma.user.findFirst({
-          where: {
-            AND: [
-              { email: { not: "test@example.com" } },
-              { phone: { not: "+1234567890" } },
-            ],
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        });
-        console.log("Found non-test user:", regularUser);
-      }
-
-      // Last resort: get any user but log warning
-      if (!regularUser) {
-        console.log("No specific user found, getting first available user...");
-        regularUser = await prisma.user.findFirst({
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        });
-        console.warn(
-          "Using fallback user (first in database):",
-          regularUser?.email,
-        );
-      }
-
-      if (!regularUser) {
-        console.log("No users found, creating test user...");
-        regularUser = await prisma.user.create({
-          data: {
-            name: "Test User",
-            email: "user@test.com",
-            phone: "1234567890",
-            password: "$2a$12$test.password.hash", // Mock hashed password
-            referralCode: `TEST${Date.now()}`,
-            walletBalance: 0,
-            totalEarnings: 0,
-            commissionBalance: 0,
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        });
-        console.log(
-          `Created test user: ${regularUser.email} (ID: ${regularUser.id})`,
-        );
+        console.log("No user found for session ID:", currentUserId);
+        return null;
       }
 
       return {

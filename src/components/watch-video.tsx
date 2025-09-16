@@ -350,7 +350,8 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                 )}
               </div>
               <Badge variant="secondary" className="ml-4">
-                <DollarSign className="h-3 w-3 mr-1" />PKR
+                <DollarSign className="h-3 w-3 mr-1" />
+                PKR
                 {video.rewardAmount.toFixed(2)}
               </Badge>
             </div>
@@ -405,7 +406,8 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-600">
-                      You earned PKR{video.rewardEarned?.toFixed(2) || "0.00"} on{" "}
+                      You earned PKR{video.rewardEarned?.toFixed(2) || "0.00"}{" "}
+                      on{" "}
                       {video.completedAt
                         ? new Date(video.completedAt).toLocaleDateString()
                         : "a previous date"}
@@ -427,12 +429,12 @@ const WatchVideo = ({ videoId }: WatchVideoProps) => {
                     {isSubmitting ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Completing...
+                        Submitting...
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Complete Video & Earn Reward
+                        Submit Task
                       </>
                     )}
                   </Button>

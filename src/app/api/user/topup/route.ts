@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserSession } from "@/lib/auth";
+import { authMiddleware } from "@/lib/api/api-auth";
+import { addAPISecurityHeaders } from "@/lib/security-headers";
 
 export async function GET(request: NextRequest) {
-  try {
-    const session = await getUserSession();
+  let response: NextResponse;
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
+  try {
+    const user = await authMiddleware(request);
+
+    if (!user) {
+      response = NextResponse.json(
         { success: false, error: "Authentication required" },
         { status: 401 },
       );
+      return addAPISecurityHeaders(response);
     }
 
     // Get available admin wallets
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     const [userRequests, total] = await Promise.all([
       prisma.topupRequest.findMany({
-        where: { userId: session.user.id },
+        where: { userId: user.id },
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -53,11 +57,11 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.topupRequest.count({
-        where: { userId: session.user.id },
+        where: { userId: user.id },
       }),
     ]);
 
-    return NextResponse.json({
+    response = NextResponse.json({
       success: true,
       data: {
         wallets,
@@ -74,6 +78,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+    return addAPISecurityHeaders(response);
   } catch (error) {
     console.error("Error fetching topup data:", error);
     return NextResponse.json(
@@ -84,21 +89,24 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await getUserSession();
+  let response: NextResponse;
 
-    if (!session?.user?.id) {
+  try {
+    const user = await authMiddleware(request);
+
+    if (!user) {
       console.error("Topup request failed: No valid session");
-      return NextResponse.json(
+      response = NextResponse.json(
         { success: false, error: "Authentication required" },
         { status: 401 },
       );
+      return addAPISecurityHeaders(response);
     }
 
-    console.log(`Topup request from user: ${session.user.id}`, {
-      userId: session.user.id,
-      userEmail: session.user.email,
-      userName: session.user.name,
+    console.log(`Topup request from user: ${user.id}`, {
+      userId: user.id,
+      userEmail: user.email,
+      userName: user.name,
     });
 
     const body = await request.json();
@@ -170,7 +178,7 @@ export async function POST(request: NextRequest) {
     // Check for pending requests
     const pendingRequest = await prisma.topupRequest.findFirst({
       where: {
-        userId: session.user.id,
+        userId: user.id,
         status: "PENDING",
       },
     });
@@ -185,7 +193,7 @@ export async function POST(request: NextRequest) {
     // Create topup request
     const topupRequest = await prisma.topupRequest.create({
       data: {
-        userId: session.user.id,
+        userId: user.id,
         amount,
         selectedWalletId,
         paymentProof: paymentProof || null,
@@ -223,7 +231,7 @@ export async function POST(request: NextRequest) {
     // Log the activity
     await prisma.activityLog.create({
       data: {
-        userId: session.user.id,
+        userId: user.id,
         activity: "topup_request",
         description: `Created topup request for ${amount} PKR`,
         metadata: JSON.stringify({
@@ -237,28 +245,30 @@ export async function POST(request: NextRequest) {
           isUsdtPayment: selectedWallet.walletType === ("USDT_TRC20" as any),
           bonusEligible: selectedWallet.walletType === ("USDT_TRC20" as any),
           userInfo: {
-            id: session.user.id,
-            name: session.user.name,
-            phone: session.user.phone,
+            id: user.id,
+            name: user.name,
+            phone: user.phone,
           },
         }),
       },
     });
 
-    return NextResponse.json({
+    response = NextResponse.json({
       success: true,
       data: topupRequest,
       message: "Topup request created successfully",
     });
+    return addAPISecurityHeaders(response);
   } catch (error) {
     console.error("Error creating topup request:", error);
     console.error("Error details:", {
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : null,
     });
-    return NextResponse.json(
+    response = NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 },
     );
+    return addAPISecurityHeaders(response);
   }
 }
