@@ -10,9 +10,9 @@ async function createAdminUser() {
     // Admin user details
     const adminData = {
       name: "Admin User",
-      email: "admin@admin.com",
-      phone: "0123456789",
-      password: "12345678",
+      email: "ah03024554434@gmail.com",
+      phone: "+923454001749",
+      password: "Doublespace@321",
       role: "SUPER_ADMIN" as const,
     };
 
@@ -46,7 +46,7 @@ async function createAdminUser() {
     console.log("👤 Role:", admin.role);
     console.log("🆔 ID:", admin.id);
     console.log(
-      "\n⚠️  IMPORTANT: Please change the default password after first login!",
+      "\n⚠️  IMPORTANT: Please change the default password after first login!"
     );
   } catch (error) {
     console.error("❌ Error creating admin user:", error);
