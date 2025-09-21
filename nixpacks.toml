@@ -1,3 +1,7 @@
+[build]
+builder = "dockerfile"
+
+# Your existing configuration
 [phases.setup]
 nixPkgs = ["nodejs_20", "bun"]
 

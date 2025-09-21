@@ -3,11 +3,10 @@ FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Install dependencies
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
@@ -30,11 +29,10 @@ RUN npx prisma generate
 # Build Next.js application
 RUN npm run build
 
-# Production image, copy all the files and run next
+# Production image
 FROM base AS runner
 WORKDIR /app
 
-# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 
@@ -55,17 +53,14 @@ COPY --from=builder /app/middleware.ts ./middleware.ts
 # Install production runtime dependencies
 COPY --from=deps /app/node_modules ./node_modules
 
-# Install tsx globally for running TypeScript files
-RUN npm install -g tsx
-
-# Change ownership of the app directory
+# Change ownership
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Expose port
+# Expose port 3000 (KEEP AS 3000)
 EXPOSE 3000
 
-# Health check
+# Health check (using port 3000)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
