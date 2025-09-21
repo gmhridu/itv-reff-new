@@ -12,7 +12,7 @@ async function createAdminUser() {
       name: "Admin User",
       email: "ah03024554434@gmail.com",
       phone: "03555442211",
-      password: "Doublespace@321",
+      password: "Doublespace321",
       role: "SUPER_ADMIN" as const,
     };
 
