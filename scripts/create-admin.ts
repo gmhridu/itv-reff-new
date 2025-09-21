@@ -10,7 +10,7 @@ async function createAdminUser() {
     // Admin user details
     const adminData = {
       name: "Admin User",
-      email: "ah03024554434@gmail.com",
+      email: "ah03024554434gmail.com",
       phone: "03555442211",
       password: "Doublespace321",
       role: "SUPER_ADMIN" as const,

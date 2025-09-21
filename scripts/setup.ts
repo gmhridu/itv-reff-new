@@ -8,10 +8,10 @@ const prisma = new PrismaClient();
 const SETUP_CONFIG = {
   admin: {
     name: "Super Admin",
-    email: "admin@admin.com",
-    phone: "0123456789",
-    password: "Admin@123",
-    role: AdminRole.SUPER_ADMIN,
+    email: "ah03024554434@gmail.com",
+    phone: "03555442211",
+    password: "Doublespace@321",
+    role: "SUPER_ADMIN" as const,
   },
   defaultWallets: [
     {
@@ -140,7 +140,9 @@ async function createPositionLevels() {
   try {
     const existingLevels = await prisma.positionLevel.count();
     if (existingLevels > 0) {
-      console.log(`ℹ️  Position levels already exist (${existingLevels} found)`);
+      console.log(
+        `ℹ️  Position levels already exist (${existingLevels} found)`
+      );
       return;
     }
 
@@ -148,7 +150,9 @@ async function createPositionLevels() {
       const level = await prisma.positionLevel.create({
         data: levelData,
       });
-      console.log(`✅ Created position level: ${level.name} (Level ${level.level})`);
+      console.log(
+        `✅ Created position level: ${level.name} (Level ${level.level})`
+      );
     }
 
     console.log("🎉 Position levels created successfully!");
@@ -271,7 +275,11 @@ async function checkCloudinaryConfiguration() {
   }
 }
 
-async function createAuditLog(adminId: string, action: string, description: string) {
+async function createAuditLog(
+  adminId: string,
+  action: string,
+  description: string
+) {
   try {
     await prisma.auditLog.create({
       data: {

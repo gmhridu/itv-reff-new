@@ -172,6 +172,7 @@ export async function authenticateAdmin(
   password: string,
 ): Promise<AdminUser | null> {
   try {
+    console.log(`Authenticating admin with phone: ${phone}`);
     // For admin users, we'll still use email as the identifier since they may not have phone numbers
     // This is a design decision - in a real implementation, you might want to add phone to AdminUser model
     const admin = await db.adminUser.findUnique({
@@ -190,13 +191,19 @@ export async function authenticateAdmin(
     });
 
     if (!admin || !admin.password) {
+      console.log(`Admin user not found with phone: ${phone}`);
       return null;
     }
 
+    console.log(`Admin user found: ${admin.email}`);
+
     const isValidPassword = await verifyPassword(password, admin.password);
     if (!isValidPassword) {
+      console.log(`Invalid password for admin: ${admin.email}`);
       return null;
     }
+
+    console.log(`Admin user authenticated successfully: ${admin.email}`);
 
     return admin;
   } catch (error) {
@@ -370,7 +377,7 @@ export async function getUserFromServer() {
       if (!refreshToken) {
         return null;
       }
-      
+
       // If we're on the server, we can't easily refresh tokens
       // Return null to force redirect to login
       return null;
