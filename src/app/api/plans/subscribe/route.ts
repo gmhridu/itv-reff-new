@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware } from '@/lib/api/api-auth';
-import { db } from '@/lib/db';
+import { NextRequest, NextResponse } from "next/server";
+import { authMiddleware } from "@/lib/api/api-auth";
+import { db } from "@/lib/db";
+import { UserNotificationService } from "@/lib/user-notification-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,8 +9,8 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: "Authentication required" },
+        { status: 401 },
       );
     }
 
@@ -18,35 +19,32 @@ export async function POST(request: NextRequest) {
 
     if (!planId) {
       return NextResponse.json(
-        { error: 'Plan ID is required' },
-        { status: 400 }
+        { error: "Plan ID is required" },
+        { status: 400 },
       );
     }
 
     // Get the plan
     const plan = await db.plan.findUnique({
-      where: { id: planId, isActive: true }
+      where: { id: planId, isActive: true },
     });
 
     if (!plan) {
-      return NextResponse.json(
-        { error: 'Plan not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
     // Check if user already has an active plan
     const existingPlan = await db.userPlan.findFirst({
       where: {
         userId: user.id,
-        status: 'ACTIVE'
-      }
+        status: "ACTIVE",
+      },
     });
 
     if (existingPlan) {
       return NextResponse.json(
-        { error: 'You already have an active plan' },
-        { status: 400 }
+        { error: "You already have an active plan" },
+        { status: 400 },
       );
     }
 
@@ -55,10 +53,7 @@ export async function POST(request: NextRequest) {
     const paymentSuccessful = true;
 
     if (!paymentSuccessful) {
-      return NextResponse.json(
-        { error: 'Payment failed' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Payment failed" }, { status: 400 });
     }
 
     // Calculate plan end date
@@ -74,48 +69,68 @@ export async function POST(request: NextRequest) {
         amountPaid: plan.price,
         startDate,
         endDate,
-        status: 'ACTIVE'
-      }
+        status: "ACTIVE",
+      },
     });
 
     // Create transaction record
     await db.walletTransaction.create({
       data: {
         userId: user.id,
-        type: 'DEBIT',
+        type: "DEBIT",
         amount: plan.price,
         balanceAfter: user.walletBalance - plan.price,
         description: `Plan subscription: ${plan.name}`,
         referenceId: `PLAN_${userPlan.id}`,
-        status: 'COMPLETED'
-      }
+        status: "COMPLETED",
+      },
     });
 
     // Update user's wallet balance
     await db.user.update({
       where: { id: user.id },
       data: {
-        walletBalance: user.walletBalance - plan.price
-      }
+        walletBalance: user.walletBalance - plan.price,
+      },
     });
 
+    // Send plan subscription notification
+    try {
+      await UserNotificationService.notifyPlanSubscription(
+        user.id,
+        plan.name,
+        plan.price,
+        `${plan.durationDays} days`,
+        [
+          `${plan.dailyVideoLimit} daily videos`,
+          `PKR ${plan.rewardPerVideo} per video`,
+          `${plan.referralBonus}% referral bonus`,
+        ],
+      );
+      console.log(`Plan subscription notification sent to user ${user.id}`);
+    } catch (notificationError) {
+      console.error(
+        "Failed to send plan subscription notification:",
+        notificationError,
+      );
+    }
+
     return NextResponse.json({
-      message: 'Subscription successful',
+      message: "Subscription successful",
       subscription: {
         id: userPlan.id,
         planName: plan.name,
         startDate: userPlan.startDate,
         endDate: userPlan.endDate,
         amountPaid: userPlan.amountPaid,
-        status: userPlan.status
-      }
+        status: userPlan.status,
+      },
     });
-
   } catch (error) {
-    console.error('Subscription error:', error);
+    console.error("Subscription error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

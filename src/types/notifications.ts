@@ -1,4 +1,4 @@
-import { NotificationType, NotificationSeverity } from '@prisma/client';
+import { NotificationType, NotificationSeverity } from "@prisma/client";
 
 export interface Notification {
   id: string;
@@ -31,4 +31,5 @@ export interface NotificationPayload {
   createdAt: Date;
   actionUrl?: string;
   isRead?: boolean;
+  metadata?: Record<string, any>;
 }

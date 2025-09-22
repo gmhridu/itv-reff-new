@@ -45,7 +45,7 @@ export class UserNotificationService {
     status: string,
     amount: number,
     transactionId?: string,
-    adminNotes?: string
+    adminNotes?: string,
   ) {
     const notifications = {
       APPROVED: {
@@ -55,17 +55,18 @@ export class UserNotificationService {
       },
       REJECTED: {
         title: "Withdrawal Rejected",
-        message: `Your withdrawal request of PKR ${amount.toLocaleString()} has been rejected. ${adminNotes ? `Reason: ${adminNotes}` : ''}`,
+        message: `Your withdrawal request of PKR ${amount.toLocaleString()} has been rejected. ${adminNotes ? `Reason: ${adminNotes}` : ""}`,
         severity: NotificationSeverity.ERROR,
       },
       PROCESSED: {
         title: "Money Sent! 💰",
-        message: `Your withdrawal of PKR ${amount.toLocaleString()} has been successfully processed. ${transactionId ? `Transaction ID: ${transactionId}` : ''}`,
+        message: `Your withdrawal of PKR ${amount.toLocaleString()} has been successfully processed. ${transactionId ? `Transaction ID: ${transactionId}` : ""}`,
         severity: NotificationSeverity.SUCCESS,
       },
     };
 
-    const notificationData = notifications[status as keyof typeof notifications];
+    const notificationData =
+      notifications[status as keyof typeof notifications];
 
     if (!notificationData) return;
 
@@ -92,7 +93,7 @@ export class UserNotificationService {
     userId: string,
     videoTitle: string,
     earnings: number,
-    walletType: string
+    walletType: string,
   ) {
     return this.createNotification({
       userId,
@@ -117,7 +118,7 @@ export class UserNotificationService {
     userId: string,
     taskTitle: string,
     reward: number,
-    walletType: string
+    walletType: string,
   ) {
     return this.createNotification({
       userId,
@@ -141,7 +142,7 @@ export class UserNotificationService {
   static async notifyLevelUpgrade(
     userId: string,
     newLevel: number,
-    bonusAmount?: number
+    bonusAmount?: number,
   ) {
     const message = bonusAmount
       ? `Awesome! You've reached Level ${newLevel} and earned a bonus of PKR ${bonusAmount.toLocaleString()}! 🎉`
@@ -170,7 +171,7 @@ export class UserNotificationService {
       userId,
       type: NotificationType.TASK_COMPLETED,
       title: "Daily Tasks Available! 📋",
-      message: `You have ${availableTasks} new task${availableTasks > 1 ? 's' : ''} available for today. Start earning now!`,
+      message: `You have ${availableTasks} new task${availableTasks > 1 ? "s" : ""} available for today. Start earning now!`,
       severity: NotificationSeverity.INFO,
       actionUrl: "/tasks",
       metadata: {
@@ -188,7 +189,7 @@ export class UserNotificationService {
     amount: number,
     walletType: string,
     action: string,
-    description: string
+    description: string,
   ) {
     const isPositive = amount > 0;
     const title = isPositive
@@ -199,8 +200,10 @@ export class UserNotificationService {
       userId,
       type: NotificationType.USER_ACTION,
       title,
-      message: `${description} Your ${walletType.toLowerCase()} wallet has been ${isPositive ? 'credited' : 'debited'} with PKR ${Math.abs(amount).toLocaleString()}.`,
-      severity: isPositive ? NotificationSeverity.SUCCESS : NotificationSeverity.INFO,
+      message: `${description} Your ${walletType.toLowerCase()} wallet has been ${isPositive ? "credited" : "debited"} with PKR ${Math.abs(amount).toLocaleString()}.`,
+      severity: isPositive
+        ? NotificationSeverity.SUCCESS
+        : NotificationSeverity.INFO,
       actionUrl: "/wallet",
       metadata: {
         amount,
@@ -213,13 +216,131 @@ export class UserNotificationService {
   }
 
   /**
+   * Notify user about top up (wallet recharge)
+   */
+  static async notifyTopUp(
+    userId: string,
+    amount: number,
+    paymentMethod: string,
+    transactionId?: string,
+    walletType: string = "Main",
+  ) {
+    return this.createNotification({
+      userId,
+      type: NotificationType.USER_ACTION,
+      title: "Wallet Recharged! 💰",
+      message: `Your ${walletType.toLowerCase()} wallet has been successfully recharged with PKR ${amount.toLocaleString()} via ${paymentMethod}. ${transactionId ? `Transaction ID: ${transactionId}` : ""}`,
+      severity: NotificationSeverity.SUCCESS,
+      actionUrl: "/wallet",
+      metadata: {
+        amount,
+        paymentMethod,
+        transactionId,
+        walletType,
+        action: "top_up",
+        timestamp: new Date().toISOString(),
+      },
+    });
+  }
+
+  /**
+   * Notify user about plan subscription
+   */
+  static async notifyPlanSubscription(
+    userId: string,
+    planName: string,
+    planPrice: number,
+    planDuration: string,
+    benefits: string[],
+  ) {
+    return this.createNotification({
+      userId,
+      type: NotificationType.USER_ACTION,
+      title: "Plan Subscribed! 🚀",
+      message: `Congratulations! You've successfully subscribed to the ${planName} plan for PKR ${planPrice.toLocaleString()}. Your new benefits are now active!`,
+      severity: NotificationSeverity.SUCCESS,
+      actionUrl: "/dashboard",
+      metadata: {
+        planName,
+        planPrice,
+        planDuration,
+        benefits,
+        action: "plan_subscription",
+        subscribedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  /**
+   * Notify user about plan upgrade
+   */
+  static async notifyPlanUpgrade(
+    userId: string,
+    oldPlanName: string,
+    newPlanName: string,
+    upgradePrice: number,
+    newBenefits: string[],
+    planDuration: string,
+  ) {
+    return this.createNotification({
+      userId,
+      type: NotificationType.USER_ACTION,
+      title: "Plan Upgraded! ⬆️",
+      message: `Amazing! You've upgraded from ${oldPlanName} to ${newPlanName} plan for PKR ${upgradePrice.toLocaleString()}. Enjoy your enhanced benefits!`,
+      severity: NotificationSeverity.SUCCESS,
+      actionUrl: "/dashboard",
+      metadata: {
+        oldPlanName,
+        newPlanName,
+        upgradePrice,
+        newBenefits,
+        planDuration,
+        action: "plan_upgrade",
+        upgradedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  /**
+   * Notify user about position upgrade
+   */
+  static async notifyPositionUpgrade(
+    userId: string,
+    oldPosition: string,
+    newPosition: string,
+    bonusAmount?: number,
+    newPrivileges?: string[],
+  ) {
+    const message = bonusAmount
+      ? `Excellent! You've been promoted from ${oldPosition} to ${newPosition} and received a bonus of PKR ${bonusAmount.toLocaleString()}! 🎉`
+      : `Congratulations! You've been promoted from ${oldPosition} to ${newPosition}! 🏆`;
+
+    return this.createNotification({
+      userId,
+      type: NotificationType.USER_ACTION,
+      title: "Position Upgraded! 🏅",
+      message,
+      severity: NotificationSeverity.SUCCESS,
+      actionUrl: "/profile",
+      metadata: {
+        oldPosition,
+        newPosition,
+        bonusAmount,
+        newPrivileges,
+        action: "position_upgrade",
+        upgradedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  /**
    * Notify user about security events
    */
   static async notifySecurityEvent(
     userId: string,
     event: string,
     details: string,
-    severity: NotificationSeverity = NotificationSeverity.WARNING
+    severity: NotificationSeverity = NotificationSeverity.WARNING,
   ) {
     return this.createNotification({
       userId,
@@ -243,7 +364,7 @@ export class UserNotificationService {
     userId: string,
     maintenanceDate: Date,
     duration: string,
-    affectedFeatures: string[]
+    affectedFeatures: string[],
   ) {
     return this.createNotification({
       userId,
@@ -269,7 +390,8 @@ export class UserNotificationService {
       userId,
       type: NotificationType.USER_REGISTRATION,
       title,
-      message: "Thanks for joining iTV! Start watching videos and completing tasks to earn money. Check out your first tasks below!",
+      message:
+        "Thanks for joining iTV! Start watching videos and completing tasks to earn money. Check out your first tasks below!",
       severity: NotificationSeverity.SUCCESS,
       actionUrl: "/tasks",
       metadata: {
@@ -289,11 +411,11 @@ export class UserNotificationService {
     type: NotificationType,
     severity: NotificationSeverity = NotificationSeverity.INFO,
     actionUrl?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
   ) {
     try {
       const notifications = await prisma.systemNotification.createMany({
-        data: userIds.map(userId => ({
+        data: userIds.map((userId) => ({
           type,
           title,
           message,
@@ -319,10 +441,7 @@ export class UserNotificationService {
     try {
       const count = await prisma.systemNotification.count({
         where: {
-          OR: [
-            { targetType: "USER", targetId: userId },
-            { targetType: "ALL" },
-          ],
+          OR: [{ targetType: "USER", targetId: userId }, { targetType: "ALL" }],
           isRead: false,
         },
       });

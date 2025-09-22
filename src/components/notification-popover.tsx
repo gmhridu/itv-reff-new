@@ -12,6 +12,9 @@ import {
   AlertCircle,
   CheckCircle,
   DollarSign,
+  CreditCard,
+  TrendingUp,
+  Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,18 +49,38 @@ export function NotificationPopover({ user }) {
     }
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string, metadata?: any) => {
+    // Check metadata for specific action types
+    if (metadata?.action) {
+      switch (metadata.action) {
+        case "top_up":
+          return <CreditCard className="w-4 h-4" />;
+        case "plan_subscription":
+        case "plan_upgrade":
+          return <TrendingUp className="w-4 h-4" />;
+        case "position_upgrade":
+          return <Crown className="w-4 h-4" />;
+        case "video_completion":
+          return <Video className="w-4 h-4" />;
+        default:
+          break;
+      }
+    }
+
+    // Fallback to type-based icons
     switch (type) {
-      case "WITHDRAWAL":
+      case "WITHDRAWAL_REQUEST":
         return <Wallet className="w-4 h-4" />;
-      case "EARNINGS":
+      case "USER_ACTION":
         return <DollarSign className="w-4 h-4" />;
-      case "VIDEO_COMPLETE":
-        return <Video className="w-4 h-4" />;
-      case "LEVEL_UP":
-        return <Trophy className="w-4 h-4" />;
-      case "TASK":
+      case "TASK_COMPLETED":
         return <CheckCircle className="w-4 h-4" />;
+      case "USER_REGISTRATION":
+        return <Trophy className="w-4 h-4" />;
+      case "SECURITY_ALERT":
+        return <AlertCircle className="w-4 h-4" />;
+      case "MAINTENANCE":
+        return <AlertCircle className="w-4 h-4" />;
       default:
         return <Bell className="w-4 h-4" />;
     }
@@ -180,7 +203,10 @@ export function NotificationPopover({ user }) {
                                   : "bg-blue-100 text-blue-600"
                           }`}
                         >
-                          {getTypeIcon(notification.type)}
+                          {getTypeIcon(
+                            notification.type,
+                            notification.metadata,
+                          )}
                         </div>
 
                         <div className="flex-1 min-w-0">

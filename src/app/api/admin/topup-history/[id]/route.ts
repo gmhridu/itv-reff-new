@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/auth";
+import { UserNotificationService } from "@/lib/user-notification-service";
 
 export async function GET(
   request: NextRequest,
@@ -262,6 +263,26 @@ export async function PUT(
       amount: existingRequest.amount,
       balanceUpdated: status === "APPROVED",
     });
+
+    // Send notification for approved topup
+    if (status === "APPROVED") {
+      try {
+        const paymentMethod =
+          existingRequest.selectedWallet?.walletType || "Unknown";
+        await UserNotificationService.notifyTopUp(
+          existingRequest.userId,
+          existingRequest.amount,
+          paymentMethod,
+          transactionId,
+          "Main",
+        );
+        console.log(
+          `Top-up notification sent to user ${existingRequest.userId}`,
+        );
+      } catch (notificationError) {
+        console.error("Failed to send top-up notification:", notificationError);
+      }
+    }
 
     // Create audit log
     await prisma.auditLog.create({
