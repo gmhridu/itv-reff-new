@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { WithdrawalHistory } from "./WithdrawalHistory";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useWithdrawalInfo } from "@/hooks/useWithdrawalConfig";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
 import {
@@ -48,17 +49,17 @@ export const WithdrawClient = () => {
   const { bankCards, loading: isLoadingCards, refetch } = useBankCards();
   const { toast } = useToast();
   const router = useRouter();
+  const { config: withdrawalConfig, calculateDisplayFees } =
+    useWithdrawalInfo();
 
   // State for user data
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // State management
-  const [selectedWallet, setSelectedWallet] = useState("Main Wallet");
+  const [selectedWallet, setSelectedWallet] = useState("Commission Wallet");
   const [selectedMethod, setSelectedMethod] = useState("");
   const [amount, setAmount] = useState("");
-  const [fundPassword, setFundPassword] = useState("");
   const [showNoBankCardsModal, setShowNoBankCardsModal] = useState(false);
-  const [showFundPasswordWarning, setShowFundPasswordWarning] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successModalData, setSuccessModalData] = useState<any>(null);
   const [walletBalances, setWalletBalances] = useState({
@@ -79,7 +80,8 @@ export const WithdrawClient = () => {
     userId: currentUser?.id || "",
   });
 
-  const predefinedAmounts = [
+  // Use predefined amounts from configuration
+  const predefinedAmounts = withdrawalConfig?.predefinedAmounts || [
     500, 3000, 10000, 30000, 70000, 100000, 250000, 500000,
   ];
 
@@ -92,7 +94,6 @@ export const WithdrawClient = () => {
   useEffect(() => {
     fetchCurrentUser();
     fetchWalletBalances();
-    checkFundPasswordStatus();
     fetchUsdtRate();
   }, []);
 
@@ -207,26 +208,6 @@ export const WithdrawClient = () => {
     }
   };
 
-  const checkFundPasswordStatus = async () => {
-    try {
-      const response = await fetch("/api/user/fund-password/status", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (!data.hasFundPassword) {
-          setShowFundPasswordWarning(true);
-        }
-      }
-    } catch (error) {
-      console.error("Error checking fund password status:", error);
-    }
-  };
-
   const handleAmountSelect = (value: number) => {
     // Check if user has sufficient balance
     const currentBalance =
@@ -247,7 +228,7 @@ export const WithdrawClient = () => {
   };
 
   const handleWalletSelect = (wallet: string) => {
-    setSelectedWallet(wallet);
+    setSelectedWallet("Commission Wallet");
   };
 
   const handleMethodSelect = (method: string) => {
@@ -282,37 +263,45 @@ export const WithdrawClient = () => {
       return;
     }
 
-    if (!amount || !fundPassword) {
+    if (!amount) {
       toast({
         title: "Error",
-        description: "Please enter withdrawal amount and fund password.",
+        description: "Please enter withdrawal amount.",
         variant: "destructive",
       });
       return;
     }
 
     const withdrawalAmount = parseFloat(amount);
-    if (withdrawalAmount < 500) {
+    const minWithdrawal = withdrawalConfig?.minimumWithdrawal || 500;
+
+    if (withdrawalAmount < minWithdrawal) {
       toast({
         title: "Minimum Withdrawal",
-        description: "Minimum withdrawal amount is PKR 500.",
+        description: `Minimum withdrawal amount is PKR ${minWithdrawal}.`,
         variant: "destructive",
       });
       return;
     }
 
-    // Check balance - no fee for USDT withdrawals, 10% handling fee for others
+    // Check balance using withdrawal configuration
     const currentBalance =
       selectedWallet === "Main Wallet"
         ? walletBalances.mainWallet
         : walletBalances.commissionWallet;
 
     const isUsdtWithdrawal = isUsdtMethod();
-    const handlingFee = isUsdtWithdrawal ? 0 : withdrawalAmount * 0.1;
-    const totalRequired = withdrawalAmount + handlingFee;
+    const calculation = calculateDisplayFees?.(
+      withdrawalAmount,
+      isUsdtWithdrawal,
+    );
+    const totalRequired = calculation?.totalDeduction || withdrawalAmount;
 
     if (currentBalance < totalRequired) {
-      const feeDescription = isUsdtWithdrawal ? "no fees" : "10% handling fee";
+      const feePercentage = withdrawalConfig?.withdrawalFeePercentage || 10;
+      const feeDescription = isUsdtWithdrawal
+        ? "no fees"
+        : `${feePercentage}% handling fee`;
       toast({
         title: "Insufficient Balance",
         description: `Insufficient balance including ${feeDescription}. Required: PKR ${totalRequired.toFixed(2)}, Available: PKR ${currentBalance.toFixed(2)}`,
@@ -342,7 +331,6 @@ export const WithdrawClient = () => {
         body: JSON.stringify({
           walletType: selectedWallet,
           amount: withdrawalAmount,
-          fundPassword: fundPassword,
           paymentMethodId: selectedCard.id,
         }),
       });
@@ -364,7 +352,6 @@ export const WithdrawClient = () => {
 
         // Reset form
         setAmount("");
-        setFundPassword("");
 
         // Refresh wallet balances
         fetchWalletBalances();
@@ -417,7 +404,7 @@ export const WithdrawClient = () => {
       case "EASYPAISA":
         return "EasyPaisa";
       case "USDT_TRC20":
-        return "USDT (TRC20)";
+        return "USDT (TRC20) (Zero Handling Fee)";
       default:
         return bankName;
     }
@@ -453,11 +440,11 @@ export const WithdrawClient = () => {
       return;
     }
 
-    // Validate USDT TRC20 address
-    if (!/^T[A-Za-z1-9]{33}$/.test(usdtAddress)) {
+    // Basic validation for USDT address (removed strict TRC20 validation)
+    if (usdtAddress.length < 20) {
       toast({
         title: "Error",
-        description: "Invalid USDT TRC20 address format",
+        description: "Invalid USDT address format",
         variant: "destructive",
       });
       return;
@@ -532,35 +519,7 @@ export const WithdrawClient = () => {
           </TabsList>
 
           <TabsContent value="withdraw" className="space-y-6 mt-6">
-            {/* Fund Password Warning */}
-            {showFundPasswordWarning && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Shield className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-sm font-medium text-amber-800 mb-1">
-                      Fund Password Required
-                    </h3>
-                    <p className="text-sm text-amber-700 mb-3">
-                      You need to set a fund password before making withdrawals.
-                      This is required for security purposes.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setShowFundPasswordWarning(false);
-                        router.push("/user/info");
-                      }}
-                      className="text-sm bg-amber-600 text-white px-3 py-1.5 rounded-md hover:bg-amber-700 transition-colors flex items-center gap-1"
-                    >
-                      <Settings className="w-3 h-3" />
-                      Set Fund Password
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Fund Password Warning - Removed as per requirements */}
 
             {/* Wallet Balances */}
             <div className="space-y-3">
@@ -584,267 +543,228 @@ export const WithdrawClient = () => {
               <hr className="border-gray-200" />
             </div>
 
-            {/* Wallet Type Selection */}
+            {/* Wallet Type Display */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700">Wallet Type</span>
+              <span className="text-gray-500">Commission Wallet</span>
+            </div>
+
+            {/* Withdrawal Method Selection */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-gray-700">Wallet Type</span>
+                <span className="text-gray-700">Withdrawal method</span>
+                <span className="text-sm text-gray-500">
+                  {bankCards.length === 0
+                    ? "No methods added"
+                    : `${bankCards.length} method(s)`}
+                </span>
+              </div>
 
-                <Drawer>
-                  <DrawerTrigger className="flex items-center gap-2 text-gray-500 hover:text-gray-700">
-                    <span>{selectedWallet}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </DrawerTrigger>
+              {/* USDT Quick Access Section */}
+              {!bankCards.some((card) => card.bankName === "USDT_TRC20") && (
+                <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xl">₮</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-900">
+                          USDT (TRC20){" "}
+                          <span className="text-green-600">
+                            (Zero Handling Fee)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => setShowUsdtForm(true)}
+                      size="sm"
+                      className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add USDT
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-                  <DrawerContent className="max-h-[50vh]">
+              <Drawer>
+                <DrawerTrigger
+                  className="w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={handleWithdrawalMethodClick}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      {isLoadingCards ? (
+                        <div className="text-gray-500">Loading methods...</div>
+                      ) : selectedMethod ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg">
+                            {bankCards.find((card) => {
+                              const displayName =
+                                formatBankName(card.bankName) +
+                                " " +
+                                (card.bankName === "USDT_TRC20"
+                                  ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
+                                  : card.accountNumber);
+                              return displayName === selectedMethod;
+                            })?.bankName &&
+                              getBankIcon(
+                                bankCards.find((card) => {
+                                  const displayName =
+                                    formatBankName(card.bankName) +
+                                    " " +
+                                    (card.bankName === "USDT_TRC20"
+                                      ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
+                                      : card.accountNumber);
+                                  return displayName === selectedMethod;
+                                })?.bankName || "",
+                              )}
+                          </span>
+                          <div>
+                            <div className="font-medium">{selectedMethod}</div>
+                            {selectedMethod.includes("USDT") && (
+                              <div className="text-xs text-orange-600">
+                                Fast processing • Low fees
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-500">
+                          Select withdrawal method
+                        </div>
+                      )}
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </div>
+                </DrawerTrigger>
+
+                {bankCards.length > 0 && (
+                  <DrawerContent className="max-h-[60vh]">
                     <DrawerHeader>
-                      <DrawerTitle>Select Wallet Type</DrawerTitle>
+                      <DrawerTitle>Select Withdrawal Method</DrawerTitle>
                     </DrawerHeader>
 
                     <div className="px-4 pb-6 space-y-3">
-                      {walletOptions.map((option) => (
-                        <DrawerClose key={option.value} asChild>
-                          <button
-                            className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                              selectedWallet === option.value
-                                ? "bg-blue-50 border-blue-200"
-                                : "hover:bg-gray-50 border-gray-200"
-                            }`}
-                            onClick={() => handleWalletSelect(option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        </DrawerClose>
-                      ))}
-                    </div>
-                  </DrawerContent>
-                </Drawer>
-              </div>
-
-              {/* Withdrawal Method Selection */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Withdrawal method</span>
-                  <span className="text-sm text-gray-500">
-                    {bankCards.length === 0
-                      ? "No methods added"
-                      : `${bankCards.length} method(s)`}
-                  </span>
-                </div>
-
-                {/* USDT Quick Access Section */}
-                {!bankCards.some((card) => card.bankName === "USDT_TRC20") && (
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xl">₮</span>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            USDT (TRC20)
-                          </div>
-                          {/*<div className="text-sm text-gray-600">
-                            Fast withdrawal • 0-30 minutes • No fees
-                          </div>*/}
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => setShowUsdtForm(true)}
-                        size="sm"
-                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add USDT
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                <Drawer>
-                  <DrawerTrigger
-                    className="w-full p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    onClick={handleWithdrawalMethodClick}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        {isLoadingCards ? (
-                          <div className="text-gray-500">
-                            Loading methods...
-                          </div>
-                        ) : selectedMethod ? (
-                          <div className="flex items-center gap-3">
-                            <span className="text-lg">
-                              {bankCards.find((card) => {
-                                const displayName =
-                                  formatBankName(card.bankName) +
-                                  " " +
-                                  (card.bankName === "USDT_TRC20"
-                                    ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
-                                    : card.accountNumber);
-                                return displayName === selectedMethod;
-                              })?.bankName &&
-                                getBankIcon(
-                                  bankCards.find((card) => {
-                                    const displayName =
-                                      formatBankName(card.bankName) +
-                                      " " +
-                                      (card.bankName === "USDT_TRC20"
-                                        ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
-                                        : card.accountNumber);
-                                    return displayName === selectedMethod;
-                                  })?.bankName || "",
-                                )}
-                            </span>
-                            <div>
-                              <div className="font-medium">
-                                {selectedMethod}
-                              </div>
-                              {selectedMethod.includes("USDT") && (
-                                <div className="text-xs text-orange-600">
-                                  Fast processing • Low fees
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-gray-500">
-                            Select withdrawal method
-                          </div>
-                        )}
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-gray-400" />
-                    </div>
-                  </DrawerTrigger>
-
-                  {bankCards.length > 0 && (
-                    <DrawerContent className="max-h-[60vh]">
-                      <DrawerHeader>
-                        <DrawerTitle>Select Withdrawal Method</DrawerTitle>
-                      </DrawerHeader>
-
-                      <div className="px-4 pb-6 space-y-3">
-                        {/* Group USDT methods first */}
-                        {bankCards
-                          .filter((card) => card.bankName === "USDT_TRC20")
-                          .map((card) => {
-                            const displayName =
-                              formatBankName(card.bankName) +
-                              " " +
-                              `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`;
-                            return (
-                              <DrawerClose key={card.id} asChild>
-                                <button
-                                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                                    selectedMethod === displayName
-                                      ? "bg-gradient-to-r from-orange-50 to-red-50 border-orange-300 shadow-md"
-                                      : "hover:bg-gray-50 border-gray-200 hover:border-orange-200"
-                                  }`}
-                                  onClick={() =>
-                                    handleMethodSelect(displayName)
-                                  }
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
-                                      <span className="text-white text-lg">
-                                        ₮
-                                      </span>
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <div className="font-semibold">
-                                          USDT (TRC20)
-                                        </div>
-                                        <Badge className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
-                                          Fast
-                                        </Badge>
-                                      </div>
-                                      <div className="text-sm text-gray-600 font-mono">
-                                        {card.accountNumber.slice(0, 8)}...
-                                        {card.accountNumber.slice(-8)}
-                                      </div>
-                                      <div className="text-xs text-gray-500 mt-1">
-                                        {card.cardHolderName} • No fees
-                                      </div>
-                                    </div>
-                                  </div>
-                                </button>
-                              </DrawerClose>
-                            );
-                          })}
-
-                        {/* Traditional payment methods */}
-                        {bankCards
-                          .filter((card) => card.bankName !== "USDT_TRC20")
-                          .map((card) => {
-                            const displayName =
-                              formatBankName(card.bankName) +
-                              " " +
-                              card.accountNumber;
-                            return (
-                              <DrawerClose key={card.id} asChild>
-                                <button
-                                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                                    selectedMethod === displayName
-                                      ? "bg-blue-50 border-blue-200"
-                                      : "hover:bg-gray-50 border-gray-200"
-                                  }`}
-                                  onClick={() =>
-                                    handleMethodSelect(displayName)
-                                  }
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-lg">
-                                      {getBankIcon(card.bankName)}
+                      {/* Group USDT methods first */}
+                      {bankCards
+                        .filter((card) => card.bankName === "USDT_TRC20")
+                        .map((card) => {
+                          const displayName =
+                            formatBankName(card.bankName) +
+                            " " +
+                            `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`;
+                          return (
+                            <DrawerClose key={card.id} asChild>
+                              <button
+                                className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                                  selectedMethod === displayName
+                                    ? "bg-gradient-to-r from-orange-50 to-red-50 border-orange-300 shadow-md"
+                                    : "hover:bg-gray-50 border-gray-200 hover:border-orange-200"
+                                }`}
+                                onClick={() => handleMethodSelect(displayName)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-lg">
+                                      ₮
                                     </span>
-                                    <div className="flex-1">
-                                      <div className="font-medium">
-                                        {formatBankName(card.bankName)}
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <div className="font-semibold">
+                                        USDT (TRC20) (Zero Handling Fee)
                                       </div>
-                                      <div className="text-sm text-gray-500">
-                                        {card.accountNumber}
-                                      </div>
-                                      <div className="text-xs text-gray-400">
-                                        {card.cardHolderName} • 0-72 hours • 10%
-                                        fee
-                                      </div>
+                                      <Badge className="text-xs bg-gradient-to-r from-orange-500 to-red-500 text-white border-0">
+                                        Fast
+                                      </Badge>
+                                    </div>
+                                    <div className="text-sm text-gray-600 font-mono">
+                                      {card.accountNumber.slice(0, 8)}...
+                                      {card.accountNumber.slice(-8)}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {card.cardHolderName} • No fees
                                     </div>
                                   </div>
-                                </button>
-                              </DrawerClose>
-                            );
-                          })}
+                                </div>
+                              </button>
+                            </DrawerClose>
+                          );
+                        })}
 
-                        {/* Add More Payment Methods */}
-                        <div className="pt-2 border-t border-gray-200">
+                      {/* Traditional payment methods */}
+                      {bankCards
+                        .filter((card) => card.bankName !== "USDT_TRC20")
+                        .map((card) => {
+                          const displayName =
+                            formatBankName(card.bankName) +
+                            " " +
+                            card.accountNumber;
+                          return (
+                            <DrawerClose key={card.id} asChild>
+                              <button
+                                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                  selectedMethod === displayName
+                                    ? "bg-blue-50 border-blue-200"
+                                    : "hover:bg-gray-50 border-gray-200"
+                                }`}
+                                onClick={() => handleMethodSelect(displayName)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-lg">
+                                    {getBankIcon(card.bankName)}
+                                  </span>
+                                  <div className="flex-1">
+                                    <div className="font-medium">
+                                      {formatBankName(card.bankName)}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {card.accountNumber}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      {card.cardHolderName} • 0-72 hours • 10%
+                                      fee
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            </DrawerClose>
+                          );
+                        })}
+
+                      {/* Add More Payment Methods */}
+                      <div className="pt-2 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setShowUsdtForm(true);
+                          }}
+                          className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors text-gray-600 hover:text-orange-600"
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <Plus className="w-4 h-4" />
+                            <span>Add USDT Wallet</span>
+                          </div>
+                        </button>
+
+                        <DrawerClose asChild>
                           <button
-                            onClick={() => {
-                              setShowUsdtForm(true);
-                            }}
-                            className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-colors text-gray-600 hover:text-orange-600"
+                            onClick={() => router.push("/user/bank-card")}
+                            className="w-full mt-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600"
                           >
                             <div className="flex items-center justify-center gap-2">
                               <Plus className="w-4 h-4" />
-                              <span>Add USDT Wallet</span>
+                              <span>Add Other Payment Method</span>
                             </div>
                           </button>
-
-                          <DrawerClose asChild>
-                            <button
-                              onClick={() => router.push("/user/bank-card")}
-                              className="w-full mt-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-600 hover:text-blue-600"
-                            >
-                              <div className="flex items-center justify-center gap-2">
-                                <Plus className="w-4 h-4" />
-                                <span>Add Other Payment Method</span>
-                              </div>
-                            </button>
-                          </DrawerClose>
-                        </div>
+                        </DrawerClose>
                       </div>
-                    </DrawerContent>
-                  )}
-                </Drawer>
-              </div>
+                    </div>
+                  </DrawerContent>
+                )}
+              </Drawer>
             </div>
 
             {/* Amount Section */}
@@ -972,7 +892,7 @@ export const WithdrawClient = () => {
                     <button
                       key={value}
                       onClick={() => handleAmountSelect(value)}
-                      disabled={isInsufficient || showFundPasswordWarning}
+                      disabled={isInsufficient}
                       className={`p-3 rounded-lg border transition-colors text-sm ${
                         amount === value.toString()
                           ? isUsdtWithdrawal
@@ -1003,28 +923,13 @@ export const WithdrawClient = () => {
               </div>
             </div>
 
-            {/* Fund Password */}
-            <div className="space-y-2">
-              <label className="text-gray-700">Fund password</label>
-              <Input
-                type="password"
-                placeholder="Please input fund password"
-                value={fundPassword}
-                onChange={(e) => setFundPassword(e.target.value)}
-              />
-            </div>
+            {/* Fund Password - Removed as per requirements */}
 
             {/* Submit Button */}
             <Button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
               onClick={handleSubmit}
-              disabled={
-                !amount ||
-                !fundPassword ||
-                isLoadingCards ||
-                showFundPasswordWarning ||
-                isSubmitting
-              }
+              disabled={!amount || isLoadingCards || isSubmitting}
             >
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
@@ -1249,7 +1154,7 @@ export const WithdrawClient = () => {
                   className="font-mono text-sm"
                 />
                 <p className="text-xs text-gray-500">
-                  Must be a valid TRC20 USDT address (starts with 'T')
+                  Enter your TRC20 USDT address
                 </p>
               </div>
 

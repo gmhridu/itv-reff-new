@@ -41,6 +41,8 @@ interface ReferralStats {
   totalReferrals: number;
   activeReferrals: number;
   totalReferralEarnings: number;
+  referralCommissionEarnings: number;
+  bonusEarnings: number;
   monthlyReferrals: number;
   topReferrals: Array<{
     id: string;
@@ -52,6 +54,7 @@ interface ReferralStats {
     id: string;
     name: string;
     email: string;
+    level: string;
     earnings: number;
     balance: number;
     joinedAt: string;
@@ -208,7 +211,7 @@ export default function ReferralClient() {
           <Card className="bg-white border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-                Referral Earnings
+                Referral Commission Earnings
               </CardTitle>
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 rounded-full flex items-center justify-center">
                 <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
@@ -216,16 +219,20 @@ export default function ReferralClient() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-xl sm:text-2xl font-bold text-gray-800">
-                PKR {referralStats?.totalReferralEarnings.toFixed(2) || "0.00"}
+                PKR{" "}
+                {referralStats?.referralCommissionEarnings?.toFixed(2) ||
+                  "0.00"}
               </div>
-              <p className="text-xs text-gray-500">Total earned</p>
+              <p className="text-xs text-gray-500">
+                10% - 3% - 1% on subscriptions
+              </p>
             </CardContent>
           </Card>
 
           <Card className="bg-white border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
-                Bonus per Referral
+                Bonus Earnings
               </CardTitle>
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-50 rounded-full flex items-center justify-center">
                 <Gift className="h-3 w-3 sm:h-4 sm:w-4 text-emerald-600" />
@@ -233,9 +240,11 @@ export default function ReferralClient() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-xl sm:text-2xl font-bold text-gray-800">
-                PKR 5.00
+                PKR {referralStats?.bonusEarnings?.toFixed(2) || "0.00"}
               </div>
-              <p className="text-xs text-gray-500">When they start earning</p>
+              <p className="text-xs text-gray-500">
+                8% - 3% - 1% on task completion
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -325,32 +334,46 @@ export default function ReferralClient() {
         </Card>
 
         {/* Referral Details */}
-        <Tabs defaultValue="referrals" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 bg-gray-100 border border-gray-200">
+        <Tabs defaultValue="total-referrals" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-gray-100 border border-gray-200">
             <TabsTrigger
-              value="referrals"
+              value="total-referrals"
               className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-gray-700"
             >
-              <span className="hidden sm:inline">My Referrals</span>
-              <span className="sm:hidden">Referrals</span>
+              <span className="hidden sm:inline">Total Referrals</span>
+              <span className="sm:hidden">Total</span>
             </TabsTrigger>
             <TabsTrigger
-              value="top-performers"
+              value="active-referrals"
               className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-gray-700"
             >
-              <span className="hidden sm:inline">Top Performers</span>
-              <span className="sm:hidden">Top</span>
+              <span className="hidden sm:inline">Active Referrals</span>
+              <span className="sm:hidden">Active</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="commission-earnings"
+              className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-gray-700"
+            >
+              <span className="hidden sm:inline">Commission Earnings</span>
+              <span className="sm:hidden">Commission</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="bonus-earnings"
+              className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-gray-700"
+            >
+              <span className="hidden sm:inline">Bonus Earnings</span>
+              <span className="sm:hidden">Bonus</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="referrals" className="space-y-6">
+          <TabsContent value="total-referrals" className="space-y-6">
             <Card className="bg-white border border-gray-200 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-gray-800 text-lg sm:text-xl">
-                  Referred Users
+                  Total Referrals
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                  Users who joined using your referral code
+                  All users who joined using your referral code
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -386,6 +409,11 @@ export default function ReferralClient() {
                               >
                                 {referral.isActive ? "Active" : "Inactive"}
                               </Badge>
+                              {referral.level && (
+                                <Badge variant="outline" className="text-xs">
+                                  Level {referral.level}
+                                </Badge>
+                              )}
                               <span className="text-xs text-gray-500">
                                 Joined{" "}
                                 {new Date(
@@ -428,67 +456,175 @@ export default function ReferralClient() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="top-performers" className="space-y-6">
+          <TabsContent value="active-referrals" className="space-y-6">
             <Card className="bg-white border border-gray-200 shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-gray-800 text-lg sm:text-xl">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-50 rounded-full flex items-center justify-center">
-                    <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
-                  </div>
-                  Top Performing Referrals
+                <CardTitle className="text-gray-800 text-lg sm:text-xl">
+                  Active Referrals
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                  Your most successful referrals based on their earnings
+                  Users who are actively earning through your referrals
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {referralStats?.topReferrals &&
-                referralStats.topReferrals.length > 0 ? (
+                {referralStats?.referrals &&
+                referralStats.referrals.filter((r) => r.isActive).length > 0 ? (
                   <div className="space-y-3 sm:space-y-4">
-                    {referralStats.topReferrals.map((referral, index) => (
-                      <div
-                        key={referral.id}
-                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-emerald-200 transition-colors gap-3"
-                      >
-                        <div className="flex items-center gap-3 sm:gap-4">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm flex-shrink-0">
-                            #{index + 1}
+                    {referralStats.referrals
+                      .filter((r) => r.isActive)
+                      .map((referral) => (
+                        <div
+                          key={referral.id}
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-emerald-200 transition-colors gap-3"
+                        >
+                          <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-gray-800 text-sm sm:text-base truncate">
+                                {referral.name}
+                              </p>
+                              <p className="text-xs sm:text-sm text-gray-600 truncate">
+                                {referral.email}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                <Badge className="text-xs bg-green-100 text-green-800">
+                                  Active
+                                </Badge>
+                                {referral.level && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Level {referral.level}
+                                  </Badge>
+                                )}
+                                <span className="text-xs text-gray-500">
+                                  Joined{" "}
+                                  {new Date(
+                                    referral.joinedAt,
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-gray-800 text-sm sm:text-base truncate">
-                              {referral.name}
+                          <div className="text-right sm:text-center flex-shrink-0">
+                            <p className="font-semibold text-emerald-600 text-sm sm:text-base">
+                              PKR {referral.earnings.toFixed(2)}
                             </p>
-                            <p className="text-xs sm:text-sm text-gray-600">
-                              Joined{" "}
-                              {new Date(referral.joinedAt).toLocaleDateString()}
-                            </p>
+                            <p className="text-xs text-gray-500">Earned</p>
                           </div>
                         </div>
-                        <div className="text-right sm:text-center flex-shrink-0">
-                          <p className="font-semibold text-emerald-600 text-sm sm:text-base">
-                            PKR {referral.earnings.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Total Earnings
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-yellow-50 rounded-full mx-auto mb-4 flex items-center justify-center">
-                      <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-50 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
                     </div>
                     <h3 className="text-base sm:text-lg font-semibold mb-2 text-gray-700">
-                      No top performers yet
+                      No active referrals yet
                     </h3>
                     <p className="text-sm sm:text-base text-gray-600">
-                      Your top referrals will appear here once they start
+                      Your active referrals will appear here once they start
                       earning.
                     </p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="commission-earnings" className="space-y-6">
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-gray-800 text-lg sm:text-xl">
+                  Referral Commission Earnings
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  Commissions earned when referrals subscribe to plans (10% - 3%
+                  - 1%)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-2">
+                    Commission Structure
+                  </h4>
+                  <div className="space-y-2 text-sm text-blue-800">
+                    <div className="flex justify-between">
+                      <span>Level 1 (Direct Referrals):</span>
+                      <span className="font-semibold">10%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Level 2 (2nd Generation):</span>
+                      <span className="font-semibold">3%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Level 3 (3rd Generation):</span>
+                      <span className="font-semibold">1%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-blue-50 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <DollarSign className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600 mb-2">
+                    PKR{" "}
+                    {referralStats?.referralCommissionEarnings?.toFixed(2) ||
+                      "0.00"}
+                  </p>
+                  <p className="text-gray-600">Total Commission Earnings</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Earn commissions when your referrals upgrade their
+                    membership plans
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="bonus-earnings" className="space-y-6">
+            <Card className="bg-white border border-gray-200 shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-gray-800 text-lg sm:text-xl">
+                  Bonus Earnings
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  Bonuses earned when referrals complete tasks (8% - 3% - 1%)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h4 className="font-semibold text-green-900 mb-2">
+                    Bonus Structure
+                  </h4>
+                  <div className="space-y-2 text-sm text-green-800">
+                    <div className="flex justify-between">
+                      <span>Level 1 (Direct Referrals):</span>
+                      <span className="font-semibold">8%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Level 2 (2nd Generation):</span>
+                      <span className="font-semibold">3%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Level 3 (3rd Generation):</span>
+                      <span className="font-semibold">1%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-50 rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <Gift className="h-8 w-8 text-green-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-green-600 mb-2">
+                    PKR {referralStats?.bonusEarnings?.toFixed(2) || "0.00"}
+                  </p>
+                  <p className="text-gray-600">Total Bonus Earnings</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Earn bonuses when your referrals complete video tasks
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -536,7 +672,7 @@ export default function ReferralClient() {
                   Earn Bonus
                 </h3>
                 <p className="text-xs sm:text-sm text-gray-600">
-                  Get PKR 5 when your friend starts watching videos
+                  Get bonus commission up to 8% when your friend starts earning
                 </p>
               </div>
             </div>

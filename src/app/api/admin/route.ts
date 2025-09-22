@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: "Unauthorized - Admin access required",
         },
-        { status: 401 }
+        { status: 401 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
           success: false,
           error: "Forbidden - Super Admin access required",
         },
-        { status: 403 }
+        { status: 403 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -53,7 +53,9 @@ export async function GET(request: NextRequest) {
       superAdmins: admins.filter((a) => a.role === "SUPER_ADMIN").length,
       regularAdmins: admins.filter((a) => a.role === "ADMIN").length,
       recentLogins: admins.filter(
-        (a) => a.lastLogin && a.lastLogin > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        (a) =>
+          a.lastLogin &&
+          a.lastLogin > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       ).length,
     };
 
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: "Internal server error",
       },
-      { status: 500 }
+      { status: 500 },
     );
 
     return addAPISecurityHeaders(response);
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "Unauthorized - Admin access required",
         },
-        { status: 401 }
+        { status: 401 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "Forbidden - Super Admin access required to create new admins",
         },
-        { status: 403 }
+        { status: 403 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -125,7 +127,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "Missing required fields: name, email, password",
         },
-        { status: 400 }
+        { status: 400 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -141,7 +143,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "Admin user with this email already exists",
         },
-        { status: 409 }
+        { status: 409 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -155,6 +157,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
+        phone: "", // Default empty phone number
         password: hashedPassword,
         role: role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN",
       },
@@ -188,7 +191,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: "Failed to create admin user",
       },
-      { status: 500 }
+      { status: 500 },
     );
 
     return addAPISecurityHeaders(response);

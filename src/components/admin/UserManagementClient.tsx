@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -80,6 +81,17 @@ export function UserManagementClient() {
   >("all");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [viewDetailsUserId, setViewDetailsUserId] = useState<string | null>(
+    null,
+  );
+  const [viewAnalyticsUserId, setViewAnalyticsUserId] = useState<string | null>(
+    null,
+  );
+  const [manageBalanceUserId, setManageBalanceUserId] = useState<string | null>(
+    null,
+  );
+  const [newBalance, setNewBalance] = useState<string>("");
+  const [balanceReason, setBalanceReason] = useState<string>("");
 
   // Build filters object
   const filters = useMemo(() => {
@@ -198,6 +210,67 @@ export function UserManagementClient() {
   const handleRefresh = async () => {
     await refetch();
     toast.success("Data refreshed successfully");
+  };
+
+  const handleViewDetails = (userId: string) => {
+    setViewDetailsUserId(userId);
+  };
+
+  const handleViewAnalytics = (userId: string) => {
+    setViewAnalyticsUserId(userId);
+  };
+
+  const handleManageBalance = (userId: string) => {
+    const user = data?.users.find((u) => u.id === userId);
+    if (user) {
+      setNewBalance(user.walletBalance.toString());
+      setManageBalanceUserId(userId);
+    }
+  };
+
+  const handleUpdateBalance = async () => {
+    if (!manageBalanceUserId || !newBalance || !balanceReason) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    const balance = parseFloat(newBalance);
+    if (isNaN(balance) || balance < 0) {
+      toast.error("Please enter a valid balance amount");
+      return;
+    }
+
+    setActionLoading(manageBalanceUserId);
+    try {
+      const response = await fetch(
+        `/api/admin/users/${manageBalanceUserId}/balance`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            newBalance: balance,
+            reason: balanceReason,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        toast.success("Balance updated successfully");
+        setManageBalanceUserId(null);
+        setNewBalance("");
+        setBalanceReason("");
+        await refetch();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Failed to update balance");
+      }
+    } catch (error) {
+      toast.error("Failed to update balance");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (error) {
@@ -518,15 +591,21 @@ export function UserManagementClient() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => handleViewDetails(user.id)}
+                                >
                                   <UserCheck className="h-4 w-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => handleViewAnalytics(user.id)}
+                                >
                                   <TrendingUp className="h-4 w-4 mr-2" />
                                   View Analytics
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => handleManageBalance(user.id)}
+                                >
                                   <DollarSign className="h-4 w-4 mr-2" />
                                   Manage Balance
                                 </DropdownMenuItem>
@@ -646,6 +725,195 @@ export function UserManagementClient() {
             >
               {actionLoading ? "Banning..." : "Ban User"}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* User Details Dialog */}
+      <AlertDialog
+        open={!!viewDetailsUserId}
+        onOpenChange={() => setViewDetailsUserId(null)}
+      >
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>User Details</AlertDialogTitle>
+          </AlertDialogHeader>
+          {viewDetailsUserId && (
+            <div className="grid gap-4">
+              {(() => {
+                const user = data?.users.find(
+                  (u) => u.id === viewDetailsUserId,
+                );
+                if (!user) return <p>User not found</p>;
+
+                return (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Name:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.name || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Email:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Phone:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.phone || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Status:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.status}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Registration Date:
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(user.registrationDate)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Last Login:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {formatLastLogin(user.lastLogin)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Wallet Balance:
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        {formatCurrency(user.walletBalance)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Total Earnings:
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        {formatCurrency(user.totalEarnings)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Position:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.positionLevel || "Intern"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Referral Code:
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.referralCode}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">
+                        Total Tasks:
+                      </label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.totalVideosTasks}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Referrals:</label>
+                      <p className="text-sm text-muted-foreground">
+                        {user.totalReferrals}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Manage Balance Dialog */}
+      <AlertDialog
+        open={!!manageBalanceUserId}
+        onOpenChange={() => setManageBalanceUserId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Manage User Balance</AlertDialogTitle>
+            <AlertDialogDescription>
+              Update the wallet balance for this user. This action will be
+              logged for audit purposes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <label className="text-sm font-medium">New Balance Amount</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Enter new balance"
+                value={newBalance}
+                onChange={(e) => setNewBalance(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Reason for Change</label>
+              <Input
+                placeholder="Enter reason for balance adjustment"
+                value={balanceReason}
+                onChange={(e) => setBalanceReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setManageBalanceUserId(null);
+                setNewBalance("");
+                setBalanceReason("");
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleUpdateBalance}
+              disabled={!!actionLoading}
+            >
+              {actionLoading ? "Updating..." : "Update Balance"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Analytics Dialog (placeholder) */}
+      <AlertDialog
+        open={!!viewAnalyticsUserId}
+        onOpenChange={() => setViewAnalyticsUserId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>User Analytics</AlertDialogTitle>
+            <AlertDialogDescription>
+              Detailed analytics and insights for this user.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="p-4 text-center">
+            <p className="text-muted-foreground">
+              User analytics dashboard coming soon...
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

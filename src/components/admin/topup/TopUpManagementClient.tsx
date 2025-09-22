@@ -51,6 +51,18 @@ interface DashboardStats {
   monthlyGrowth: number;
   activeWallets: number;
   avgProcessingTime: string;
+  successRate: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: "new" | "approved" | "rejected";
+  message: string;
+  timeAgo: string;
+  status: string;
+  userId?: string;
+  userName?: string;
+  amount?: number;
 }
 
 export function TopUpManagementClient() {
@@ -64,41 +76,165 @@ export function TopUpManagementClient() {
     monthlyGrowth: 0,
     activeWallets: 0,
     avgProcessingTime: "0h",
+    successRate: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
+    [],
+  );
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(
+    null,
+  );
 
   // Fetch dashboard statistics
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
+  const fetchStats = async (isManualRefresh = false) => {
+    try {
+      if (isManualRefresh) {
+        setIsRefreshing(true);
+      } else {
         setLoading(true);
-        // Simulate API call - replace with actual endpoint
-        const response = await fetch("/api/admin/topup-history");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data.statistics) {
-            const { statistics } = data.data;
-            setStats({
-              totalRequests: statistics.total || 0,
-              pendingRequests: statistics.pending || 0,
-              approvedRequests: statistics.approved || 0,
-              rejectedRequests: statistics.rejected || 0,
-              totalAmount: statistics.totalAmount || 0,
-              monthlyGrowth: 12.5, // Calculate based on data
-              activeWallets: 2, // Get from wallet API
-              avgProcessingTime: "2.4h",
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats:", error);
-      } finally {
-        setLoading(false);
       }
-    };
+      // Simulate API call - replace with actual endpoint
+      const response = await fetch("/api/admin/topup-history");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.statistics) {
+          const { statistics } = data.data;
+          // Calculate success rate
+          const totalProcessed =
+            (statistics.approved || 0) + (statistics.rejected || 0);
+          const successRate =
+            totalProcessed > 0
+              ? ((statistics.approved || 0) / totalProcessed) * 100
+              : 0;
 
+          // Calculate success rate trend (simple estimation)
+          const previousSuccessRate = stats.successRate || 0;
+          const trendValue = successRate - previousSuccessRate;
+          const trendFormatted =
+            trendValue > 0
+              ? `+${trendValue.toFixed(1)}%`
+              : `${trendValue.toFixed(1)}%`;
+
+          setStats({
+            totalRequests: statistics.total || 0,
+            pendingRequests: statistics.pending || 0,
+            approvedRequests: statistics.approved || 0,
+            rejectedRequests: statistics.rejected || 0,
+            totalAmount: statistics.totalAmount || 0,
+            monthlyGrowth: 12.5, // Calculate based on data
+            activeWallets: 2, // Get from wallet API
+            avgProcessingTime: "2.4h",
+            successRate: Math.round(successRate * 10) / 10, // Round to 1 decimal
+          });
+        }
+
+        // Fetch recent activities
+        if (data.success && data.data.topupRequests) {
+          const requests = data.data.topupRequests.slice(0, 3); // Get latest 3 requests
+          const activities: RecentActivity[] = requests.map((request: any) => {
+            const timeAgo = getTimeAgo(new Date(request.createdAt));
+
+            if (request.status === "PENDING") {
+              return {
+                id: request.id,
+                type: "new" as const,
+                message: `New topup request submitted by ${request.user?.name || "User"}`,
+                timeAgo,
+                status: "New",
+                userId: request.userId,
+                userName: request.user?.name,
+                amount: request.amount,
+              };
+            } else if (request.status === "APPROVED") {
+              return {
+                id: request.id,
+                type: "approved" as const,
+                message: `Request approved and processed for ${request.user?.name || "User"}`,
+                timeAgo,
+                status: "Approved",
+                userId: request.userId,
+                userName: request.user?.name,
+                amount: request.amount,
+              };
+            } else {
+              return {
+                id: request.id,
+                type: "rejected" as const,
+                message: `Request rejected for ${request.user?.name || "User"}`,
+                timeAgo,
+                status: "Rejected",
+                userId: request.userId,
+                userName: request.user?.name,
+                amount: request.amount,
+              };
+            }
+          });
+
+          setRecentActivities(activities);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats:", error);
+      // On error, set default empty activities
+      setRecentActivities([]);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchStats();
+
+    // Set up periodic refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchStats();
+    }, 30000);
+
+    setRefreshInterval(interval);
+
+    // Cleanup on unmount
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
+
+  // Handle refresh functionality
+  const handleRefresh = async () => {
+    // Clear existing interval
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+
+    await fetchStats(true);
+
+    // Restart interval
+    const newInterval = setInterval(() => {
+      fetchStats();
+    }, 30000);
+    setRefreshInterval(newInterval);
+  };
+
+  // Helper function to calculate time ago
+  const getTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} seconds ago`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} day${days > 1 ? "s" : ""} ago`;
+    }
+  };
 
   const StatCard = ({
     title,
@@ -242,9 +378,13 @@ export function TopUpManagementClient() {
               variant="outline"
               size="sm"
               className="bg-white/80 backdrop-blur-sm border-gray-200 hover:bg-white"
+              onClick={handleRefresh}
+              disabled={loading || isRefreshing}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Data
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${loading || isRefreshing ? "animate-spin" : ""}`}
+              />
+              {isRefreshing ? "Refreshing..." : "Refresh Data"}
             </Button>
           </div>
         </div>
@@ -325,13 +465,31 @@ export function TopUpManagementClient() {
               />
               <StatCard
                 title="Success Rate"
-                value="94.7%"
+                value={`${stats.successRate.toFixed(1)}%`}
                 icon={Target}
-                trend="up"
-                trendValue="+2.1%"
+                trend={stats.successRate >= 70 ? "up" : "down"}
+                trendValue={
+                  stats.successRate >= 90
+                    ? "Excellent"
+                    : stats.successRate >= 70
+                      ? "Good"
+                      : "Needs improvement"
+                }
                 description="Approval rate"
-                colorClass="text-purple-600"
-                bgClass="bg-purple-50"
+                colorClass={
+                  stats.successRate >= 90
+                    ? "text-emerald-600"
+                    : stats.successRate >= 70
+                      ? "text-blue-600"
+                      : "text-amber-600"
+                }
+                bgClass={
+                  stats.successRate >= 90
+                    ? "bg-emerald-50"
+                    : stats.successRate >= 70
+                      ? "bg-blue-50"
+                      : "bg-amber-50"
+                }
               />
             </div>
 
@@ -481,44 +639,80 @@ export function TopUpManagementClient() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-blue-100 rounded-full">
-                        <Users className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          New topup request submitted
-                        </p>
-                        <p className="text-xs text-gray-500">2 minutes ago</p>
-                      </div>
+                  {loading || isRefreshing ? (
+                    <div className="text-center py-4">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500">
+                        {loading
+                          ? "Loading activities..."
+                          : "Refreshing activities..."}
+                      </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="bg-blue-50 text-blue-700 border-blue-200"
-                    >
-                      New
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-emerald-100 rounded-full">
-                        <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">
-                          Request approved and processed
-                        </p>
-                        <p className="text-xs text-gray-500">15 minutes ago</p>
-                      </div>
+                  ) : recentActivities.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Activity className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500 mb-1">
+                        No recent activities
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Activities will appear when topup requests are made
+                      </p>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="bg-emerald-50 text-emerald-700 border-emerald-200"
-                    >
-                      Approved
-                    </Badge>
-                  </div>
+                  ) : (
+                    recentActivities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`p-2 rounded-full ${
+                              activity.type === "new"
+                                ? "bg-blue-100"
+                                : activity.type === "approved"
+                                  ? "bg-emerald-100"
+                                  : "bg-red-100"
+                            }`}
+                          >
+                            {activity.type === "new" && (
+                              <Users className="w-4 h-4 text-blue-600" />
+                            )}
+                            {activity.type === "approved" && (
+                              <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            )}
+                            {activity.type === "rejected" && (
+                              <XCircle className="w-4 h-4 text-red-600" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {activity.message}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {activity.timeAgo}
+                            </p>
+                            {activity.amount && (
+                              <p className="text-xs text-gray-600 font-medium">
+                                Amount: {activity.amount} PKR
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={
+                            activity.type === "new"
+                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                              : activity.type === "approved"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-red-50 text-red-700 border-red-200"
+                          }
+                        >
+                          {activity.status}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

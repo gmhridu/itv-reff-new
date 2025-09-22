@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AvatarSelector } from "./ui/avatar-selector";
 import { ChangePasswordModal } from "./ui/change-password-modal";
-import { FundPasswordModal } from "./ui/fund-password-modal";
+
 import {
   User,
   Phone,
@@ -55,7 +55,6 @@ const UserInfoOverview = () => {
   const [isDetailedDialogOpen, setIsDetailedDialogOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] =
     useState(false);
-  const [isFundPasswordModalOpen, setIsFundPasswordModalOpen] = useState(false);
 
   // State for user data
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -101,10 +100,7 @@ const UserInfoOverview = () => {
   const handleSettingsClick = (section: string) => {
     if (section === "login-password") {
       setIsChangePasswordModalOpen(true);
-    } else if (section === "fund-password") {
-      setIsFundPasswordModalOpen(true);
     }
-    console.log(`Navigating to ${section} settings`);
   };
 
   const handleExitLogin = async () => {
@@ -342,29 +338,6 @@ const UserInfoOverview = () => {
             </div>
           </div>
 
-          {/* Fund Password */}
-          <div className="w-full shadow-sm bg-white rounded-md hover:bg-gray-50 transition-colors cursor-pointer">
-            <div className="px-4 py-4 cursor-pointer">
-              <button
-                onClick={() => handleSettingsClick("fund-password")}
-                className="w-full flex items-center justify-between hover:bg-gray-50 transition-colors rounded-lg p-1 -m-1"
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
-                  <Shield className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                  <span className="font-medium text-gray-800 truncate text-left">
-                    Fund password
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0 cursor-pointer">
-                  <span className="text-indigo-600 font-medium text-sm">
-                    Click Settings
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Empty Cache */}
           <div className="w-full shadow-sm bg-white rounded-md hover:bg-gray-50 transition-colors cursor-pointer">
             <div className="px-4 py-4 cursor-pointer">
@@ -405,12 +378,6 @@ const UserInfoOverview = () => {
           <ChangePasswordModal
             isOpen={isChangePasswordModalOpen}
             onClose={() => setIsChangePasswordModalOpen(false)}
-          />
-
-          {/* Fund Password Modal */}
-          <FundPasswordModal
-            isOpen={isFundPasswordModalOpen}
-            onClose={() => setIsFundPasswordModalOpen(false)}
           />
         </div>
       </div>

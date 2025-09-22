@@ -141,7 +141,7 @@ async function createPositionLevels() {
     const existingLevels = await prisma.positionLevel.count();
     if (existingLevels > 0) {
       console.log(
-        `ℹ️  Position levels already exist (${existingLevels} found)`
+        `ℹ️  Position levels already exist (${existingLevels} found)`,
       );
       return;
     }
@@ -151,7 +151,7 @@ async function createPositionLevels() {
         data: levelData,
       });
       console.log(
-        `✅ Created position level: ${level.name} (Level ${level.level})`
+        `✅ Created position level: ${level.name} (Level ${level.level})`,
       );
     }
 
@@ -201,7 +201,7 @@ async function createAdminWallets() {
         data: walletData,
       });
       console.log(
-        `✅ Created wallet: ${wallet.walletType} - ${wallet.walletNumber}`
+        `✅ Created wallet: ${wallet.walletType} - ${wallet.walletNumber}`,
       );
     }
 
@@ -278,7 +278,7 @@ async function checkCloudinaryConfiguration() {
 async function createAuditLog(
   adminId: string,
   action: string,
-  description: string
+  description: string,
 ) {
   try {
     await prisma.auditLog.create({
@@ -364,7 +364,7 @@ async function runSetup() {
       await createAuditLog(
         admin.id,
         "SYSTEM_SETUP",
-        "Initial system setup completed"
+        "Initial system setup completed",
       );
     }
 

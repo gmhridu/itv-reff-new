@@ -11,6 +11,7 @@ import {
   Settings,
   Upload,
   Users,
+  Shield,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main";
@@ -84,6 +85,11 @@ const data = {
       icon: ArrowDownCircle,
       badge:
         pendingCounts.withdrawal > 0 ? pendingCounts.withdrawal : undefined,
+    },
+    {
+      title: "Security Refunds",
+      url: "/admin/security-refunds",
+      icon: Shield,
     },
     {
       title: "User Management",

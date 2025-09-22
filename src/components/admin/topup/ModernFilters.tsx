@@ -11,12 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Popover,
   PopoverContent,
@@ -53,18 +48,18 @@ export interface FilterState {
 
 export interface ModernFiltersProps {
   filters: FilterState;
-  onFiltersChange: (filters: FilterState) => void;
-  onReset: () => void;
-  onApply: () => void;
+  onFiltersChangeAction: (filters: FilterState) => void;
+  onResetAction: () => void;
+  onApplyAction: () => void;
   loading?: boolean;
   resultsCount?: number;
 }
 
 export function ModernFilters({
   filters,
-  onFiltersChange,
-  onReset,
-  onApply,
+  onFiltersChangeAction,
+  onResetAction,
+  onApplyAction,
   loading = false,
   resultsCount = 0,
 }: ModernFiltersProps) {
@@ -79,7 +74,7 @@ export function ModernFilters({
   ].filter(Boolean).length;
 
   const updateFilters = (updates: Partial<FilterState>) => {
-    onFiltersChange({ ...filters, ...updates });
+    onFiltersChangeAction({ ...filters, ...updates });
   };
 
   const clearFilter = (filterKey: keyof FilterState) => {
@@ -135,7 +130,7 @@ export function ModernFilters({
                 variant="outline"
                 className={cn(
                   "h-11 bg-white shadow-sm border-gray-200 hover:bg-gray-50 relative",
-                  activeFiltersCount > 0 && "border-blue-500 bg-blue-50"
+                  activeFiltersCount > 0 && "border-blue-500 bg-blue-50",
                 )}
               >
                 <SlidersHorizontal className="w-4 h-4 mr-2" />
@@ -181,7 +176,9 @@ export function ModernFilters({
                     </Label>
                     <Select
                       value={filters.status}
-                      onValueChange={(value) => updateFilters({ status: value })}
+                      onValueChange={(value) =>
+                        updateFilters({ status: value })
+                      }
                     >
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select status" />
@@ -218,7 +215,9 @@ export function ModernFilters({
                     </Label>
                     <Select
                       value={filters.walletType}
-                      onValueChange={(value) => updateFilters({ walletType: value })}
+                      onValueChange={(value) =>
+                        updateFilters({ walletType: value })
+                      }
                     >
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select wallet type" />
@@ -310,7 +309,7 @@ export function ModernFilters({
                   <div className="flex gap-2 pt-2 border-t">
                     <Button
                       variant="outline"
-                      onClick={onReset}
+                      onClick={onResetAction}
                       className="flex-1 h-10"
                       disabled={loading}
                     >
@@ -319,7 +318,7 @@ export function ModernFilters({
                     </Button>
                     <Button
                       onClick={() => {
-                        onApply();
+                        onApplyAction();
                         setIsOpen(false);
                       }}
                       className="flex-1 h-10"
@@ -340,7 +339,7 @@ export function ModernFilters({
 
           {/* Quick Apply Button */}
           <Button
-            onClick={onApply}
+            onClick={onApplyAction}
             disabled={loading}
             className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
           >
@@ -400,7 +399,8 @@ export function ModernFilters({
               variant="secondary"
               className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
             >
-              Amount: {filters.amountRange.min || "0"} - {filters.amountRange.max || "∞"} PKR
+              Amount: {filters.amountRange.min || "0"} -{" "}
+              {filters.amountRange.max || "∞"} PKR
               <Button
                 variant="ghost"
                 size="sm"
@@ -417,7 +417,8 @@ export function ModernFilters({
               variant="secondary"
               className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
             >
-              Date Range: {filters.dateRange.from?.toLocaleDateString()} - {filters.dateRange.to?.toLocaleDateString()}
+              Date Range: {filters.dateRange.from?.toLocaleDateString()} -{" "}
+              {filters.dateRange.to?.toLocaleDateString()}
               <Button
                 variant="ghost"
                 size="sm"
@@ -432,7 +433,7 @@ export function ModernFilters({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onReset}
+            onClick={onResetAction}
             className="ml-2 text-gray-500 hover:text-gray-700"
           >
             Clear all

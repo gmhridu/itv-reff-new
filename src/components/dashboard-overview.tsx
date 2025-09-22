@@ -170,7 +170,7 @@ export default function DashboardOverview() {
               <div className="w-full h-full bg-gradient-to-r from-emerald-500 to-emerald-600 flex items-center justify-center">
                 <div className="text-center text-white">
                   <h2 className="text-2xl font-bold mb-2">
-                    Welcome to Cocoon Films
+                    Welcome to ICL Finance
                   </h2>
                   <p className="text-emerald-100">
                     Your entertainment destination
@@ -291,8 +291,8 @@ export default function DashboardOverview() {
                   level.name === (user?.currentPosition?.name || "Intern")
                     ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
                     : level.isUnlocked
-                    ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
-                    : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
+                      ? "bg-white border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                      : "bg-gray-100 border-2 border-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
                 <Play className="w-4 h-4 mr-1" />

@@ -37,10 +37,36 @@ export function useMembershipList(
         limit: limit.toString(),
       });
 
-      const response = await apiClient.get<MembershipListData>(
-        `/api/dashboard/membership-list?${params}`,
+      const response = await apiClient.get(
+        `/api/top-earners?period=${type}&limit=${limit}`,
       );
-      return response.data;
+
+      // Transform top earners data to match membership list format
+      const topEarnersData = response.data as any;
+      if (topEarnersData.success && topEarnersData.data) {
+        return {
+          membershipList: topEarnersData.data.topEarners.map((earner: any) => ({
+            id: earner.id,
+            name: earner.name,
+            subtitle: earner.subtitle,
+            amount: earner.displayEarnings,
+            periodEarnings: earner.earnings,
+            totalEarnings: earner.earnings,
+            avatar: "",
+          })),
+          period: topEarnersData.data.period,
+          startDate: new Date().toISOString(),
+          total: topEarnersData.data.topEarners.length,
+        };
+      }
+
+      // Fallback to empty data if API fails
+      return {
+        membershipList: [],
+        period: type,
+        startDate: new Date().toISOString(),
+        total: 0,
+      };
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes

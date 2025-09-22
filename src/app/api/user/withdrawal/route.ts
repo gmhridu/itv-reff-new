@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
-import { verifyPassword } from "@/lib/api/auth";
+
 import { db as prisma } from "@/lib/db";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
 import {
@@ -9,6 +9,7 @@ import {
   NotificationSeverity,
 } from "@/lib/admin/notification-service";
 import { NotificationService } from "@/lib/notification-service";
+import { withdrawalConfigService } from "@/lib/admin/withdrawal-config-service";
 
 export async function POST(request: NextRequest) {
   let response: NextResponse;
@@ -37,11 +38,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { walletType, amount, fundPassword, paymentMethodId, usdtToPkrRate } =
-      body;
+    const { walletType, amount, paymentMethodId, usdtToPkrRate } = body;
 
     // Validate required fields
-    if (!walletType || !amount || !fundPassword || !paymentMethodId) {
+    if (!walletType || !amount || !paymentMethodId) {
       response = NextResponse.json(
         { error: "All fields are required" },
         { status: 400 },
@@ -51,33 +51,38 @@ export async function POST(request: NextRequest) {
 
     // Validate amount
     const withdrawalAmount = parseFloat(amount);
-    if (isNaN(withdrawalAmount) || withdrawalAmount < 500) {
+    if (isNaN(withdrawalAmount)) {
       response = NextResponse.json(
-        { error: "Minimum withdrawal amount is PKR 500" },
+        { error: "Invalid withdrawal amount" },
         { status: 400 },
       );
       return addAPISecurityHeaders(response);
     }
 
-    // Validate predefined amounts
-    const predefinedAmounts = [500, 3000, 10000, 30000, 100000, 250000, 500000];
-    if (!predefinedAmounts.includes(withdrawalAmount)) {
+    // Validate withdrawal using configuration service
+    const validationResult = await withdrawalConfigService.validateWithdrawal(
+      user.id,
+      withdrawalAmount,
+      walletType,
+      paymentMethodId,
+    );
+
+    if (!validationResult.isValid) {
       response = NextResponse.json(
-        { error: "Please select from predefined withdrawal amounts only" },
+        { error: validationResult.error },
         { status: 400 },
       );
       return addAPISecurityHeaders(response);
     }
 
-    // Get user with fund password and wallet balances using raw query
+    // Get user with wallet balances using raw query
     const userData = await prisma.$queryRaw<
       {
-        fundPassword: string | null;
         walletBalance: number;
         commissionBalance: number;
       }[]
     >`
-      SELECT "fundPassword", "walletBalance", "commissionBalance"
+      SELECT "walletBalance", "commissionBalance"
       FROM "users"
       WHERE "id" = ${user.id}
     `;
@@ -90,55 +95,8 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Check if user has fund password set
-    if (!userData[0].fundPassword) {
-      response = NextResponse.json(
-        {
-          error: "Fund password not set. Please set your fund password first.",
-        },
-        { status: 400 },
-      );
-      return addAPISecurityHeaders(response);
-    }
-
-    // Verify fund password
-    const isFundPasswordValid = await verifyPassword(
-      fundPassword,
-      userData[0].fundPassword,
-    );
-
-    if (!isFundPasswordValid) {
-      response = NextResponse.json(
-        { error: "Invalid fund password" },
-        { status: 400 },
-      );
-      return addAPISecurityHeaders(response);
-    }
-
-    // Check wallet balance based on selected wallet type
-    let availableBalance = 0;
-    if (walletType === "Main Wallet") {
-      availableBalance = userData[0].walletBalance || 0;
-    } else if (walletType === "Commission Wallet") {
-      availableBalance = userData[0].commissionBalance || 0;
-    } else {
-      response = NextResponse.json(
-        { error: "Invalid wallet type" },
-        { status: 400 },
-      );
-      return addAPISecurityHeaders(response);
-    }
-
-    // Check if user has sufficient balance
-    if (availableBalance < withdrawalAmount) {
-      response = NextResponse.json(
-        {
-          error: `Insufficient balance in ${walletType}. Available: PKR ${availableBalance.toFixed(2)}`,
-        },
-        { status: 400 },
-      );
-      return addAPISecurityHeaders(response);
-    }
+    // Get withdrawal configuration
+    const config = await withdrawalConfigService.getWithdrawalConfig();
 
     // Verify bank card exists and belongs to user
     const bankCard = await prisma.bankCard.findFirst({
@@ -157,32 +115,14 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Calculate fees based on withdrawal type
+    // Calculate fees and amounts using configuration service
     const isUsdtWithdrawal = bankCard.bankName === "USDT_TRC20";
-    let handlingFee: number;
-    let totalDeduction: number;
+    const calculation = await withdrawalConfigService.calculateWithdrawal(
+      withdrawalAmount,
+      isUsdtWithdrawal,
+    );
 
-    if (isUsdtWithdrawal) {
-      // For USDT: No fees
-      handlingFee = 0; // No PKR deduction for fees
-      totalDeduction = withdrawalAmount;
-    } else {
-      // For traditional: 10% handling fee
-      handlingFee = withdrawalAmount * 0.1;
-      totalDeduction = withdrawalAmount + handlingFee;
-    }
-
-    // Check if user has enough balance including handling fee
-    if (availableBalance < totalDeduction) {
-      const feeDescription = isUsdtWithdrawal ? "no fees" : "10% handling fee";
-      response = NextResponse.json(
-        {
-          error: `Insufficient balance including ${feeDescription}. Required: PKR ${totalDeduction.toFixed(2)}, Available: PKR ${availableBalance.toFixed(2)}`,
-        },
-        { status: 400 },
-      );
-      return addAPISecurityHeaders(response);
-    }
+    const { handlingFee, totalDeduction } = calculation;
 
     // Create withdrawal request
     const withdrawalRequest = await prisma.withdrawalRequest.create({
@@ -197,14 +137,10 @@ export async function POST(request: NextRequest) {
           walletType: walletType,
           handlingFee: handlingFee,
           isUsdtWithdrawal: isUsdtWithdrawal,
-          usdtRate: usdtToPkrRate || 295,
-          usdtAmount: isUsdtWithdrawal
-            ? withdrawalAmount / (usdtToPkrRate || 295)
-            : null,
-          usdtNetworkFee: isUsdtWithdrawal ? 0 : null,
-          usdtAmountAfterFee: isUsdtWithdrawal
-            ? withdrawalAmount / (usdtToPkrRate || 295)
-            : null,
+          usdtRate: config.usdtToPkrRate,
+          usdtAmount: calculation.usdtAmount,
+          usdtNetworkFee: config.usdtNetworkFee,
+          usdtAmountAfterFee: calculation.usdtAmountAfterFee,
         }),
         status: "PENDING",
       },
@@ -247,14 +183,10 @@ export async function POST(request: NextRequest) {
           paymentMethod: bankCard.bankName,
           accountNumber: bankCard.accountNumber,
           isUsdtWithdrawal: isUsdtWithdrawal,
-          usdtRate: usdtToPkrRate || 295,
-          usdtAmount: isUsdtWithdrawal
-            ? withdrawalAmount / (usdtToPkrRate || 295)
-            : null,
-          usdtNetworkFee: isUsdtWithdrawal ? 0 : null,
-          usdtAmountAfterFee: isUsdtWithdrawal
-            ? withdrawalAmount / (usdtToPkrRate || 295)
-            : null,
+          usdtRate: config.usdtToPkrRate,
+          usdtAmount: calculation.usdtAmount,
+          usdtNetworkFee: config.usdtNetworkFee,
+          usdtAmountAfterFee: calculation.usdtAmountAfterFee,
         }),
       },
     });
@@ -323,14 +255,10 @@ export async function POST(request: NextRequest) {
             accountNumber: bankCard.accountNumber,
             status: "PENDING",
             isUsdtWithdrawal: isUsdtWithdrawal,
-            usdtRate: usdtToPkrRate || 295,
-            usdtAmount: isUsdtWithdrawal
-              ? withdrawalAmount / (usdtToPkrRate || 295)
-              : null,
-            usdtNetworkFee: isUsdtWithdrawal ? 0 : null,
-            usdtAmountAfterFee: isUsdtWithdrawal
-              ? withdrawalAmount / (usdtToPkrRate || 295)
-              : null,
+            usdtRate: config.usdtToPkrRate,
+            usdtAmount: calculation.usdtAmount,
+            usdtNetworkFee: config.usdtNetworkFee,
+            usdtAmountAfterFee: calculation.usdtAmountAfterFee,
           },
         },
       );
@@ -357,16 +285,14 @@ export async function POST(request: NextRequest) {
             walletType: walletType,
             paymentMethod: `${bankCard.bankName} ${bankCard.accountNumber}`,
             status: "PENDING",
-            estimatedProcessingTime: isUsdtWithdrawal ? "" : "0-72 hours",
+            estimatedProcessingTime: isUsdtWithdrawal
+              ? config.usdtProcessingTime
+              : config.withdrawalProcessingTime,
             isUsdtWithdrawal: isUsdtWithdrawal,
-            usdtRate: usdtToPkrRate || 295,
-            usdtAmount: isUsdtWithdrawal
-              ? withdrawalAmount / (usdtToPkrRate || 295)
-              : null,
-            usdtNetworkFee: isUsdtWithdrawal ? 0 : null,
-            usdtAmountAfterFee: isUsdtWithdrawal
-              ? withdrawalAmount / (usdtToPkrRate || 295)
-              : null,
+            usdtRate: config.usdtToPkrRate,
+            usdtAmount: calculation.usdtAmount,
+            usdtNetworkFee: config.usdtNetworkFee,
+            usdtAmountAfterFee: calculation.usdtAmountAfterFee,
           },
         },
         user.id,
@@ -388,19 +314,17 @@ export async function POST(request: NextRequest) {
           ? "USDT Withdrawal Submitted Successfully!"
           : "Withdrawal Submitted Successfully!",
         message: isUsdtWithdrawal
-          ? "Your USDT withdrawal application has been submitted and will be processed within 0-72 hours."
-          : "Your withdrawal application has been submitted and will arrive to your account within 0-72 hours.",
+          ? `Your USDT withdrawal application has been submitted and will be processed within ${config.usdtProcessingTime}.`
+          : `Your withdrawal application has been submitted and will arrive to your account within ${config.withdrawalProcessingTime}.`,
         amount: withdrawalAmount,
         paymentMethod: `${bankCard.bankName} ${isUsdtWithdrawal ? bankCard.accountNumber.slice(0, 8) + "..." + bankCard.accountNumber.slice(-8) : bankCard.accountNumber}`,
-        estimatedTime: isUsdtWithdrawal ? "" : "0-72 hours",
+        estimatedTime: isUsdtWithdrawal
+          ? config.usdtProcessingTime
+          : config.withdrawalProcessingTime,
         isUsdtWithdrawal: isUsdtWithdrawal,
-        usdtAmount: isUsdtWithdrawal
-          ? withdrawalAmount / (usdtToPkrRate || 295)
-          : null,
-        usdtNetworkFee: isUsdtWithdrawal ? 0 : null,
-        usdtAmountAfterFee: isUsdtWithdrawal
-          ? withdrawalAmount / (usdtToPkrRate || 295)
-          : null,
+        usdtAmount: calculation.usdtAmount,
+        usdtNetworkFee: config.usdtNetworkFee,
+        usdtAmountAfterFee: calculation.usdtAmountAfterFee,
       },
       data: {
         withdrawalRequestId: withdrawalRequest.id,
@@ -409,16 +333,14 @@ export async function POST(request: NextRequest) {
         totalDeduction: totalDeduction,
         paymentMethod: `${bankCard.bankName} ${isUsdtWithdrawal ? bankCard.accountNumber.slice(0, 8) + "..." + bankCard.accountNumber.slice(-8) : bankCard.accountNumber}`,
         status: "PENDING",
-        estimatedProcessingTime: isUsdtWithdrawal ? "" : "0-72 hours",
+        estimatedProcessingTime: isUsdtWithdrawal
+          ? config.usdtProcessingTime
+          : config.withdrawalProcessingTime,
         isUsdtWithdrawal: isUsdtWithdrawal,
-        usdtRate: usdtToPkrRate || 295,
-        usdtAmount: isUsdtWithdrawal
-          ? withdrawalAmount / (usdtToPkrRate || 295)
-          : null,
-        usdtNetworkFee: isUsdtWithdrawal ? 0 : null,
-        usdtAmountAfterFee: isUsdtWithdrawal
-          ? withdrawalAmount / (usdtToPkrRate || 295)
-          : null,
+        usdtRate: config.usdtToPkrRate,
+        usdtAmount: calculation.usdtAmount,
+        usdtNetworkFee: config.usdtNetworkFee,
+        usdtAmountAfterFee: calculation.usdtAmountAfterFee,
       },
     });
 

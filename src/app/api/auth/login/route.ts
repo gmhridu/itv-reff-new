@@ -1,21 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { SecureTokenManager } from '@/lib/token-manager';
-import { rateLimiter, RATE_LIMITS } from '@/lib/rate-limiter';
-import { addAPISecurityHeaders } from '@/lib/security-headers';
-import { db } from '@/lib/db';
-import { authenticateUser, checkAccountLockout, recordFailedLogin, resetFailedLogins } from '@/lib/api/auth';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { SecureTokenManager } from "@/lib/token-manager";
+import { rateLimiter, RATE_LIMITS } from "@/lib/rate-limiter";
+import { addAPISecurityHeaders } from "@/lib/security-headers";
+import { db } from "@/lib/db";
+import {
+  authenticateUser,
+  checkAccountLockout,
+  recordFailedLogin,
+  resetFailedLogins,
+} from "@/lib/api/auth";
 
 const loginSchema = z.object({
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-  password: z.string().min(1, 'Password is required').max(128),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  password: z.string().min(1, "Password is required").max(128),
   rememberMe: z.boolean().optional().default(false),
 });
 
 export async function POST(request: NextRequest) {
-
-
-  let response: NextResponse = NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  let response: NextResponse = NextResponse.json(
+    { success: false, error: "Internal server error" },
+    { status: 500 },
+  );
 
   try {
     // Apply rate limiting
@@ -25,11 +31,11 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: rateLimit.blocked
-            ? 'Too many failed attempts. Account temporarily blocked.'
-            : 'Too many requests. Please try again later.',
-          retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+            ? "Too many failed attempts. Account temporarily blocked."
+            : "Too many requests. Please try again later.",
+          retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000),
         },
-        { status: 429 }
+        { status: 429 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -43,21 +49,26 @@ export async function POST(request: NextRequest) {
       response = NextResponse.json(
         {
           success: false,
-          error: 'Account is temporarily locked due to too many failed attempts',
-          lockoutUntil: lockoutStatus.lockoutUntil
+          error:
+            "Account is temporarily locked due to too many failed attempts",
+          lockoutUntil: lockoutStatus.lockoutUntil,
         },
-        { status: 423 }
+        { status: 423 },
       );
       return addAPISecurityHeaders(response);
     }
 
     // Get client IP
-    const ipAddress = request.headers.get('x-forwarded-for') ||
-                     request.headers.get('x-real-ip') ||
-                     'unknown';
+    const ipAddress =
+      request.headers.get("x-forwarded-for") ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
 
     // Authenticate user
-    const user = await authenticateUser(validatedData.phone, validatedData.password);
+    const user = await authenticateUser(
+      validatedData.phone,
+      validatedData.password,
+    );
 
     if (!user) {
       // Record failed login attempt
@@ -66,19 +77,19 @@ export async function POST(request: NextRequest) {
       response = NextResponse.json(
         {
           success: false,
-          error: 'Invalid phone number or password',
-          remainingAttempts: Math.max(0, 5 - (lockoutStatus.attempts + 1))
+          error: "Invalid phone number or password",
+          remainingAttempts: Math.max(0, 5 - (lockoutStatus.attempts + 1)),
         },
-        { status: 401 }
+        { status: 401 },
       );
       return addAPISecurityHeaders(response);
     }
 
     // Check if user is active
-    if (user.status !== 'ACTIVE') {
+    if (user.status !== "ACTIVE") {
       response = NextResponse.json(
-        { success: false, error: 'Account is not active' },
-        { status: 401 }
+        { success: false, error: "Account is not active" },
+        { status: 401 },
       );
       return addAPISecurityHeaders(response);
     }
@@ -86,10 +97,13 @@ export async function POST(request: NextRequest) {
     // Reset failed login attempts on successful login
     await resetFailedLogins(user.id);
 
-    // Update last login IP
+    // Update last login IP and timestamp
     await db.user.update({
       where: { id: user.id },
-      data: { ipAddress },
+      data: {
+        ipAddress,
+        lastLoginAt: new Date(),
+      },
     });
 
     // Generate secure token pair
@@ -101,7 +115,7 @@ export async function POST(request: NextRequest) {
     // Create response with user data and tokens
     response = NextResponse.json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       user: {
         id: user.id,
         phone: user.phone,
@@ -120,38 +134,37 @@ export async function POST(request: NextRequest) {
     // Set secure cookies
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict" as const,
+      path: "/",
     };
 
     // Set access token (short-lived)
-    response.cookies.set('access_token', tokens.accessToken, {
+    response.cookies.set("access_token", tokens.accessToken, {
       ...cookieOptions,
       maxAge: 15 * 60, // 15 minutes
     });
 
     // Set refresh token (longer-lived) - keep for API route usage
-    response.cookies.set('refresh-token', tokens.refreshToken, {
+    response.cookies.set("refresh-token", tokens.refreshToken, {
       ...cookieOptions,
       maxAge: validatedData.rememberMe ? 7 * 24 * 60 * 60 : 24 * 60 * 60, // 7 days or 1 day
     });
 
     return addAPISecurityHeaders(response);
-
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.issues },
-        { status: 400 }
+        { error: "Validation failed", details: error.issues },
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

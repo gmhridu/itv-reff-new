@@ -52,11 +52,12 @@ model User {
   userPlan            UserPlan?
   userProfile         UserProfile?
   videoTasks          UserVideoTask[]
-  currentPosition     PositionLevel?        @relation(fields: [currentPositionId], references: [id])
-  referrer            User?                 @relation("UserReferrals", fields: [referredBy], references: [id])
-  referrals           User[]                @relation("UserReferrals")
-  transactions        WalletTransaction[]
-  withdrawalRequests  WithdrawalRequest[]
+  currentPosition        PositionLevel?           @relation(fields: [currentPositionId], references: [id])
+  referrer               User?                    @relation("UserReferrals", fields: [referredBy], references: [id])
+  referrals              User[]                   @relation("UserReferrals")
+  transactions           WalletTransaction[]
+  withdrawalRequests     WithdrawalRequest[]
+  securityRefundRequests SecurityRefundRequest[]
 
   @@map("users")
 }
@@ -534,6 +535,24 @@ model SliderImage {
   @@map("slider_images")
 }
 
+model SecurityRefundRequest {
+  id            String                  @id @default(cuid())
+  userId        String
+  fromLevel     Int
+  toLevel       Int
+  refundAmount  Float
+  status        SecurityRefundStatus    @default(PENDING)
+  requestNote   String?
+  adminNotes    String?
+  processedAt   DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("security_refund_requests")
+}
+
 enum UserStatus {
   ACTIVE
   SUSPENDED
@@ -563,6 +582,9 @@ enum TransactionType {
   MANAGEMENT_BONUS_B
   MANAGEMENT_BONUS_C
   TASK_INCOME
+  TOPUP_BONUS
+  SPECIAL_COMMISSION
+  SECURITY_REFUND
 }
 
 enum TransactionStatus {
@@ -660,4 +682,10 @@ enum AnnouncementTargetType {
   SPECIFIC_USERS
   SPECIFIC_LEVELS
   SPECIFIC_ROLES
+}
+
+enum SecurityRefundStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

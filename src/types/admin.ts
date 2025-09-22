@@ -197,6 +197,11 @@ export interface SystemSettings {
   referralSystemEnabled: boolean;
   minimumWithdrawal: number;
   maxDailyWithdrawals: number;
+  withdrawalFeePercentage: number;
+  usdtWithdrawalEnabled: boolean;
+  bankWithdrawalEnabled: boolean;
+  withdrawalProcessingTime: string;
+  usdtProcessingTime: string;
   videoWatchTimeThreshold: number; // minimum watch time percentage for reward
   sessionTimeout: number; // in minutes
 }

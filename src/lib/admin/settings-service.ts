@@ -247,8 +247,18 @@ export class SettingsService {
         settingsMap.get("system.registrationEnabled") || true,
       referralSystemEnabled:
         settingsMap.get("system.referralSystemEnabled") || true,
-      minimumWithdrawal: settingsMap.get("system.minimumWithdrawal") || 100,
-      maxDailyWithdrawals: settingsMap.get("system.maxDailyWithdrawals") || 3,
+      minimumWithdrawal: settingsMap.get("system.minimumWithdrawal") || 500,
+      maxDailyWithdrawals: settingsMap.get("system.maxDailyWithdrawals") || 5,
+      withdrawalFeePercentage:
+        settingsMap.get("system.withdrawalFeePercentage") || 10,
+      usdtWithdrawalEnabled:
+        settingsMap.get("system.usdtWithdrawalEnabled") || true,
+      bankWithdrawalEnabled:
+        settingsMap.get("system.bankWithdrawalEnabled") || true,
+      withdrawalProcessingTime:
+        settingsMap.get("system.withdrawalProcessingTime") || "0-72 hours",
+      usdtProcessingTime:
+        settingsMap.get("system.usdtProcessingTime") || "0-30 minutes",
       videoWatchTimeThreshold:
         settingsMap.get("system.videoWatchTimeThreshold") || 80,
       sessionTimeout: settingsMap.get("system.sessionTimeout") || 30,
@@ -323,8 +333,13 @@ export class SettingsService {
         maintenanceMode: false,
         registrationEnabled: true,
         referralSystemEnabled: true,
-        minimumWithdrawal: 100,
-        maxDailyWithdrawals: 3,
+        minimumWithdrawal: 500,
+        maxDailyWithdrawals: 5,
+        withdrawalFeePercentage: 10,
+        usdtWithdrawalEnabled: true,
+        bankWithdrawalEnabled: true,
+        withdrawalProcessingTime: "0-72 hours",
+        usdtProcessingTime: "0-30 minutes",
         videoWatchTimeThreshold: 80,
         sessionTimeout: 30,
       },
