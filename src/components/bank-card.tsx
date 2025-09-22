@@ -79,8 +79,8 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
   // Custom validation for account number based on bank type
   const validateAccountNumber = (value: string, bankName: string) => {
     if (bankName === "USDT_TRC20") {
-      // USDT TRC20 address validation (starts with T and is 34 characters)
-      if (!/^T[A-Za-z1-9]{33}$/.test(value)) {
+      // USDT TRC20 address validation (34 alphanumeric characters)
+      if (!/^[A-Za-z1-9]{34}$/.test(value)) {
         return "Invalid USDT TRC20 address format";
       }
     } else {
@@ -317,7 +317,7 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                           {...field}
                           placeholder={
                             watchedBankName === "USDT_TRC20"
-                              ? "Enter USDT TRC20 address (starts with T)"
+                              ? "Enter USDT TRC20 address"
                               : "Please enter the Bank account"
                           }
                           disabled={isSubmitting}
@@ -352,43 +352,43 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Method</FormLabel>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("JAZZCASH")}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            field.value === "JAZZCASH"
-                              ? "border-purple-500 bg-purple-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                          disabled={isSubmitting}
-                        >
-                          <div className="flex flex-col items-center gap-2">
-                            <Smartphone className="h-6 w-6 text-purple-600" />
-                            <span className="text-sm font-medium">
-                              JazzCash
-                            </span>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => field.onChange("EASYPAISA")}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            field.value === "EASYPAISA"
-                              ? "border-green-500 bg-green-50"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                          disabled={isSubmitting}
-                        >
-                          <div className="flex flex-col items-center gap-2">
-                            <Wallet className="h-6 w-6 text-green-600" />
-                            <span className="text-sm font-medium">
-                              EasyPaisa
-                            </span>
-                          </div>
-                        </button>
-                      </div>
-                      <div className="mt-3">
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => field.onChange("JAZZCASH")}
+                            className={`p-4 rounded-lg border-2 transition-all ${
+                              field.value === "JAZZCASH"
+                                ? "border-purple-500 bg-purple-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                            disabled={isSubmitting}
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <Smartphone className="h-6 w-6 text-purple-600" />
+                              <span className="text-sm font-medium">
+                                JazzCash
+                              </span>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange("EASYPAISA")}
+                            className={`p-4 rounded-lg border-2 transition-all ${
+                              field.value === "EASYPAISA"
+                                ? "border-green-500 bg-green-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                            disabled={isSubmitting}
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <Wallet className="h-6 w-6 text-green-600" />
+                              <span className="text-sm font-medium">
+                                EasyPaisa
+                              </span>
+                            </div>
+                          </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => field.onChange("USDT_TRC20")}
@@ -475,3 +475,4 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
 };
 
 export default BankCard;
+

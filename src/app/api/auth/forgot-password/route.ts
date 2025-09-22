@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { validateEmail } from '@/lib/security';
+import { EmailService } from '@/lib/email-service';
+import crypto from 'crypto';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -10,10 +12,10 @@ const forgotPasswordSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Validate input
     const validatedData = forgotPasswordSchema.parse(body);
-    
+
     // Additional security validation
     if (!validateEmail(validatedData.email)) {
       return NextResponse.json(
@@ -30,28 +32,37 @@ export async function POST(request: NextRequest) {
     // Always return success even if user doesn't exist (to prevent email enumeration)
     // But only send actual email if user exists
     if (user && user.status === 'ACTIVE') {
-      // In a real implementation, you would:
-      // 1. Generate a secure reset token
-      // 2. Store it in the database with expiration
-      // 3. Send an email with reset link
-      
-      // For now, we'll just simulate the email sending
-      console.log(`Password reset requested for user: ${user.email}`);
-      
-      // TODO: Implement actual email sending
-      // Example:
-      // const resetToken = generateSecureToken();
-      // const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-      // 
-      // await db.passwordReset.create({
-      //   data: {
-      //     userId: user.id,
-      //     token: resetToken,
-      //     expiresAt,
-      //   }
-      // });
-      // 
-      // await sendResetEmail(user.email, resetToken);
+      try {
+        // Generate a secure reset token
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+        // Store the reset token in the database
+        await db.passwordReset.create({
+          data: {
+            userId: user.id,
+            token: resetToken,
+            expiresAt,
+          }
+        });
+
+        // Send the password reset email
+        const emailResult = await EmailService.sendPasswordResetEmail(
+          user.email!,
+          resetToken
+        );
+
+        if (!emailResult.success) {
+          console.error('Failed to send password reset email:', emailResult.error);
+          // Don't return error to user to prevent email enumeration
+        } else {
+          console.log(`Password reset email sent successfully to ${user.email}`);
+        }
+
+      } catch (emailError) {
+        console.error('Error processing password reset:', emailError);
+        // Don't return error to user to prevent email enumeration
+      }
     }
 
     return NextResponse.json({
@@ -60,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Forgot password error:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation failed', details: error.issues },
