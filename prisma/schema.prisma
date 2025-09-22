@@ -47,6 +47,8 @@ model User {
   subordinateBonuses  TaskManagementBonus[] @relation("SubordinateBonuses")
   managementBonuses   TaskManagementBonus[] @relation("UserManagementBonuses")
   TopupRequest        TopupRequest[]
+  userAnnouncements   UserAnnouncement[]
+  userOffers          UserOffer[]
   userPlan            UserPlan?
   userProfile         UserProfile?
   videoTasks          UserVideoTask[]
@@ -55,8 +57,6 @@ model User {
   referrals           User[]                @relation("UserReferrals")
   transactions        WalletTransaction[]
   withdrawalRequests  WithdrawalRequest[]
-  // Announcement relations
-  userAnnouncements   UserAnnouncement[]
 
   @@map("users")
 }
@@ -88,11 +88,11 @@ model BankCard {
 
 model PositionLevel {
   id          String   @id @default(cuid())
-  name        String   @unique // "Intern", "P1", "P2", etc.
-  level       Int      @unique // 0 for Intern, 1 for P1, 2 for P2, etc.
-  deposit     Float // Security deposit required (0 for Intern)
-  tasksPerDay Int // Number of tasks allowed per day
-  unitPrice   Float // Price per task in PKR
+  name        String   @unique
+  level       Int      @unique
+  deposit     Float
+  tasksPerDay Int
+  unitPrice   Float
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -257,12 +257,11 @@ model AdminUser {
   updatedAt     DateTime       @updatedAt
   phone         String         @unique
   activityLogs  ActivityLog[]
+  announcements Announcement[]
   apiKeys       ApiKey[]
   auditLogs     AuditLog[]
   fileUploads   FileUpload[]
   systemLogs    SystemLog[]
-  // Announcement relations
-  announcements Announcement[]
 
   @@map("admin_users")
 }
@@ -467,8 +466,8 @@ model UserAnnouncement {
   readAt         DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, announcementId])
   @@index([isRead])
@@ -486,17 +485,53 @@ model Announcement {
   scheduledAt       DateTime?
   expiresAt         DateTime?
   isActive          Boolean            @default(true)
+  metadata          String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   adminId           String
   admin             AdminUser          @relation(fields: [adminId], references: [id])
-  // Relation to track which users have seen this announcement
   userAnnouncements UserAnnouncement[]
+  userOffers        UserOffer[]
 
   @@index([isActive])
   @@index([scheduledAt])
   @@index([expiresAt])
   @@map("announcements")
+}
+
+model UserOffer {
+  id             String        @id @default(cuid())
+  userId         String
+  announcementId String?
+  offerType      String
+  offerValue     String
+  offerCode      String?
+  description    String?
+  isRedeemed     Boolean       @default(false)
+  redeemedAt     DateTime?
+  expiresAt      DateTime?
+  scheduledAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  announcement   Announcement? @relation(fields: [announcementId], references: [id])
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRedeemed])
+  @@index([expiresAt])
+  @@map("user_offers")
+}
+
+model SliderImage {
+  id        String   @id @default(cuid())
+  url       String
+  altText   String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("slider_images")
 }
 
 enum UserStatus {
@@ -625,16 +660,4 @@ enum AnnouncementTargetType {
   SPECIFIC_USERS
   SPECIFIC_LEVELS
   SPECIFIC_ROLES
-}
-
-model SliderImage {
-  id        String   @id @default(cuid())
-  url       String // Cloudinary URL
-  altText   String? // Alt text for accessibility
-  order     Int      @default(0) // Order for sorting
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("slider_images")
 }

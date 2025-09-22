@@ -8,8 +8,11 @@ import {
   NotificationSeverity,
 } from "@/lib/admin/notification-service";
 
-// GET /api/admin/announcements - Get all announcements with pagination
-export async function GET(req: NextRequest) {
+// GET /api/admin/announcements/[id] - Get a specific announcement
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } },
+) {
   try {
     // Authenticate admin user
     const admin = await AdminMiddleware.authenticateAdmin(req);
@@ -20,60 +23,91 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const skip = (page - 1) * limit;
+    const { id } = params;
 
-    // Build where clause for filtering
-    const where: any = {};
-
-    // Filter by active status if specified
-    const isActive = searchParams.get("isActive");
-    if (isActive !== null) {
-      where.isActive = isActive === "true";
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Announcement ID is required",
+        } as ApiResponse,
+        { status: 400 },
+      );
     }
 
-    // Get announcements with pagination
-    const [announcements, total] = await Promise.all([
-      db.announcement.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: "desc",
+    // Get announcement with admin details and user announcement stats
+    const announcement = await db.announcement.findUnique({
+      where: { id },
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
         },
-        include: {
-          admin: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+        userAnnouncements: {
+          select: {
+            id: true,
+            isRead: true,
+            readAt: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
             },
           },
         },
-      }),
-      db.announcement.count({ where }),
-    ]);
+        _count: {
+          select: {
+            userAnnouncements: true,
+          },
+        },
+      },
+    });
+
+    if (!announcement) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Announcement not found",
+        } as ApiResponse,
+        { status: 404 },
+      );
+    }
+
+    // Calculate read statistics
+    const totalRecipients = announcement.userAnnouncements.length;
+    const readCount = announcement.userAnnouncements.filter(
+      (ua) => ua.isRead,
+    ).length;
+    const unreadCount = totalRecipients - readCount;
+
+    const responseData = {
+      ...announcement,
+      statistics: {
+        totalRecipients,
+        readCount,
+        unreadCount,
+        readPercentage:
+          totalRecipients > 0
+            ? Math.round((readCount / totalRecipients) * 100)
+            : 0,
+      },
+    };
 
     return NextResponse.json({
       success: true,
-      data: {
-        announcements,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      },
+      data: responseData,
     } as ApiResponse);
   } catch (error) {
-    console.error("Error fetching announcements:", error);
+    console.error("Error fetching announcement:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch announcements",
+        error: "Failed to fetch announcement",
         message: error instanceof Error ? error.message : "Unknown error",
       } as ApiResponse,
       { status: 500 },
@@ -81,8 +115,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/admin/announcements - Create a new announcement
-export async function POST(req: NextRequest) {
+// PATCH /api/admin/announcements/[id] - Update an announcement
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } },
+) {
   try {
     // Authenticate admin user
     const admin = await AdminMiddleware.authenticateAdmin(req);
@@ -90,6 +127,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
+      );
+    }
+
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Announcement ID is required",
+        } as ApiResponse,
+        { status: 400 },
       );
     }
 
@@ -98,12 +147,12 @@ export async function POST(req: NextRequest) {
       title,
       message,
       imageUrl,
-      targetType = "all",
+      targetType,
       targetId,
-      scheduleType = "immediate",
+      scheduleType,
       scheduledAt,
       expiresAt,
-      isActive = true,
+      isActive,
       customOffer,
     } = body;
 
@@ -118,58 +167,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate target user IDs if targeting specific users
-    if (targetType === "specific" && targetId) {
-      const userIds = targetId.split(",").map((id: string) => id.trim());
-      const existingUsers = await db.user.findMany({
-        where: {
-          id: {
-            in: userIds,
-          },
-        },
-        select: { id: true },
-      });
+    // Check if announcement exists
+    const existingAnnouncement = await db.announcement.findUnique({
+      where: { id },
+    });
 
-      if (existingUsers.length !== userIds.length) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Some target users do not exist",
-          } as ApiResponse,
-          { status: 400 },
-        );
-      }
+    if (!existingAnnouncement) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Announcement not found",
+        } as ApiResponse,
+        { status: 404 },
+      );
     }
 
-    // Prepare announcement data
-    const announcementData: any = {
+    // Prepare update data
+    const updateData: any = {
       title,
       message,
       imageUrl,
-      targetType,
+      targetType: targetType || "all",
       targetId,
-      scheduleType,
+      scheduleType: scheduleType || "immediate",
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
-      isActive,
-      adminId: admin.id,
+      isActive: isActive !== undefined ? isActive : true,
+      updatedAt: new Date(),
     };
 
     // Handle custom offer data
     if (customOffer) {
-      announcementData.metadata = JSON.stringify({
+      updateData.metadata = JSON.stringify({
         customOffer,
         offerType: customOffer.type,
         offerValue: customOffer.value,
         offerExpiry: customOffer.expiry,
         offerCode: customOffer.code,
-        createdAt: new Date().toISOString(),
       });
     }
 
-    // Create announcement
-    const announcement = await db.announcement.create({
-      data: announcementData,
+    // Update announcement
+    const announcement = await db.announcement.update({
+      where: { id },
+      data: updateData,
       include: {
         admin: {
           select: {
@@ -181,8 +222,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If this is an immediate announcement, send notifications to users
-    if (scheduleType === "immediate" && isActive) {
+    // If this is an immediate announcement and is now active, send notifications to users
+    if (scheduleType === "immediate" && isActive && announcement.isActive) {
       await sendAnnouncementNotifications(announcement, targetType, targetId);
     }
 
@@ -190,16 +231,16 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         data: announcement,
-        message: "Announcement created successfully",
+        message: "Announcement updated successfully",
       } as ApiResponse,
-      { status: 201 },
+      { status: 200 },
     );
   } catch (error) {
-    console.error("Error creating announcement:", error);
+    console.error("Error updating announcement:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to create announcement",
+        error: "Failed to update announcement",
         message: error instanceof Error ? error.message : "Unknown error",
       } as ApiResponse,
       { status: 500 },
@@ -207,7 +248,72 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Note: PATCH and DELETE operations are now handled in [id]/route.ts for better organization
+// DELETE /api/admin/announcements/[id] - Delete an announcement
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  try {
+    // Authenticate admin user
+    const admin = await AdminMiddleware.authenticateAdmin(req);
+    if (!admin) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Announcement ID is required",
+        } as ApiResponse,
+        { status: 400 },
+      );
+    }
+
+    // Check if announcement exists
+    const existingAnnouncement = await db.announcement.findUnique({
+      where: { id },
+    });
+
+    if (!existingAnnouncement) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Announcement not found",
+        } as ApiResponse,
+        { status: 404 },
+      );
+    }
+
+    // Delete announcement (this will cascade delete userAnnouncements due to schema)
+    await db.announcement.delete({
+      where: { id },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Announcement deleted successfully",
+      } as ApiResponse,
+      { status: 200 },
+    );
+  } catch (error) {
+    console.error("Error deleting announcement:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to delete announcement",
+        message: error instanceof Error ? error.message : "Unknown error",
+      } as ApiResponse,
+      { status: 500 },
+    );
+  }
+}
 
 // Helper function to send announcement notifications to users and create offers
 async function sendAnnouncementNotifications(

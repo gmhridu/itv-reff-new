@@ -273,7 +273,7 @@ export function DashboardAnalytics({
             userAnalytics?.revenueBreakdown?.reduce(
               (sum, item) => sum + item.amount,
               0,
-            ) || 15420
+            ) || 0
           }
           change={12.5}
           icon={DollarSign}
