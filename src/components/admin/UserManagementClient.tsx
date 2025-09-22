@@ -90,8 +90,13 @@ export function UserManagementClient() {
   const [manageBalanceUserId, setManageBalanceUserId] = useState<string | null>(
     null,
   );
+  const [specialCommissionUserId, setSpecialCommissionUserId] = useState<string | null>(
+    null,
+  );
   const [newBalance, setNewBalance] = useState<string>("");
   const [balanceReason, setBalanceReason] = useState<string>("");
+  const [commissionAmount, setCommissionAmount] = useState<string>("");
+  const [commissionReason, setCommissionReason] = useState<string>("");
 
   // Build filters object
   const filters = useMemo(() => {
@@ -226,6 +231,12 @@ export function UserManagementClient() {
       setNewBalance(user.walletBalance.toString());
       setManageBalanceUserId(userId);
     }
+  };
+
+  const handleSpecialCommissionPush = (userId: string) => {
+    setSpecialCommissionUserId(userId);
+    setCommissionAmount("");
+    setCommissionReason("");
   };
 
   const handleUpdateBalance = async () => {
@@ -610,6 +621,12 @@ export function UserManagementClient() {
                                   Manage Balance
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
+                                  onSelect={() => handleSpecialCommissionPush(user.id)}
+                                >
+                                  <TrendingUp className="h-4 w-4 mr-2" />
+                                  Special Commission Push
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
                                   className="text-red-600"
                                   onSelect={() => setSelectedUserId(user.id)}
                                 >
@@ -914,6 +931,92 @@ export function UserManagementClient() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Special Commission Push Dialog */}
+      <AlertDialog
+        open={!!specialCommissionUserId}
+        onOpenChange={() => setSpecialCommissionUserId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+              Special Commission Push
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Send a special commission payment to this user. This action will be
+              logged for audit purposes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-4">
+            <div>
+              <label className="text-sm font-medium">Commission Amount (PKR)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Enter commission amount"
+                value={commissionAmount}
+                onChange={(e) => setCommissionAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Reason for Commission</label>
+              <Input
+                placeholder="Enter reason for special commission"
+                value={commissionReason}
+                onChange={(e) => setCommissionReason(e.target.value)}
+              />
+            </div>
+            {(() => {
+              const user = data?.users.find(
+                (u) => u.id === specialCommissionUserId,
+              );
+              if (!user) return null;
+
+              return (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {user.name?.charAt(0).toUpperCase() || "U"}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-blue-900 dark:text-blue-100">
+                        {user.name || "Unknown User"}
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        {user.email}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    Current Balance: PKR {user.walletBalance.toLocaleString()}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setSpecialCommissionUserId(null);
+                setCommissionAmount("");
+                setCommissionReason("");
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => specialCommissionUserId && handleSpecialCommissionPush(specialCommissionUserId)}
+              disabled={!!actionLoading || !commissionAmount || !commissionReason}
+            >
+              {actionLoading ? "Processing..." : "Send Commission"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
