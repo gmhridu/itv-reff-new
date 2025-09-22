@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Crown, 
-  Star, 
-  Zap, 
-  Check, 
-  Clock, 
-  Play, 
+import {
+  Crown,
+  Star,
+  Zap,
+  Check,
+  Clock,
+  Play,
   Gift,
   ArrowRight,
   Users
@@ -88,7 +88,7 @@ export default function PlansPage() {
   const handleSubscribe = async (planId: string) => {
     try {
       setSubscribing(planId);
-      
+
       const response = await fetch('/api/plans/subscribe', {
         method: 'POST',
         headers: {
@@ -102,7 +102,7 @@ export default function PlansPage() {
       });
 
       const data = await response.json();
-      
+
       if (response.ok) {
         alert('Subscription successful!');
         fetchUserPlan(); // Refresh user plan
@@ -152,11 +152,11 @@ export default function PlansPage() {
               <div className="relative w-8 h-8">
                 <img
                   src="/logo.svg"
-                  alt="VideoTask Rewards"
+                  alt="ICL Finance"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <span className="ml-2 text-lg font-semibold">VideoTask Rewards</span>
+              <span className="ml-2 text-lg font-semibold">ICL Finance</span>
             </div>
             <nav className="flex space-x-4">
               <a href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</a>
@@ -215,8 +215,8 @@ export default function PlansPage() {
             const canSubscribe = !userPlan?.hasActivePlan || !isCurrentPlan;
 
             return (
-              <Card 
-                key={plan.id} 
+              <Card
+                key={plan.id}
                 className={`relative overflow-hidden transition-all hover:shadow-lg ${
                   isCurrentPlan ? 'ring-2 ring-green-500' : ''
                 }`}
@@ -226,7 +226,7 @@ export default function PlansPage() {
                     Current Plan
                   </div>
                 )}
-                
+
                 <CardHeader className="text-center pb-4">
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${getPlanColor(plan.name)}`}>
                     {getPlanIcon(plan.name)}
@@ -238,7 +238,7 @@ export default function PlansPage() {
                     <span className="text-gray-500">/{plan.durationDays} days</span>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
@@ -267,8 +267,8 @@ export default function PlansPage() {
                     <p className="text-sm text-gray-500">per day</p>
                   </div>
 
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     disabled={!canSubscribe || subscribing === plan.id}
                     onClick={() => handleSubscribe(plan.id)}
                   >

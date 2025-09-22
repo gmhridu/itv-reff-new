@@ -121,7 +121,7 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
               Create Account
             </CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-400 text-base">
-              Join VideoTask Rewards and start earning today
+              Join ICL FINANCE and start earning today
             </CardDescription>
           </CardHeader>
 
@@ -392,7 +392,7 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
 
         <div className="text-center mt-8 text-slate-500 dark:text-slate-400 text-sm">
           <p className="flex items-center justify-center gap-2">
-            <span>© {getFullYear()} VideoTask Rewards.</span>
+            <span>© {getFullYear()} ICL FINANCE.</span>
             <span className="w-1 h-1 bg-slate-400 rounded-full"></span>
             <span>All rights reserved.</span>
           </p>

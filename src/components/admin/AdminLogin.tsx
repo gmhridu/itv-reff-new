@@ -140,7 +140,7 @@ export default function AdminLogin({ loginAction }: AdminLoginProps) {
         </Card>
 
         <div className="text-center mt-8 text-gray-400 text-sm">
-          <p>© {getFullYear()} VideoTask Rewards. All rights reserved.</p>
+          <p>© {getFullYear()} ICL FINANCE. All rights reserved.</p>
         </div>
       </div>
     </div>

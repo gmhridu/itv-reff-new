@@ -131,7 +131,7 @@ export default function ReferralClient() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join VideoTask Rewards",
+          title: "Join ICL FINANCE Rewards",
           text: "Use my referral code to earn rewards by watching videos!",
           url: referralData.referralLink,
         });

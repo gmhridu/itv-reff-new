@@ -318,11 +318,11 @@ export default function VideosPage() {
               <div className="relative w-8 h-8">
                 <img
                   src="/logo.svg"
-                  alt="VideoTask Rewards"
+                  alt="ICL Finance"
                   className="w-full h-full object-contain"
                 />
               </div>
-              <span className="ml-2 text-lg font-semibold">VideoTask Rewards</span>
+              <span className="ml-2 text-lg font-semibold">ICL Finance</span>
             </div>
             <nav className="flex space-x-4">
               <a href="/dashboard" className="text-gray-600 hover:text-gray-900">Dashboard</a>
