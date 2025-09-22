@@ -132,6 +132,17 @@ export function TopupClient() {
       const data = await response.json();
 
       if (data.success) {
+        console.log("TopupClient: Received wallet data:", {
+          totalWallets: data.data.wallets.length,
+          walletTypes: data.data.wallets.map((w) => w.walletType),
+          usdtWallets: data.data.wallets.filter(
+            (w) => w.walletType === "USDT_TRC20",
+          ),
+          walletsWithUsdtAddress: data.data.wallets.filter(
+            (w) => w.usdtWalletAddress,
+          ),
+          rawWallets: data.data.wallets,
+        });
         setWallets(data.data.wallets);
         setRequests(data.data.requests);
         setPagination(data.data.pagination);

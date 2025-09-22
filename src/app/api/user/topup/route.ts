@@ -25,8 +25,17 @@ export async function GET(request: NextRequest) {
         walletType: true,
         walletNumber: true,
         walletHolderName: true,
+        usdtWalletAddress: true,
+        qrCodeUrl: true,
       },
       orderBy: { walletType: "asc" },
+    });
+
+    console.log("Fetched wallets for user topup:", {
+      totalWallets: wallets.length,
+      walletTypes: wallets.map((w) => w.walletType),
+      usdtWallets: wallets.filter((w) => w.walletType === "USDT_TRC20"),
+      walletsWithUsdtAddress: wallets.filter((w) => w.usdtWalletAddress),
     });
 
     // Get USDT to PKR rate
@@ -52,6 +61,8 @@ export async function GET(request: NextRequest) {
               walletType: true,
               walletNumber: true,
               walletHolderName: true,
+              usdtWalletAddress: true,
+              qrCodeUrl: true,
             },
           },
         },
