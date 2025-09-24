@@ -17,16 +17,7 @@ const bankCardSchema = z
   .superRefine((data, ctx) => {
     const { bankName, accountNumber } = data;
 
-    if (bankName === "USDT_TRC20") {
-      // USDT TRC20 address validation (34 alphanumeric characters)
-      if (!/^[A-Za-z1-9]{34}$/.test(accountNumber)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["accountNumber"],
-          message: "Invalid USDT TRC20 address format",
-        });
-      }
-    } else {
+    if (bankName !== "USDT_TRC20") {
       // Traditional bank account validation (10-15 digits)
       if (!/^\d{10,15}$/.test(accountNumber)) {
         ctx.addIssue({
@@ -36,6 +27,7 @@ const bankCardSchema = z
         });
       }
     }
+    // No validation for USDT_TRC20 addresses - unrestricted as per requirements
   });
 
 // Authentication middleware function

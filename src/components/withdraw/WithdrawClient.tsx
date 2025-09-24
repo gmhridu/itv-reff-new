@@ -6,10 +6,7 @@ import {
   CreditCard,
   AlertCircle,
   ExternalLink,
-  Shield,
-  Settings,
   Plus,
-  Info,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -104,7 +101,7 @@ export const WithdrawClient = () => {
   useEffect(() => {
     if (bankCards.length > 0 && !selectedMethod) {
       const firstCard = bankCards[0];
-      const displayName = `${firstCard.bankName === "JAZZCASH" ? "JazzCash" : "EasyPaisa"} ${firstCard.accountNumber}`;
+      const displayName = `${formatBankName(firstCard.bankName)} ${firstCard.bankName === "USDT_TRC20" ? `${firstCard.accountNumber.slice(0, 6)}...${firstCard.accountNumber.slice(-6)}` : firstCard.accountNumber}`;
       setSelectedMethod(displayName);
     }
   }, [bankCards, selectedMethod]);
@@ -322,7 +319,7 @@ export const WithdrawClient = () => {
     try {
       // Find the selected bank card
       const selectedCard = bankCards.find((card) => {
-        const displayName = `${card.bankName === "JAZZCASH" ? "JazzCash" : "EasyPaisa"} ${card.accountNumber}`;
+        const displayName = `${formatBankName(card.bankName)} ${card.bankName === "USDT_TRC20" ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}` : card.accountNumber}`;
         return displayName === selectedMethod;
       });
 

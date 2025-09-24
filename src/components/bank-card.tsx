@@ -79,10 +79,8 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
   // Custom validation for account number based on bank type
   const validateAccountNumber = (value: string, bankName: string) => {
     if (bankName === "USDT_TRC20") {
-      // USDT TRC20 address validation (34 alphanumeric characters)
-      if (!/^[A-Za-z1-9]{34}$/.test(value)) {
-        return "Invalid USDT TRC20 address format";
-      }
+      // No validation for USDT addresses - unrestricted as per requirements
+      return true;
     } else {
       // Traditional bank account validation
       if (!/^\d{10,15}$/.test(value)) {
@@ -255,8 +253,8 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
           </Button>
         </DrawerTrigger>
 
-        <DrawerContent className="max-h-[80vh]">
-          <DrawerHeader>
+        <DrawerContent className="max-h-[90vh] flex flex-col">
+          <DrawerHeader className="flex-shrink-0">
             <DrawerTitle>
               {watchedBankName === "USDT_TRC20"
                 ? "Add USDT Wallet"
@@ -264,7 +262,7 @@ const BankCard: React.FC<BankCardProps> = ({ userId, userRealName }) => {
             </DrawerTitle>
           </DrawerHeader>
 
-          <div className="px-4 pb-6 space-y-6">
+          <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-6">
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(handleSubmit)}
