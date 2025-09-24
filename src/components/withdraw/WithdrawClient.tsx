@@ -66,6 +66,9 @@ export const WithdrawClient = () => {
     mainWallet: 0,
     commissionWallet: 0,
     totalEarnings: 0,
+    securityDeposited: 0,
+    securityRefund: 0,
+    totalAvailableForWithdrawal: 0,
   });
   const [isLoadingBalances, setIsLoadingBalances] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -190,17 +193,27 @@ export const WithdrawClient = () => {
         const data = await response.json();
         setWalletBalances(data.walletBalances);
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to load wallet balances",
-          variant: "destructive",
-        });
+        const errorData = await response.json();
+        if (errorData.code === "DB_CONNECTION_ERROR") {
+          toast({
+            title: "Connection Issue",
+            description:
+              "Database temporarily unavailable. Please try again in a few moments.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to load wallet balances",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching wallet balances:", error);
       toast({
-        title: "Error",
-        description: "Failed to load wallet balances",
+        title: "Connection Error",
+        description: "Please check your internet connection and try again",
         variant: "destructive",
       });
     } finally {
@@ -209,16 +222,13 @@ export const WithdrawClient = () => {
   };
 
   const handleAmountSelect = (value: number) => {
-    // Check if user has sufficient balance
-    const currentBalance =
-      selectedWallet === "Main Wallet"
-        ? walletBalances.mainWallet
-        : walletBalances.commissionWallet;
+    // Use the correct Total Available for Withdrawal balance
+    const totalAvailable = walletBalances.totalAvailableForWithdrawal || 0;
 
-    if (currentBalance < value) {
+    if (totalAvailable < value) {
       toast({
         title: "Insufficient Balance",
-        description: `Your ${selectedWallet} balance (PKR ${currentBalance.toFixed(2)}) is insufficient for this withdrawal amount.`,
+        description: `Your total available balance for withdrawal (PKR ${totalAvailable.toFixed(2)}) is insufficient for this withdrawal amount.`,
         variant: "destructive",
       });
       return;
@@ -284,11 +294,8 @@ export const WithdrawClient = () => {
       return;
     }
 
-    // Check balance using withdrawal configuration
-    const currentBalance =
-      selectedWallet === "Main Wallet"
-        ? walletBalances.mainWallet
-        : walletBalances.commissionWallet;
+    // Check balance using withdrawal configuration (using correct Total Available for Withdrawal)
+    const currentBalance = walletBalances.totalAvailableForWithdrawal || 0;
 
     const isUsdtWithdrawal = isUsdtMethod();
     const calculation = calculateDisplayFees?.(
@@ -329,7 +336,7 @@ export const WithdrawClient = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          walletType: selectedWallet,
+          walletType: "Commission Wallet",
           amount: withdrawalAmount,
           paymentMethodId: selectedCard.id,
         }),
@@ -440,15 +447,7 @@ export const WithdrawClient = () => {
       return;
     }
 
-    // Basic validation for USDT address (removed strict TRC20 validation)
-    if (usdtAddress.length < 20) {
-      toast({
-        title: "Error",
-        description: "Invalid USDT address format",
-        variant: "destructive",
-      });
-      return;
-    }
+    // No validation - USDT TRC20 is kept unrestricted as per requirements
 
     setIsAddingUsdtWallet(true);
 
@@ -521,32 +520,27 @@ export const WithdrawClient = () => {
           <TabsContent value="withdraw" className="space-y-6 mt-6">
             {/* Fund Password Warning - Removed as per requirements */}
 
-            {/* Wallet Balances */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-700">Main Wallet:</span>
-                <span className="font-semibold">
+            {/* Total Available Balance for Withdrawal */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-medium text-gray-800">
+                  Total Available Balance for Withdrawal
+                </span>
+                <span className="text-2xl font-bold text-green-600">
                   {isLoadingBalances
                     ? "Loading..."
-                    : `PKR ${walletBalances.mainWallet.toFixed(2)}`}
+                    : `PKR ${(walletBalances.totalAvailableForWithdrawal || 0).toFixed(2)}`}
                 </span>
               </div>
-              <hr className="border-gray-200" />
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-700">Commission Wallet:</span>
-                <span className="font-semibold">
-                  {isLoadingBalances
-                    ? "Loading..."
-                    : `PKR ${walletBalances.commissionWallet.toFixed(2)}`}
-                </span>
-              </div>
-              <hr className="border-gray-200" />
-            </div>
+              <div className="mt-2 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Total Earnings :</span>
+                  <span>
+                    PKR {(walletBalances.totalEarnings || 0).toFixed(2)}
+                  </span>
+                </div>
 
-            {/* Wallet Type Display */}
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Wallet Type</span>
-              <span className="text-gray-500">Commission Wallet</span>
+              </div>
             </div>
 
             {/* Withdrawal Method Selection */}
@@ -878,9 +872,7 @@ export const WithdrawClient = () => {
               <div className="grid grid-cols-4 gap-3">
                 {predefinedAmounts.map((value) => {
                   const currentBalance =
-                    selectedWallet === "Main Wallet"
-                      ? walletBalances.mainWallet
-                      : walletBalances.commissionWallet;
+                    walletBalances.totalAvailableForWithdrawal || 0;
                   const isUsdtWithdrawal = isUsdtMethod();
                   const feePercentage = isUsdtWithdrawal ? 0 : 0.1;
                   const totalRequired = isUsdtWithdrawal
@@ -942,7 +934,7 @@ export const WithdrawClient = () => {
             </Button>
 
             {/* Balance warning for current selection */}
-            {amount && (
+            {amount && !isUsdtMethod() && (
               <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
                 <div className="flex justify-between items-center mb-1">
                   <span>Withdrawal Amount:</span>
@@ -966,17 +958,14 @@ export const WithdrawClient = () => {
             )}
 
             {/* Withdrawal Information */}
-            <div className="space-y-2 text-sm text-gray-600">
+            <div className="space-y-2 text-sm text-gray-600 mb-16">
               <p>
-                1. Withdrawal time is from 9:00 to 17:00 from Monday to Friday.
-              </p>
-              <p className="text-red-500">
-                (After submitting the withdrawal application, it will arrive in
-                your account within 0 to72 hours.)
+                1. Withdraw your earnings anytime from Monday to Saturday.
+                Withdrawals are not available on Sundays and Public Holidays.
               </p>
               <p>
-                2. Withdrawals are not available on weekends and public
-                holidays.
+                2. Maximum time for withdrawal to arrive in your account is 72
+                hours.
               </p>
               <p>
                 3. A 10% handling fee will be deducted for Jazz cash and Easy
@@ -1147,15 +1136,12 @@ export const WithdrawClient = () => {
                 <Label htmlFor="usdtAddress">USDT TRC20 Address</Label>
                 <Input
                   id="usdtAddress"
-                  placeholder="T..."
+                  placeholder="Enter any USDT address"
                   value={usdtAddress}
                   onChange={(e) => setUsdtAddress(e.target.value)}
                   disabled={isAddingUsdtWallet}
                   className="font-mono text-sm"
                 />
-                <p className="text-xs text-gray-500">
-                  Enter your TRC20 USDT address
-                </p>
               </div>
 
               {/*<div className="bg-orange-50 border border-orange-200 rounded-lg p-3">

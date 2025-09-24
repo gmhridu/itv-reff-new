@@ -37,8 +37,19 @@ interface Transaction {
 }
 
 interface WalletData {
-  balance: number;
+  currentBalance: number;
+  securityDeposited: number;
+  commissionBalance: number;
   totalEarnings: number;
+  securityRefund: number;
+  totalAvailableForWithdrawal: number;
+  earningsBreakdown: {
+    dailyTaskCommission: number;
+    referralInviteCommission: number;
+    referralTaskCommission: number;
+    usdtTopupBonus: number;
+    specialCommission: number;
+  };
 }
 
 interface TransactionsResponse {
@@ -62,7 +73,7 @@ interface TransactionsResponse {
 export default function WalletPage() {
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<TransactionsResponse | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -158,7 +169,7 @@ export default function WalletPage() {
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Wallet Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -168,10 +179,10 @@ export default function WalletPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                PKR {walletData?.balance.toFixed(2) || "0.00"}
+                PKR {walletData?.currentBalance.toFixed(2) || "0.00"}
               </div>
               <p className="text-xs text-muted-foreground">
-                Available for withdrawal
+                Topup balance only
               </p>
             </CardContent>
           </Card>
@@ -179,18 +190,161 @@ export default function WalletPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Total Earnings
+                Security Deposited
+              </CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                PKR {walletData?.securityDeposited.toFixed(2) || "0.00"}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Plan subscription deposits
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Total Available for Withdrawal
               </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                PKR {walletData?.totalEarnings.toFixed(2) || "0.00"}
+              <div className="text-2xl font-bold text-purple-600">
+                PKR{" "}
+                {walletData?.totalAvailableForWithdrawal.toFixed(2) || "0.00"}
               </div>
-              <p className="text-xs text-muted-foreground">Since joining</p>
+              <p className="text-xs text-muted-foreground">
+                Total Earnings only (5 commission types)
+              </p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Total Earnings Breakdown */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-blue-600">
+              Total Earnings Breakdown
+            </CardTitle>
+            <CardDescription>
+              Your earnings from the 5 specific commission types only
+            </CardDescription>
+            <div className="text-2xl font-bold text-blue-600">
+              PKR {walletData?.totalEarnings.toFixed(2) || "0.00"}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <span className="font-medium text-green-800">
+                    Daily Task Commission
+                  </span>
+                </div>
+                <div className="text-xl font-bold text-green-600">
+                  PKR{" "}
+                  {walletData?.earningsBreakdown.dailyTaskCommission.toFixed(
+                    2,
+                  ) || "0.00"}
+                </div>
+                <p className="text-xs text-green-700">
+                  From completing daily tasks
+                </p>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-blue-800">
+                    Referral Invite Commission
+                  </span>
+                </div>
+                <div className="text-xl font-bold text-blue-600">
+                  PKR{" "}
+                  {walletData?.earningsBreakdown.referralInviteCommission.toFixed(
+                    2,
+                  ) || "0.00"}
+                </div>
+                <p className="text-xs text-blue-700">
+                  Multi-level: 10%-3%-1% when referrals subscribe
+                </p>
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  <span className="font-medium text-purple-800">
+                    Referral Task Commission
+                  </span>
+                </div>
+                <div className="text-xl font-bold text-purple-600">
+                  PKR{" "}
+                  {walletData?.earningsBreakdown.referralTaskCommission.toFixed(
+                    2,
+                  ) || "0.00"}
+                </div>
+                <p className="text-xs text-purple-700">
+                  Multi-level: 8%-3%-1% when referrals complete tasks
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-yellow-600" />
+                  <span className="font-medium text-yellow-800">
+                    USDT Top-up Bonus
+                  </span>
+                </div>
+                <div className="text-xl font-bold text-yellow-600">
+                  PKR{" "}
+                  {walletData?.earningsBreakdown.usdtTopupBonus.toFixed(2) ||
+                    "0.00"}
+                </div>
+                <p className="text-xs text-yellow-700">
+                  3% bonus on USDT topups
+                </p>
+              </div>
+
+              <div className="bg-indigo-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-indigo-600" />
+                  <span className="font-medium text-indigo-800">
+                    Special Commission
+                  </span>
+                </div>
+                <div className="text-xl font-bold text-indigo-600">
+                  PKR{" "}
+                  {walletData?.earningsBreakdown.specialCommission.toFixed(2) ||
+                    "0.00"}
+                </div>
+                <p className="text-xs text-indigo-700">
+                  Special bonuses and rewards
+                </p>
+              </div>
+
+              {walletData?.securityRefund && walletData.securityRefund > 0 && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-gray-600" />
+                    <span className="font-medium text-gray-800">
+                      Security Refund
+                    </span>
+                  </div>
+                  <div className="text-xl font-bold text-gray-600">
+                    PKR {walletData.securityRefund.toFixed(2)}
+                  </div>
+                  <p className="text-xs text-gray-700">
+                    Approved refunds (not part of earnings)
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Transactions Section */}
         <Card>
@@ -332,7 +486,7 @@ export default function WalletPage() {
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             {new Date(transaction.createdAt).toLocaleDateString(
-                              "en-US"
+                              "en-US",
                             )}
                           </span>
                           <Badge variant="outline" className="text-xs">
@@ -377,7 +531,7 @@ export default function WalletPage() {
                   {Math.min(
                     transactions.pagination.page *
                       transactions.pagination.limit,
-                    transactions.pagination.totalCount
+                    transactions.pagination.totalCount,
                   )}{" "}
                   of {transactions.pagination.totalCount} transactions
                 </div>

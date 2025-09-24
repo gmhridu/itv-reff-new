@@ -23,7 +23,7 @@ const TaskOverview = () => {
           onValueChange={setActiveTab}
           className="space-x-6"
         >
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger
               className="cursor-pointer
             data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full data-[state=active]:shadow-none
@@ -31,14 +31,6 @@ const TaskOverview = () => {
               value="doing"
             >
               Doing
-            </TabsTrigger>
-            <TabsTrigger
-              className="cursor-pointer
-            data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full data-[state=active]:shadow-none
-            "
-              value="audit"
-            >
-              Audit
             </TabsTrigger>
             <TabsTrigger
               className="cursor-pointer
@@ -52,10 +44,6 @@ const TaskOverview = () => {
 
           <TabsContent value="doing">
             <DoingTab />
-          </TabsContent>
-
-          <TabsContent value="audit">
-            <AuditTab />
           </TabsContent>
 
           <TabsContent value="complete">

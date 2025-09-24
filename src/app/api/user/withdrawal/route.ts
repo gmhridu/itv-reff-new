@@ -80,9 +80,11 @@ export async function POST(request: NextRequest) {
       {
         walletBalance: number;
         commissionBalance: number;
+        totalAvailableBalance: number;
       }[]
     >`
-      SELECT "walletBalance", "commissionBalance"
+      SELECT "walletBalance", "commissionBalance",
+             ("walletBalance" + "commissionBalance") as "totalAvailableBalance"
       FROM "users"
       WHERE "id" = ${user.id}
     `;
@@ -94,6 +96,8 @@ export async function POST(request: NextRequest) {
       );
       return addAPISecurityHeaders(response);
     }
+
+    const totalAvailableBalance = userData[0].totalAvailableBalance;
 
     // Get withdrawal configuration
     const config = await withdrawalConfigService.getWithdrawalConfig();
@@ -124,6 +128,17 @@ export async function POST(request: NextRequest) {
 
     const { handlingFee, totalDeduction } = calculation;
 
+    // Check if user has sufficient total balance
+    if (totalAvailableBalance < totalDeduction) {
+      response = NextResponse.json(
+        {
+          error: `Insufficient balance. Available: PKR ${totalAvailableBalance.toFixed(2)}, Required: PKR ${totalDeduction.toFixed(2)}`,
+        },
+        { status: 400 },
+      );
+      return addAPISecurityHeaders(response);
+    }
+
     // Create withdrawal request
     const withdrawalRequest = await prisma.withdrawalRequest.create({
       data: {
@@ -146,20 +161,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Deduct amount from the appropriate wallet using raw queries
-    if (walletType === "Main Wallet") {
-      await prisma.$executeRaw`
-        UPDATE "users"
-        SET "walletBalance" = "walletBalance" - ${totalDeduction}
-        WHERE "id" = ${user.id}
-      `;
-    } else {
-      await prisma.$executeRaw`
-        UPDATE "users"
-        SET "commissionBalance" = "commissionBalance" - ${totalDeduction}
-        WHERE "id" = ${user.id}
-      `;
-    }
+    // Deduct amount from commission wallet (as per requirement)
+    await prisma.$executeRaw`
+      UPDATE "users"
+      SET "commissionBalance" = "commissionBalance" - ${totalDeduction}
+      WHERE "id" = ${user.id}
+    `;
 
     // Create wallet transaction record
     await prisma.walletTransaction.create({
@@ -167,10 +174,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         type: "DEBIT",
         amount: -totalDeduction,
-        balanceAfter:
-          walletType === "Main Wallet"
-            ? userData[0].walletBalance - totalDeduction
-            : userData[0].commissionBalance - totalDeduction,
+        balanceAfter: userData[0].commissionBalance - totalDeduction,
         description: isUsdtWithdrawal
           ? `USDT withdrawal request - ${bankCard.accountNumber.slice(0, 8)}...${bankCard.accountNumber.slice(-8)}`
           : `Withdrawal request - ${bankCard.bankName} ${bankCard.accountNumber} (including 10% handling fee)`,

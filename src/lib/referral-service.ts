@@ -93,7 +93,7 @@ export class ReferralService {
       });
 
       // Build referral hierarchy (multi-level structure)
-      await this.buildReferralHierarchy(newUserId, referrer.id);
+      await ReferralService.buildReferralHierarchy(newUserId, referrer.id);
 
       // Update or create referral activity
       const activity = await db.referralActivity.findFirst({
@@ -197,7 +197,7 @@ export class ReferralService {
               : "REFERRAL_REWARD_C";
 
         // Award the commission
-        await this.awardReferralInviteCommission(
+        await ReferralService.awardReferralInviteCommission(
           hierarchy.referrerId,
           userId,
           commissionAmount,
@@ -295,7 +295,7 @@ export class ReferralService {
               : "MANAGEMENT_BONUS_C";
 
         // Award the commission
-        await this.awardReferralTaskCommission(
+        await ReferralService.awardReferralTaskCommission(
           hierarchy.referrerId,
           userId,
           commissionAmount,

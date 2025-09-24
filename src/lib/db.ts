@@ -17,32 +17,65 @@ const createPrismaClient = () => {
       },
     },
     errorFormat: "pretty",
+    // Connection pool configuration
+    __internal: {
+      engine: {
+        connectTimeout: 30000, // 30 seconds
+        queryTimeout: 30000, // 30 seconds
+        retryConnectCount: 10,
+      },
+    },
   });
 };
 
-// Database connection with retry logic
+// Database connection with retry logic and improved error handling
 async function connectWithRetry(
   client: PrismaClient,
-  maxRetries = 5,
-  delay = 1000,
+  maxRetries = 10,
+  delay = 2000,
 ): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
     try {
-      await client.$connect();
-      console.log("Database connected successfully");
+      // Test connection with a simple query
+      await client.$queryRaw`SELECT 1`;
+      console.log("Database connected and tested successfully");
       return;
-    } catch (error) {
-      console.error(`Database connection attempt ${i + 1} failed:`, error);
+    } catch (error: any) {
+      console.error(`Database connection attempt ${i + 1} failed:`, {
+        error: error.message,
+        code: error.code,
+        meta: error.meta,
+      });
+
+      // Check for specific network errors
+      const isNetworkError =
+        error.message?.includes("Can't reach database server") ||
+        error.message?.includes("Connection reset by peer") ||
+        error.code === "P1001";
 
       if (i === maxRetries - 1) {
+        if (isNetworkError) {
+          console.error(
+            "⚠️  Database server is unreachable. This may be a temporary network issue.",
+          );
+          // Don't throw in production to allow graceful degradation
+          if (process.env.NODE_ENV === "production") {
+            console.warn(
+              "🔄 Continuing without initial connection - will retry on first request",
+            );
+            return;
+          }
+        }
         throw new Error(
-          `Failed to connect to database after ${maxRetries} attempts`,
+          `Failed to connect to database after ${maxRetries} attempts: ${error.message}`,
         );
       }
 
-      // Wait before retrying with exponential backoff
-      const backoffDelay = delay * Math.pow(2, i);
-      console.log(`Retrying database connection in ${backoffDelay}ms...`);
+      // Exponential backoff with jitter
+      const backoffDelay = delay * Math.pow(1.5, i) + Math.random() * 1000;
+      console.log(
+        `⏳ Retrying database connection in ${Math.round(backoffDelay)}ms...`,
+      );
       await new Promise((resolve) => setTimeout(resolve, backoffDelay));
     }
   }
@@ -51,14 +84,24 @@ async function connectWithRetry(
 // Create database client with connection retry
 export const db = globalForPrisma.prisma ?? createPrismaClient();
 
-// Initialize connection with retry mechanism in production
+// Connection state tracking
+let isConnected = false;
+let connectionPromise: Promise<void> | null = null;
+
+// Initialize connection with retry mechanism
 if (!globalForPrisma.prisma) {
-  if (process.env.NODE_ENV === "production") {
-    connectWithRetry(db).catch((error) => {
-      console.error("Fatal database connection error:", error);
-      process.exit(1);
+  // Always attempt connection but handle failures gracefully
+  connectionPromise = connectWithRetry(db)
+    .then(() => {
+      isConnected = true;
+    })
+    .catch((error) => {
+      console.error("⚠️  Initial database connection failed:", error.message);
+      console.log(
+        "🔄 Database operations will attempt to reconnect automatically",
+      );
+      isConnected = false;
     });
-  }
 }
 
 if (process.env.NODE_ENV !== "production") {
@@ -107,41 +150,107 @@ process.on("unhandledRejection", async (reason, promise) => {
   process.exit(1);
 });
 
-// Health check function
-export async function checkDatabaseConnection(): Promise<boolean> {
+// Enhanced health check function
+export async function checkDatabaseConnection(): Promise<{
+  healthy: boolean;
+  error?: string;
+  latency?: number;
+}> {
+  const startTime = Date.now();
+
   try {
     await db.$queryRaw`SELECT 1`;
-    return true;
-  } catch (error) {
+    const latency = Date.now() - startTime;
+    isConnected = true;
+
+    return {
+      healthy: true,
+      latency,
+    };
+  } catch (error: any) {
     console.error("Database health check failed:", error);
-    return false;
+    isConnected = false;
+
+    return {
+      healthy: false,
+      error: error.message,
+      latency: Date.now() - startTime,
+    };
   }
 }
 
-// Database transaction wrapper with retry
+// Enhanced database operation wrapper with connection recovery
 export async function withRetry<T>(
   operation: (prisma: PrismaClient) => Promise<T>,
-  maxRetries = 3,
+  maxRetries = 5,
 ): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
     try {
+      // If not connected and we have a connection promise, wait for it
+      if (!isConnected && connectionPromise) {
+        await connectionPromise.catch(() => {}); // Ignore initial connection errors
+      }
+
       return await operation(db);
     } catch (error: any) {
-      console.error(`Database operation attempt ${i + 1} failed:`, error);
+      console.error(`Database operation attempt ${i + 1} failed:`, {
+        error: error.message,
+        code: error.code,
+        attempt: i + 1,
+        maxRetries,
+      });
 
-      // Don't retry on certain errors
-      if (error.code === "P2002" || error.code === "P2025") {
+      // Don't retry on certain application errors
+      const nonRetryableCodes = ["P2002", "P2025", "P2003", "P2004"];
+      if (nonRetryableCodes.includes(error.code)) {
         throw error;
+      }
+
+      // Check for connection errors
+      const isConnectionError =
+        error.message?.includes("Can't reach database server") ||
+        error.message?.includes("Connection reset by peer") ||
+        error.code === "P1001" ||
+        error.code === "P1017";
+
+      if (isConnectionError) {
+        console.log("🔄 Attempting database reconnection...");
+        isConnected = false;
+
+        try {
+          await db.$connect();
+          await db.$queryRaw`SELECT 1`; // Test the connection
+          isConnected = true;
+          console.log("✅ Database reconnected successfully");
+        } catch (reconnectError) {
+          console.error("❌ Reconnection failed:", reconnectError);
+        }
       }
 
       if (i === maxRetries - 1) {
+        if (isConnectionError) {
+          throw new Error(
+            `Database connection failed after ${maxRetries} attempts. Please check your internet connection and try again.`,
+          );
+        }
         throw error;
       }
 
-      // Wait before retrying
-      await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
+      // Exponential backoff with jitter
+      const backoffDelay = 1000 * Math.pow(1.5, i) + Math.random() * 500;
+      await new Promise((resolve) => setTimeout(resolve, backoffDelay));
     }
   }
 
   throw new Error("Unreachable code");
+}
+
+// Connection status getter
+export function getDatabaseConnectionStatus(): {
+  connected: boolean;
+  lastError?: string;
+} {
+  return {
+    connected: isConnected,
+  };
 }

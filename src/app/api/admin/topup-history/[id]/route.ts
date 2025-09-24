@@ -234,7 +234,7 @@ export async function PUT(
           await tx.walletTransaction.create({
             data: {
               userId: existingRequest.userId,
-              type: "CREDIT" as any,
+              type: "TOPUP_BONUS" as any,
               amount: commissionBonus,
               balanceAfter: newCommissionBalance,
               description: `USDT Topup Bonus (3%) - ${existingRequest.selectedWallet?.walletType}`,
@@ -245,7 +245,7 @@ export async function PUT(
                 bonusPercentage: 3,
                 originalAmount: existingRequest.amount,
                 bonusAmount: commissionBonus,
-                transactionType: "COMMISSION",
+                transactionType: "TOPUP_BONUS",
               }),
             },
           });

@@ -165,8 +165,8 @@ export default function ReferralClient() {
             Referral Program
           </h1>
           <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
-            Invite friends and earn PKR 5 for each person who joins and starts
-            watching videos. There's no limit to how much you can earn!
+            Invite friends and earn commission for each person who joins and
+            starts watching videos. There is no limit how much you can earn.
           </p>
         </div>
 

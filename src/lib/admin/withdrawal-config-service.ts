@@ -44,7 +44,8 @@ export class WithdrawalConfigService {
    * Get current withdrawal configuration
    */
   async getWithdrawalConfig(): Promise<WithdrawalConfig> {
-    const systemSettings = await settingsService.getSettingsByCategory("system");
+    const systemSettings =
+      await settingsService.getSettingsByCategory("system");
 
     // Get dynamic USDT rate from topup API or use fallback
     const usdtRate = await this.getCurrentUsdtRate();
@@ -55,9 +56,12 @@ export class WithdrawalConfigService {
       withdrawalFeePercentage: systemSettings.withdrawalFeePercentage || 10,
       usdtWithdrawalEnabled: systemSettings.usdtWithdrawalEnabled ?? true,
       bankWithdrawalEnabled: systemSettings.bankWithdrawalEnabled ?? true,
-      withdrawalProcessingTime: systemSettings.withdrawalProcessingTime || "0-72 hours",
+      withdrawalProcessingTime:
+        systemSettings.withdrawalProcessingTime || "0-72 hours",
       usdtProcessingTime: systemSettings.usdtProcessingTime || "0-30 minutes",
-      predefinedAmounts: [500, 3000, 10000, 30000, 70000, 100000, 250000, 500000],
+      predefinedAmounts: [
+        500, 3000, 10000, 30000, 70000, 100000, 250000, 500000,
+      ],
       usdtToPkrRate: usdtRate,
       usdtNetworkFee: 0, // Currently no network fee for USDT
     };
@@ -69,7 +73,9 @@ export class WithdrawalConfigService {
   private async getCurrentUsdtRate(): Promise<number> {
     try {
       // Try to get rate from database settings first
-      const rateSetting = await settingsService.getSetting("system.usdtToPkrRate");
+      const rateSetting = await settingsService.getSetting(
+        "system.usdtToPkrRate",
+      );
       if (rateSetting && rateSetting.value > 0) {
         return rateSetting.value;
       }
@@ -85,7 +91,9 @@ export class WithdrawalConfigService {
   /**
    * Update withdrawal configuration
    */
-  async updateWithdrawalConfig(config: Partial<WithdrawalConfig>): Promise<WithdrawalConfig> {
+  async updateWithdrawalConfig(
+    config: Partial<WithdrawalConfig>,
+  ): Promise<WithdrawalConfig> {
     const updates: any = {};
 
     if (config.minimumWithdrawal !== undefined) {
@@ -126,7 +134,7 @@ export class WithdrawalConfigService {
     userId: string,
     amount: number,
     walletType: "Main Wallet" | "Commission Wallet",
-    paymentMethodId: string
+    paymentMethodId: string,
   ): Promise<WithdrawalValidationResult> {
     const config = await this.getWithdrawalConfig();
     const warnings: string[] = [];
@@ -155,8 +163,8 @@ export class WithdrawalConfigService {
         commissionBalance: true,
         isIntern: true,
         currentPosition: {
-          select: { name: true }
-        }
+          select: { name: true },
+        },
       },
     });
 
@@ -208,18 +216,20 @@ export class WithdrawalConfigService {
       };
     }
 
-    // Check wallet balance
-    const availableBalance = walletType === "Main Wallet"
-      ? (user.walletBalance || 0)
-      : (user.commissionBalance || 0);
+    // Check total available balance (Main Wallet + Commission Wallet)
+    const totalAvailableBalance =
+      (user.walletBalance || 0) + (user.commissionBalance || 0);
 
     // Calculate fees and total deduction
-    const calculation = await this.calculateWithdrawal(amount, isUsdtWithdrawal);
+    const calculation = await this.calculateWithdrawal(
+      amount,
+      isUsdtWithdrawal,
+    );
 
-    if (availableBalance < calculation.totalDeduction) {
+    if (totalAvailableBalance < calculation.totalDeduction) {
       return {
         isValid: false,
-        error: `Insufficient balance in ${walletType}. Available: PKR ${availableBalance.toFixed(2)}, Required: PKR ${calculation.totalDeduction.toFixed(2)}`,
+        error: `Insufficient total available balance. Available: PKR ${totalAvailableBalance.toFixed(2)}, Required: PKR ${calculation.totalDeduction.toFixed(2)}`,
       };
     }
 
@@ -251,11 +261,15 @@ export class WithdrawalConfigService {
 
     // Add warnings for high amounts
     if (amount >= 100000) {
-      warnings.push("Large withdrawal amounts may require additional verification.");
+      warnings.push(
+        "Large withdrawal amounts may require additional verification.",
+      );
     }
 
     if (calculation.handlingFee > 0) {
-      warnings.push(`A handling fee of PKR ${calculation.handlingFee.toFixed(2)} (${config.withdrawalFeePercentage}%) will be charged.`);
+      warnings.push(
+        `A handling fee of PKR ${calculation.handlingFee.toFixed(2)} (${config.withdrawalFeePercentage}%) will be charged.`,
+      );
     }
 
     return {
@@ -269,7 +283,7 @@ export class WithdrawalConfigService {
    */
   async calculateWithdrawal(
     amount: number,
-    isUsdtWithdrawal: boolean = false
+    isUsdtWithdrawal: boolean = false,
   ): Promise<WithdrawalCalculation> {
     const config = await this.getWithdrawalConfig();
 
@@ -316,8 +330,10 @@ export class WithdrawalConfigService {
       _sum: { amount: true },
     });
 
-    const pendingAmount = statusCounts.find(s => s.status === "PENDING")?._sum?.amount || 0;
-    const processedAmount = statusCounts.find(s => s.status === "PROCESSED")?._sum?.amount || 0;
+    const pendingAmount =
+      statusCounts.find((s) => s.status === "PENDING")?._sum?.amount || 0;
+    const processedAmount =
+      statusCounts.find((s) => s.status === "PROCESSED")?._sum?.amount || 0;
 
     // Get today's withdrawals
     const today = new Date();
@@ -349,10 +365,14 @@ export class WithdrawalConfigService {
 
     return {
       totalWithdrawals,
-      pendingWithdrawals: statusCounts.find(s => s.status === "PENDING")?._count?.status || 0,
-      approvedWithdrawals: statusCounts.find(s => s.status === "APPROVED")?._count?.status || 0,
-      processedWithdrawals: statusCounts.find(s => s.status === "PROCESSED")?._count?.status || 0,
-      rejectedWithdrawals: statusCounts.find(s => s.status === "REJECTED")?._count?.status || 0,
+      pendingWithdrawals:
+        statusCounts.find((s) => s.status === "PENDING")?._count?.status || 0,
+      approvedWithdrawals:
+        statusCounts.find((s) => s.status === "APPROVED")?._count?.status || 0,
+      processedWithdrawals:
+        statusCounts.find((s) => s.status === "PROCESSED")?._count?.status || 0,
+      rejectedWithdrawals:
+        statusCounts.find((s) => s.status === "REJECTED")?._count?.status || 0,
       pendingAmount,
       processedAmount,
       todaysWithdrawals,
