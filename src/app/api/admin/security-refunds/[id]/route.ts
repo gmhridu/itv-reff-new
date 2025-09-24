@@ -73,25 +73,35 @@ export async function PATCH(
     // If approved, process the refund
     if (action === "approve") {
       try {
-        // Get current user balance
+        // Get current user balance and security deposited
         const currentUser = await prisma.user.findUnique({
           where: { id: securityRefund.userId },
-          select: { walletBalance: true },
+          select: { walletBalance: true, depositPaid: true },
         });
 
         if (!currentUser) {
           throw new Error("User not found");
         }
 
-        const newBalance =
-          currentUser.walletBalance + securityRefund.refundAmount;
+        // Check if user has enough security deposited
+        if (currentUser.depositPaid < securityRefund.refundAmount) {
+          throw new Error("Insufficient security deposit for refund");
+        }
 
-        // Add amount to user's wallet
+        const newWalletBalance =
+          currentUser.walletBalance + securityRefund.refundAmount;
+        const newSecurityDeposited =
+          currentUser.depositPaid - securityRefund.refundAmount;
+
+        // Deduct from Security Deposited and Add to Current Balance
         await prisma.user.update({
           where: { id: securityRefund.userId },
           data: {
             walletBalance: {
-              increment: securityRefund.refundAmount,
+              increment: securityRefund.refundAmount, // Add to Current Balance
+            },
+            depositPaid: {
+              decrement: securityRefund.refundAmount, // Deduct from Security Deposited
             },
           },
         });
@@ -103,8 +113,8 @@ export async function PATCH(
               userId: securityRefund.userId,
               type: "SECURITY_REFUND",
               amount: securityRefund.refundAmount,
-              balanceAfter: newBalance,
-              description: `Security refund - Level downgrade (${securityRefund.fromLevel} → ${securityRefund.toLevel})`,
+              balanceAfter: newWalletBalance,
+              description: `Security refund - Level downgrade (${securityRefund.fromLevel} → ${securityRefund.toLevel}) - Added to Current Balance`,
               status: "COMPLETED",
               referenceId: `SEC_REF_${id}`,
               metadata: JSON.stringify({
@@ -112,6 +122,9 @@ export async function PATCH(
                 fromLevel: securityRefund.fromLevel,
                 toLevel: securityRefund.toLevel,
                 processedBy: session.user.id,
+                deductedFromSecurityDeposit: securityRefund.refundAmount,
+                addedToCurrentBalance: securityRefund.refundAmount,
+                newSecurityDeposited: newSecurityDeposited,
               }),
             },
           });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
 import { db } from "@/lib/db";
 import { UserNotificationService } from "@/lib/user-notification-service";
+import { ReferralService } from "@/lib/referral-service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -113,6 +114,26 @@ export async function POST(request: NextRequest) {
         depositPaid: userWithBalance.depositPaid + plan.price,
       },
     });
+
+    // Process referral invite commissions (10%-3%-1% multi-level)
+    try {
+      const referralResult = await ReferralService.processReferralQualification(
+        user.id,
+        plan.price,
+      );
+
+      if (referralResult.success && referralResult.rewards) {
+        console.log(
+          `Referral invite commissions processed for user ${user.id}:`,
+          referralResult.rewards,
+        );
+      }
+    } catch (referralError) {
+      console.error(
+        "Failed to process referral invite commissions:",
+        referralError,
+      );
+    }
 
     // Send plan subscription notification
     try {

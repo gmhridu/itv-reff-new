@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
-import { NextRequest } from 'next/server';
+import { db } from "@/lib/db";
+import { NextRequest } from "next/server";
 
 export interface ReferralTrackingData {
   referralCode: string;
@@ -18,17 +18,18 @@ export interface ReferralReward {
 }
 
 export class ReferralService {
-  
   // Track referral click/visit
-  static async trackReferralVisit(data: ReferralTrackingData): Promise<{ success: boolean; activityId?: string }> {
+  static async trackReferralVisit(
+    data: ReferralTrackingData,
+  ): Promise<{ success: boolean; activityId?: string }> {
     try {
       // Find the referrer by referral code
       const referrer = await db.user.findUnique({
         where: { referralCode: data.referralCode },
-        select: { id: true, status: true }
+        select: { id: true, status: true },
       });
 
-      if (!referrer || referrer.status !== 'ACTIVE') {
+      if (!referrer || referrer.status !== "ACTIVE") {
         return { success: false };
       }
 
@@ -39,9 +40,9 @@ export class ReferralService {
           referralCode: data.referralCode,
           ipAddress: data.ipAddress,
           createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Within last 24 hours
-          }
-        }
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Within last 24 hours
+          },
+        },
       });
 
       if (existingActivity) {
@@ -56,34 +57,43 @@ export class ReferralService {
           ipAddress: data.ipAddress,
           userAgent: data.userAgent,
           source: data.source,
-          status: 'PENDING',
-          metadata: data.metadata ? JSON.stringify(data.metadata) : null
-        }
+          status: "PENDING",
+          metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        },
       });
 
       return { success: true, activityId: activity.id };
     } catch (error) {
-      console.error('Error tracking referral visit:', error);
+      console.error("Error tracking referral visit:", error);
       return { success: false };
     }
   }
 
-  // Process referral registration
+  // Process referral registration - this is when user signs up with referral code
   static async processReferralRegistration(
-    referralCode: string, 
-    newUserId: string, 
-    ipAddress: string
+    referralCode: string,
+    newUserId: string,
+    ipAddress: string,
   ): Promise<{ success: boolean; rewardAmount?: number }> {
     try {
       // Find the referrer
       const referrer = await db.user.findUnique({
         where: { referralCode },
-        select: { id: true, status: true }
+        select: { id: true, status: true },
       });
 
-      if (!referrer || referrer.status !== 'ACTIVE') {
+      if (!referrer || referrer.status !== "ACTIVE") {
         return { success: false };
       }
+
+      // Update the new user's referredBy field
+      await db.user.update({
+        where: { id: newUserId },
+        data: { referredBy: referrer.id },
+      });
+
+      // Build referral hierarchy (multi-level structure)
+      await this.buildReferralHierarchy(newUserId, referrer.id);
 
       // Update or create referral activity
       const activity = await db.referralActivity.findFirst({
@@ -91,8 +101,8 @@ export class ReferralService {
           referrerId: referrer.id,
           referralCode,
           ipAddress,
-          status: 'PENDING'
-        }
+          status: "PENDING",
+        },
       });
 
       if (activity) {
@@ -100,8 +110,8 @@ export class ReferralService {
           where: { id: activity.id },
           data: {
             referredUserId: newUserId,
-            status: 'REGISTERED'
-          }
+            status: "REGISTERED",
+          },
         });
       } else {
         await db.referralActivity.create({
@@ -110,262 +120,516 @@ export class ReferralService {
             referredUserId: newUserId,
             referralCode,
             ipAddress,
-            userAgent: 'registration',
-            source: 'direct',
-            status: 'REGISTERED'
-          }
+            userAgent: "registration",
+            source: "direct",
+            status: "REGISTERED",
+          },
         });
-      }
-
-      // Check for registration rewards
-      const registrationReward = await this.getActiveReward('registration');
-      if (registrationReward) {
-        await this.awardReferralReward(referrer.id, newUserId, registrationReward, 'registration');
-        return { success: true, rewardAmount: registrationReward.rewardAmount };
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Error processing referral registration:', error);
+      console.error("Error processing referral registration:", error);
       return { success: false };
     }
   }
 
-  // Process referral qualification (e.g., first video watch)
+  // Process referral qualification (when referred user tops up AND subscribes to plan)
   static async processReferralQualification(
-    userId: string, 
-    event: string
-  ): Promise<{ success: boolean; rewardAmount?: number }> {
+    userId: string,
+    planAmount: number,
+  ): Promise<{
+    success: boolean;
+    rewards?: Array<{
+      referrerId: string;
+      level: string;
+      amount: number;
+      type: "invite";
+    }>;
+  }> {
     try {
-      // Find user's referral activity
-      const user = await db.user.findUnique({
-        where: { id: userId },
-        select: { referredBy: true }
+      // Find user's referral hierarchy
+      const hierarchyLevels = await db.referralHierarchy.findMany({
+        where: { userId },
+        include: {
+          referrer: {
+            select: { id: true, name: true, status: true },
+          },
+        },
+        orderBy: { level: "asc" },
       });
 
-      if (!user?.referredBy) {
+      if (hierarchyLevels.length === 0) {
         return { success: false };
       }
 
-      // Find the referral activity
-      const activity = await db.referralActivity.findFirst({
-        where: {
-          referrerId: user.referredBy,
-          referredUserId: userId,
-          status: 'REGISTERED'
-        }
-      });
+      const rewards: Array<{
+        referrerId: string;
+        level: string;
+        amount: number;
+        type: "invite";
+      }> = [];
 
-      if (!activity) {
-        return { success: false };
-      }
+      // Award referral invite commission to each level
+      // Level A (direct referrer) → 10%
+      // Level B (2nd level) → 3%
+      // Level C (3rd level) → 1%
+      const commissionRates = {
+        A_LEVEL: 0.1, // 10%
+        B_LEVEL: 0.03, // 3%
+        C_LEVEL: 0.01, // 1%
+      };
 
-      // Check for event-specific rewards
-      const reward = await this.getActiveReward(event);
-      if (reward) {
-        await db.referralActivity.update({
-          where: { id: activity.id },
-          data: { status: 'QUALIFIED' }
+      for (const hierarchy of hierarchyLevels) {
+        if (hierarchy.referrer.status !== "ACTIVE") continue;
+
+        const commissionRate = commissionRates[hierarchy.level];
+        if (!commissionRate) continue;
+
+        const commissionAmount = planAmount * commissionRate;
+
+        // Determine transaction type based on level
+        const transactionType =
+          hierarchy.level === "A_LEVEL"
+            ? "REFERRAL_REWARD_A"
+            : hierarchy.level === "B_LEVEL"
+              ? "REFERRAL_REWARD_B"
+              : "REFERRAL_REWARD_C";
+
+        // Award the commission
+        await this.awardReferralInviteCommission(
+          hierarchy.referrerId,
+          userId,
+          commissionAmount,
+          transactionType,
+          hierarchy.level,
+          planAmount,
+        );
+
+        rewards.push({
+          referrerId: hierarchy.referrerId,
+          level: hierarchy.level,
+          amount: commissionAmount,
+          type: "invite" as const,
         });
-
-        await this.awardReferralReward(user.referredBy, userId, reward, event);
-        return { success: true, rewardAmount: reward.rewardAmount };
       }
 
-      return { success: true };
+      // Mark referral activity as qualified
+      await db.referralActivity.updateMany({
+        where: {
+          referredUserId: userId,
+          status: "REGISTERED",
+        },
+        data: {
+          status: "QUALIFIED",
+        },
+      });
+
+      return { success: true, rewards };
     } catch (error) {
-      console.error('Error processing referral qualification:', error);
+      console.error("Error processing referral qualification:", error);
       return { success: false };
     }
   }
 
-  // Award referral reward
-  private static async awardReferralReward(
+  // Process referral task commission (when referred user completes daily tasks)
+  static async processReferralTaskCommission(
+    userId: string,
+    taskEarning: number,
+  ): Promise<{
+    success: boolean;
+    rewards?: Array<{
+      referrerId: string;
+      level: string;
+      amount: number;
+      type: "task";
+    }>;
+  }> {
+    try {
+      // Find user's referral hierarchy
+      const hierarchyLevels = await db.referralHierarchy.findMany({
+        where: { userId },
+        include: {
+          referrer: {
+            select: { id: true, name: true, status: true },
+          },
+        },
+        orderBy: { level: "asc" },
+      });
+
+      if (hierarchyLevels.length === 0) {
+        return { success: false };
+      }
+
+      const rewards: Array<{
+        referrerId: string;
+        level: string;
+        amount: number;
+        type: "task";
+      }> = [];
+
+      // Award referral task commission to each level
+      // Level A (direct referrer) → 8%
+      // Level B (2nd level) → 3%
+      // Level C (3rd level) → 1%
+      const commissionRates = {
+        A_LEVEL: 0.08, // 8%
+        B_LEVEL: 0.03, // 3%
+        C_LEVEL: 0.01, // 1%
+      };
+
+      for (const hierarchy of hierarchyLevels) {
+        if (hierarchy.referrer.status !== "ACTIVE") continue;
+
+        const commissionRate = commissionRates[hierarchy.level];
+        if (!commissionRate) continue;
+
+        const commissionAmount = taskEarning * commissionRate;
+
+        // Determine transaction type based on level
+        const transactionType =
+          hierarchy.level === "A_LEVEL"
+            ? "MANAGEMENT_BONUS_A"
+            : hierarchy.level === "B_LEVEL"
+              ? "MANAGEMENT_BONUS_B"
+              : "MANAGEMENT_BONUS_C";
+
+        // Award the commission
+        await this.awardReferralTaskCommission(
+          hierarchy.referrerId,
+          userId,
+          commissionAmount,
+          transactionType,
+          hierarchy.level,
+          taskEarning,
+        );
+
+        rewards.push({
+          referrerId: hierarchy.referrerId,
+          level: hierarchy.level,
+          amount: commissionAmount,
+          type: "task" as const,
+        });
+      }
+
+      return { success: true, rewards };
+    } catch (error) {
+      console.error("Error processing referral task commission:", error);
+      return { success: false };
+    }
+  }
+
+  // Build referral hierarchy for multi-level commissions
+  private static async buildReferralHierarchy(
+    newUserId: string,
+    directReferrerId: string,
+  ): Promise<void> {
+    try {
+      // Level A - Direct referrer
+      await db.referralHierarchy.create({
+        data: {
+          userId: newUserId,
+          referrerId: directReferrerId,
+          level: "A_LEVEL",
+        },
+      });
+
+      // Find Level B - Direct referrer's referrer
+      const levelBReferrer = await db.user.findUnique({
+        where: { id: directReferrerId },
+        select: { referredBy: true },
+      });
+
+      if (levelBReferrer?.referredBy) {
+        await db.referralHierarchy.create({
+          data: {
+            userId: newUserId,
+            referrerId: levelBReferrer.referredBy,
+            level: "B_LEVEL",
+          },
+        });
+
+        // Find Level C - Level B referrer's referrer
+        const levelCReferrer = await db.user.findUnique({
+          where: { id: levelBReferrer.referredBy },
+          select: { referredBy: true },
+        });
+
+        if (levelCReferrer?.referredBy) {
+          await db.referralHierarchy.create({
+            data: {
+              userId: newUserId,
+              referrerId: levelCReferrer.referredBy,
+              level: "C_LEVEL",
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error building referral hierarchy:", error);
+      throw error;
+    }
+  }
+
+  // Award referral invite commission
+  private static async awardReferralInviteCommission(
     referrerId: string,
     referredUserId: string,
-    reward: ReferralReward,
-    event: string
+    commissionAmount: number,
+    transactionType: string,
+    level: string,
+    planAmount: number,
   ): Promise<void> {
     try {
       // Get referred user info for transaction description
       const referredUser = await db.user.findUnique({
         where: { id: referredUserId },
-        select: { name: true, email: true }
+        select: { name: true, email: true, phone: true },
       });
 
-      // Update referrer's balance
+      // Update referrer's commission balance (NOT main wallet)
       await db.user.update({
         where: { id: referrerId },
         data: {
-          walletBalance: { increment: reward.rewardAmount },
-          totalEarnings: { increment: reward.rewardAmount }
-        }
+          commissionBalance: { increment: commissionAmount },
+        },
       });
 
       // Get updated balance for transaction record
       const updatedReferrer = await db.user.findUnique({
         where: { id: referrerId },
-        select: { walletBalance: true }
+        select: { commissionBalance: true },
       });
+
+      const levelName =
+        level === "A_LEVEL"
+          ? "Direct (10%)"
+          : level === "B_LEVEL"
+            ? "2nd Level (3%)"
+            : "3rd Level (1%)";
 
       // Create transaction record
       await db.walletTransaction.create({
         data: {
           userId: referrerId,
-          type: 'CREDIT',
-          amount: reward.rewardAmount,
-          balanceAfter: updatedReferrer!.walletBalance,
-          description: `${reward.name}: ${referredUser?.name || referredUser?.email} completed ${event}`,
-          referenceId: `REFERRAL_${event.toUpperCase()}_${referredUserId}_${Date.now()}`,
-          status: 'COMPLETED',
+          type: transactionType as any,
+          amount: commissionAmount,
+          balanceAfter: updatedReferrer!.commissionBalance,
+          description: `Referral Invite Commission - ${levelName}: ${referredUser?.name || referredUser?.phone} subscribed to plan (PKR ${planAmount})`,
+          referenceId: `REFERRAL_INVITE_${level}_${referredUserId}_${Date.now()}`,
+          status: "COMPLETED",
           metadata: JSON.stringify({
-            rewardId: reward.id,
             referredUserId,
-            event
-          })
-        }
-      });
-
-      // Update referral activity
-      await db.referralActivity.updateMany({
-        where: {
-          referrerId,
-          referredUserId,
-          status: 'QUALIFIED'
+            level,
+            planAmount,
+            commissionRate:
+              level === "A_LEVEL" ? "10%" : level === "B_LEVEL" ? "3%" : "1%",
+          }),
         },
-        data: {
-          status: 'REWARDED',
-          rewardAmount: reward.rewardAmount,
-          rewardPaidAt: new Date()
-        }
       });
-
-      // Update reward usage count
-      await db.referralReward.update({
-        where: { id: reward.id },
-        data: { currentRewards: { increment: 1 } }
-      });
-
     } catch (error) {
-      console.error('Error awarding referral reward:', error);
+      console.error("Error awarding referral invite commission:", error);
       throw error;
     }
   }
 
-  // Get active reward for event
-  private static async getActiveReward(event: string): Promise<ReferralReward | null> {
+  // Award referral task commission
+  private static async awardReferralTaskCommission(
+    referrerId: string,
+    referredUserId: string,
+    commissionAmount: number,
+    transactionType: string,
+    level: string,
+    taskEarning: number,
+  ): Promise<void> {
     try {
-      const reward = await db.referralReward.findFirst({
-        where: {
-          triggerEvent: event,
-          isActive: true,
-          validFrom: { lte: new Date() },
-          AND: [
-            {
-              OR: [
-                { validUntil: null },
-                { validUntil: { gte: new Date() } }
-              ]
-            },
-            {
-              OR: [
-                { maxRewards: null },
-                { currentRewards: { lt: db.referralReward.fields.maxRewards } }
-              ]
-            }
-          ]
-        }
+      // Get referred user info for transaction description
+      const referredUser = await db.user.findUnique({
+        where: { id: referredUserId },
+        select: { name: true, email: true, phone: true },
       });
 
-      return reward;
+      // Update referrer's commission balance (NOT main wallet)
+      await db.user.update({
+        where: { id: referrerId },
+        data: {
+          commissionBalance: { increment: commissionAmount },
+        },
+      });
+
+      // Get updated balance for transaction record
+      const updatedReferrer = await db.user.findUnique({
+        where: { id: referrerId },
+        select: { commissionBalance: true },
+      });
+
+      const levelName =
+        level === "A_LEVEL"
+          ? "Direct (8%)"
+          : level === "B_LEVEL"
+            ? "2nd Level (3%)"
+            : "3rd Level (1%)";
+
+      // Create transaction record
+      await db.walletTransaction.create({
+        data: {
+          userId: referrerId,
+          type: transactionType as any,
+          amount: commissionAmount,
+          balanceAfter: updatedReferrer!.commissionBalance,
+          description: `Referral Task Commission - ${levelName}: ${referredUser?.name || referredUser?.phone} completed task (PKR ${taskEarning})`,
+          referenceId: `REFERRAL_TASK_${level}_${referredUserId}_${Date.now()}`,
+          status: "COMPLETED",
+          metadata: JSON.stringify({
+            referredUserId,
+            level,
+            taskEarning,
+            commissionRate:
+              level === "A_LEVEL" ? "8%" : level === "B_LEVEL" ? "3%" : "1%",
+          }),
+        },
+      });
     } catch (error) {
-      console.error('Error getting active reward:', error);
-      return null;
+      console.error("Error awarding referral task commission:", error);
+      throw error;
     }
   }
 
   // Generate referral link
   static generateReferralLink(referralCode: string, baseUrl?: string): string {
-    const url = baseUrl || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const url =
+      baseUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     return `${url}/register?ref=${referralCode}`;
   }
 
   // Generate social sharing links
-  static generateSocialLinks(referralCode: string, baseUrl?: string): Record<string, string> {
+  static generateSocialLinks(
+    referralCode: string,
+    baseUrl?: string,
+  ): Record<string, string> {
     const referralLink = this.generateReferralLink(referralCode, baseUrl);
-    const message = encodeURIComponent(`Join me on VideoTask and start earning money by watching videos! Use my referral link: ${referralLink}`);
-    
+    const message = encodeURIComponent(
+      `Join me on VideoTask and start earning money by watching videos! Use my referral link: ${referralLink}`,
+    );
+
     return {
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,
       twitter: `https://twitter.com/intent/tweet?text=${message}`,
       whatsapp: `https://wa.me/?text=${message}`,
-      telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent('Join me on VideoTask and start earning!')}`,
-      email: `mailto:?subject=${encodeURIComponent('Join VideoTask and Earn Money!')}&body=${message}`,
-      copy: referralLink
+      telegram: `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Join me on VideoTask and start earning!")}`,
+      email: `mailto:?subject=${encodeURIComponent("Join VideoTask and Earn Money!")}&body=${message}`,
+      copy: referralLink,
     };
   }
 
   // Get referral statistics
   static async getReferralStats(userId: string): Promise<any> {
     try {
-      const [activities, totalRewards, monthlyStats] = await Promise.all([
-        // Get all referral activities
-        db.referralActivity.findMany({
-          where: { referrerId: userId },
-          orderBy: { createdAt: 'desc' }
-        }).catch(() => []), // Return empty array if table doesn't exist yet
+      const [activities, inviteRewards, taskRewards, hierarchyStats] =
+        await Promise.all([
+          // Get all referral activities
+          db.referralActivity
+            .findMany({
+              where: { referrerId: userId },
+              orderBy: { createdAt: "desc" },
+            })
+            .catch(() => []),
 
-        // Get total rewards earned
-        db.walletTransaction.aggregate({
-          where: {
-            userId,
-            description: { contains: 'Referral' },
-            type: 'CREDIT'
-          },
-          _sum: { amount: true },
-          _count: true
-        }).catch(() => ({ _sum: { amount: 0 }, _count: 0 })), // Return default if fails
+          // Get referral invite commission rewards
+          db.walletTransaction
+            .aggregate({
+              where: {
+                userId,
+                type: {
+                  in: [
+                    "REFERRAL_REWARD_A",
+                    "REFERRAL_REWARD_B",
+                    "REFERRAL_REWARD_C",
+                  ],
+                },
+                status: "COMPLETED",
+              },
+              _sum: { amount: true },
+              _count: true,
+            })
+            .catch(() => ({ _sum: { amount: 0 }, _count: 0 })),
 
-        // Get monthly statistics
-        db.referralActivity.groupBy({
-          by: ['status'],
-          where: {
-            referrerId: userId,
-            createdAt: {
-              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-            }
-          },
-          _count: true
-        }).catch(() => []) // Return empty array if fails
-      ]);
+          // Get referral task commission rewards
+          db.walletTransaction
+            .aggregate({
+              where: {
+                userId,
+                type: {
+                  in: [
+                    "MANAGEMENT_BONUS_A",
+                    "MANAGEMENT_BONUS_B",
+                    "MANAGEMENT_BONUS_C",
+                  ],
+                },
+                status: "COMPLETED",
+              },
+              _sum: { amount: true },
+              _count: true,
+            })
+            .catch(() => ({ _sum: { amount: 0 }, _count: 0 })),
+
+          // Get hierarchy statistics
+          db.referralHierarchy
+            .groupBy({
+              by: ["level"],
+              where: { referrerId: userId },
+              _count: true,
+            })
+            .catch(() => []),
+        ]);
 
       return {
         totalReferrals: activities?.length || 0,
-        registeredReferrals: activities?.filter(a => ['REGISTERED', 'QUALIFIED', 'REWARDED'].includes(a.status)).length || 0,
-        qualifiedReferrals: activities?.filter(a => ['QUALIFIED', 'REWARDED'].includes(a.status)).length || 0,
-        rewardedReferrals: activities?.filter(a => a.status === 'REWARDED').length || 0,
-        totalEarnings: totalRewards?._sum?.amount || 0,
-        monthlyReferrals: monthlyStats?.reduce((sum, stat) => sum + stat._count, 0) || 0,
-        activities: activities?.map(activity => ({
-          id: activity.id,
-          status: activity.status,
-          source: activity.source || 'unknown',
-          rewardAmount: activity.rewardAmount || 0,
-          createdAt: activity.createdAt.toISOString(),
-          rewardPaidAt: activity.rewardPaidAt?.toISOString() || null
-        })) || []
+        registeredReferrals:
+          activities?.filter((a) =>
+            ["REGISTERED", "QUALIFIED", "REWARDED"].includes(a.status),
+          ).length || 0,
+        qualifiedReferrals:
+          activities?.filter((a) =>
+            ["QUALIFIED", "REWARDED"].includes(a.status),
+          ).length || 0,
+
+        // Multi-level breakdown
+        levelA: hierarchyStats?.find((h) => h.level === "A_LEVEL")?._count || 0,
+        levelB: hierarchyStats?.find((h) => h.level === "B_LEVEL")?._count || 0,
+        levelC: hierarchyStats?.find((h) => h.level === "C_LEVEL")?._count || 0,
+
+        // Commission earnings
+        inviteCommissionTotal: inviteRewards?._sum?.amount || 0,
+        inviteCommissionCount: inviteRewards?._count || 0,
+        taskCommissionTotal: taskRewards?._sum?.amount || 0,
+        taskCommissionCount: taskRewards?._count || 0,
+        totalCommissionEarnings:
+          (inviteRewards?._sum?.amount || 0) + (taskRewards?._sum?.amount || 0),
+
+        activities:
+          activities?.map((activity) => ({
+            id: activity.id,
+            status: activity.status,
+            source: activity.source || "unknown",
+            createdAt: activity.createdAt.toISOString(),
+          })) || [],
       };
     } catch (error) {
-      console.error('Error getting referral stats:', error);
-      // Return default stats instead of null
+      console.error("Error getting referral stats:", error);
       return {
         totalReferrals: 0,
         registeredReferrals: 0,
         qualifiedReferrals: 0,
-        rewardedReferrals: 0,
-        totalEarnings: 0,
-        monthlyReferrals: 0,
-        activities: []
+        levelA: 0,
+        levelB: 0,
+        levelC: 0,
+        inviteCommissionTotal: 0,
+        inviteCommissionCount: 0,
+        taskCommissionTotal: 0,
+        taskCommissionCount: 0,
+        totalCommissionEarnings: 0,
+        activities: [],
       };
     }
   }

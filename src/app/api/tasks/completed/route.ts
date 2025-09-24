@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/api/api-auth";
 import { db } from "@/lib/db";
 import { NotificationService } from "@/lib/notification-service";
 import { NotificationType, NotificationSeverity } from "@prisma/client";
+import { ReferralService } from "@/lib/referral-service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -254,6 +255,27 @@ export async function POST(request: NextRequest) {
         status: "COMPLETED",
       },
     });
+
+    // Process referral task commissions (8%-3%-1% multi-level)
+    try {
+      const referralResult =
+        await ReferralService.processReferralTaskCommission(
+          user.id,
+          rewardAmount,
+        );
+
+      if (referralResult.success && referralResult.rewards) {
+        console.log(
+          `Referral task commissions processed for user ${user.id}:`,
+          referralResult.rewards,
+        );
+      }
+    } catch (referralError) {
+      console.error(
+        "Failed to process referral task commissions:",
+        referralError,
+      );
+    }
 
     // Send notification
     await sendTaskCompletionNotification(user.id, rewardAmount);

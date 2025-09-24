@@ -223,6 +223,7 @@ model ReferralActivity {
   status         ReferralStatus @default(PENDING)
   rewardAmount   Float?
   rewardPaidAt   DateTime?
+  qualifiedAt    DateTime?
   metadata       String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

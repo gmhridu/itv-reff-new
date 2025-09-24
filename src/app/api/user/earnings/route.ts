@@ -42,28 +42,26 @@ export async function GET(request: NextRequest) {
     // Get start of next month
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
 
-    // Fetch all earning transactions for detailed breakdown
-    // According to rules: Total Earnings should only include 5 specific items:
+    // Fetch ONLY the transactions for the 5 specified earning types:
     // 1. Daily Task Commission (TASK_INCOME)
-    // 2. Referral Bonus (REFERRAL_REWARD_A, REFERRAL_REWARD_B, REFERRAL_REWARD_C)
-    // 3. Level Commission (MANAGEMENT_BONUS_A, MANAGEMENT_BONUS_B, MANAGEMENT_BONUS_C)
-    // 4. Any explicitly approved earnings type (SPECIAL_COMMISSION, CREDIT)
-    // 5. Any additional approved earning category (TOPUP_BONUS)
-    const allTransactions = await db.walletTransaction.findMany({
+    // 2. Referral Invite Commission (REFERRAL_REWARD_A, REFERRAL_REWARD_B, REFERRAL_REWARD_C)
+    // 3. Referral Task Commission (MANAGEMENT_BONUS_A, MANAGEMENT_BONUS_B, MANAGEMENT_BONUS_C)
+    // 4. USDT Top-up Bonus (TOPUP_BONUS)
+    // 5. Special Commission (SPECIAL_COMMISSION)
+    const allEarningTransactions = await db.walletTransaction.findMany({
       where: {
         userId: user.id,
         type: {
           in: [
-            "TASK_INCOME",                    // Daily Task Commission
-            "REFERRAL_REWARD_A",              // Referral Bonus - Level A
-            "REFERRAL_REWARD_B",              // Referral Bonus - Level B
-            "REFERRAL_REWARD_C",              // Referral Bonus - Level C
-            "MANAGEMENT_BONUS_A",             // Level Commission - Level A
-            "MANAGEMENT_BONUS_B",             // Level Commission - Level B
-            "MANAGEMENT_BONUS_C",             // Level Commission - Level C
-            "TOPUP_BONUS",                    // Additional approved earning category
-            "SPECIAL_COMMISSION",             // Explicitly approved earnings type
-            "CREDIT",                         // Explicitly approved earnings type
+            "TASK_INCOME", // 1. Daily Task Commission
+            "REFERRAL_REWARD_A", // 2. Referral Invite Commission - Level A (10%)
+            "REFERRAL_REWARD_B", // 2. Referral Invite Commission - Level B (3%)
+            "REFERRAL_REWARD_C", // 2. Referral Invite Commission - Level C (1%)
+            "MANAGEMENT_BONUS_A", // 3. Referral Task Commission - Level A (8%)
+            "MANAGEMENT_BONUS_B", // 3. Referral Task Commission - Level B (3%)
+            "MANAGEMENT_BONUS_C", // 3. Referral Task Commission - Level C (1%)
+            "TOPUP_BONUS", // 4. USDT Top-up Bonus (3%)
+            "SPECIAL_COMMISSION", // 5. Special Commission
           ] as any,
         },
         status: "COMPLETED",
@@ -88,7 +86,7 @@ export async function GET(request: NextRequest) {
           .filter((t) => t.type === "TASK_INCOME")
           .reduce((sum, t) => sum + t.amount, 0),
 
-        // 2. Referral Bonus
+        // 2. Referral Invite Commission (Multi-level: 10% → 3% → 1%)
         referralInviteCommission: {
           level1: filteredTransactions
             .filter((t) => t.type === "REFERRAL_REWARD_A")
@@ -110,7 +108,7 @@ export async function GET(request: NextRequest) {
             .reduce((sum, t) => sum + t.amount, 0),
         },
 
-        // 3. Level Commission
+        // 3. Referral Task Commission (Multi-level: 8% → 3% → 1%)
         referralTaskCommission: {
           level1: filteredTransactions
             .filter((t) => t.type === "MANAGEMENT_BONUS_A")
@@ -132,28 +130,17 @@ export async function GET(request: NextRequest) {
             .reduce((sum, t) => sum + t.amount, 0),
         },
 
-        // 4. Any explicitly approved earnings type
+        // 4. USDT Top-up Bonus (3%)
         topupBonus: filteredTransactions
-          .filter(
-            (t) =>
-              (t.type as any) === "TOPUP_BONUS" ||
-              (t.type === "CREDIT" &&
-                t.description?.toLowerCase().includes("usdt") &&
-                t.description?.toLowerCase().includes("bonus")),
-          )
+          .filter((t) => t.type === "TOPUP_BONUS")
           .reduce((sum, t) => sum + t.amount, 0),
 
-        // 5. Any additional approved earning category defined by the system
+        // 5. Special Commission
         specialCommission: filteredTransactions
-          .filter(
-            (t) =>
-              (t.type as any) === "SPECIAL_COMMISSION" ||
-              t.description?.toLowerCase().includes("special") ||
-              t.description?.toLowerCase().includes("blessed"),
-          )
+          .filter((t) => t.type === "SPECIAL_COMMISSION")
           .reduce((sum, t) => sum + t.amount, 0),
 
-        // Total Earnings = sum of all 5 categories
+        // Total Earnings = ONLY sum of the 5 categories above (NO security refunds)
         totalEarning: filteredTransactions.reduce(
           (sum, t) => sum + t.amount,
           0,
@@ -163,32 +150,32 @@ export async function GET(request: NextRequest) {
 
     // Calculate earnings for different periods
     const todayEarnings = calculateEarningsByType(
-      allTransactions,
+      allEarningTransactions,
       today,
       tomorrow,
     );
     const yesterdayEarnings = calculateEarningsByType(
-      allTransactions,
+      allEarningTransactions,
       yesterday,
       today,
     );
     const weekEarnings = calculateEarningsByType(
-      allTransactions,
+      allEarningTransactions,
       startOfWeek,
       endOfWeek,
     );
     const monthEarnings = calculateEarningsByType(
-      allTransactions,
+      allEarningTransactions,
       startOfMonth,
       endOfMonth,
     );
     const allTimeEarnings = calculateEarningsByType(
-      allTransactions,
+      allEarningTransactions,
       new Date("2020-01-01"),
       new Date(),
     );
 
-    // Get security refund information
+    // Get security refund information (SEPARATE from earnings)
     let securityRefunds: any[] = [];
     let totalSecurityRefund = 0;
 
@@ -209,20 +196,20 @@ export async function GET(request: NextRequest) {
       totalSecurityRefund = 0;
     }
 
-    // Calculate total amount available for withdrawal
+    // Get current user wallet information
     const currentUser = await db.user.findUnique({
       where: { id: user.id },
-      select: { walletBalance: true, commissionBalance: true, depositPaid: true },
+      select: {
+        walletBalance: true, // Current Balance (topup balance)
+        commissionBalance: true, // Commission wallet
+        depositPaid: true, // Security Deposited
+      },
     });
 
-    // According to rules: Grand Total = Total Earnings + Security Refund
-    // Total Earnings should only include the 5 specified items
-    const grandTotal = allTimeEarnings.totalEarning + totalSecurityRefund;
-
-    const totalAvailableForWithdrawal =
-      (currentUser?.walletBalance || 0) +
-      (currentUser?.commissionBalance || 0) +
-      totalSecurityRefund;
+    // According to requirements:
+    // Total Available for Withdrawal = ONLY Total Earnings (5 types)
+    // (NOT including Current Balance/Security Deposited/Security Refunds)
+    const totalAvailableForWithdrawal = allTimeEarnings.totalEarning;
 
     const earningsData = {
       success: true,
@@ -244,19 +231,24 @@ export async function GET(request: NextRequest) {
         },
 
         breakdown: {
-           // 1. Daily Task Commission
-           dailyTaskCommission: allTimeEarnings.dailyTaskCommission,
-           // 2. Referral Bonus
-           referralInviteCommission: allTimeEarnings.referralInviteCommission,
-           // 3. Level Commission
-           referralTaskCommission: allTimeEarnings.referralTaskCommission,
-           // 4. Any explicitly approved earnings type
-           topupBonus: allTimeEarnings.topupBonus,
-           // 5. Any additional approved earning category defined by the system
-           specialCommission: allTimeEarnings.specialCommission,
-           // Total Earnings = sum of all 5 categories (no security refunds)
-           totalEarning: allTimeEarnings.totalEarning,
-         },
+          // 1. Daily Task Commission
+          dailyTaskCommission: allTimeEarnings.dailyTaskCommission,
+
+          // 2. Referral Invite Commission (10%-3%-1%)
+          referralInviteCommission: allTimeEarnings.referralInviteCommission,
+
+          // 3. Referral Task Commission (8%-3%-1%)
+          referralTaskCommission: allTimeEarnings.referralTaskCommission,
+
+          // 4. USDT Top-up Bonus (3%)
+          topupBonus: allTimeEarnings.topupBonus,
+
+          // 5. Special Commission
+          specialCommission: allTimeEarnings.specialCommission,
+
+          // Total Earnings = sum of ONLY the 5 categories above
+          totalEarning: allTimeEarnings.totalEarning,
+        },
 
         security: {
           totalRefunds: totalSecurityRefund,
@@ -264,13 +256,13 @@ export async function GET(request: NextRequest) {
         },
 
         wallet: {
-          mainWallet: currentUser?.walletBalance || 0,
-          commissionWallet: currentUser?.commissionBalance || 0,
-          totalAvailableForWithdrawal,
-          grandTotal,
+          currentBalance: currentUser?.walletBalance || 0, // Only topup balance
+          securityDeposited: currentUser?.depositPaid || 0, // Level deposit amount
+          commissionWallet: allTimeEarnings.totalEarning, // Commission earnings (matches Total Earnings)
+          totalAvailableForWithdrawal, // Only Total Earnings (5 types only)
         },
 
-        recentTransactions: allTransactions.slice(0, 20).map((t) => ({
+        recentTransactions: allEarningTransactions.slice(0, 20).map((t) => ({
           id: t.id,
           type: t.type,
           amount: t.amount,
