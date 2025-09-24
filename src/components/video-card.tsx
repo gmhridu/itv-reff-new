@@ -34,7 +34,7 @@ export function VideoCard({ video, disabled = false }: VideoCardProps) {
           group overflow-hidden shadow-lg hover:shadow-2xl
           transition-all duration-300 hover:scale-[1.02] cursor-pointer
           bg-gradient-to-br from-white/90 to-white/70 dark:from-slate-800/90 dark:to-slate-700/70
-          backdrop-blur-xl border border-slate-200/50 dark:border-slate-600/50 rounded-2xl
+          backdrop-blur-xl border border-slate-200/50 dark:border-slate-600/50 rounded-2xl p-0
           ${disabled ? "opacity-50 cursor-not-allowed" : ""}
         `}
       >

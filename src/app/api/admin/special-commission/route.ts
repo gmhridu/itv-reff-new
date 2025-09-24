@@ -214,13 +214,19 @@ export async function POST(request: NextRequest) {
 
     for (const user of targetUsers) {
       try {
+        // Get current user balance for transaction
+        const currentUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { totalEarnings: true },
+        });
+
         // Create wallet transaction for the commission
         const transaction = await db.walletTransaction.create({
           data: {
             userId: user.id,
-            type: isBonus ? "CREDIT" : "TASK_INCOME",
+            type: isBonus ? "CREDIT" : "SPECIAL_COMMISSION",
             amount: amount,
-            balanceAfter: 0, // Will be updated by trigger
+            balanceAfter: (currentUser?.totalEarnings || 0) + amount,
             description: `Special Commission Push: ${reason}${description ? ` - ${description}` : ""}`,
             referenceId: `special-commission-${Date.now()}-${user.id}`,
             status: "COMPLETED",
@@ -233,6 +239,14 @@ export async function POST(request: NextRequest) {
               processedBy: admin.id,
               processedAt: new Date().toISOString(),
             }),
+          },
+        });
+
+        // Update user's total earnings (Special Commission is part of Total Earnings)
+        await db.user.update({
+          where: { id: user.id },
+          data: {
+            totalEarnings: { increment: amount },
           },
         });
 

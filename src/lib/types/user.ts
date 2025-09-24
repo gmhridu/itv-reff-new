@@ -50,7 +50,7 @@ export interface SecurityRefundData {
   currentLevel: number;
   currentLevelName: string;
   previousLevelDeposit: number;
-  securityDeposited: number;
+  securityDeposited: number; // Maps to User.depositPaid
   refundRequests: SecurityRefundRequest[];
 }
 

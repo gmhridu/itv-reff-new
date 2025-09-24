@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
     const { amount, selectedWalletId, paymentProof, transactionId } = body;
 
     console.log("Topup request data:", {
-      amount,
+      originalAmount: amount,
+      amountType: typeof amount,
       selectedWalletId,
       hasPaymentProof: !!paymentProof,
       paymentProofUrl: paymentProof
@@ -141,8 +142,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate amount
-    if (typeof amount !== "number" || amount <= 0) {
+    // Validate amount - ensure it's a positive integer
+    let parsedAmount: number;
+    if (typeof amount === "string") {
+      parsedAmount = parseInt(amount, 10);
+    } else if (typeof amount === "number") {
+      parsedAmount = Math.round(amount); // Ensure integer, no decimals
+    } else {
+      return NextResponse.json(
+        { success: false, error: "Invalid amount format" },
+        { status: 400 },
+      );
+    }
+
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return NextResponse.json(
         { success: false, error: "Invalid amount" },
         { status: 400 },
@@ -150,9 +163,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Check minimum topup amount (example: 100 PKR)
-    if (amount < 100) {
+    if (parsedAmount < 100) {
       return NextResponse.json(
         { success: false, error: "Minimum topup amount is 100 PKR" },
+        { status: 400 },
+      );
+    }
+
+    // Check maximum topup amount
+    if (parsedAmount > 1000000) {
+      return NextResponse.json(
+        { success: false, error: "Maximum topup amount is 1,000,000 PKR" },
         { status: 400 },
       );
     }
@@ -201,11 +222,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create topup request
+    // Create topup request with parsed integer amount
     const topupRequest = await prisma.topupRequest.create({
       data: {
         userId: user.id,
-        amount,
+        amount: parsedAmount,
         selectedWalletId,
         paymentProof: paymentProof || null,
         transactionId: transactionId || null,
@@ -235,7 +256,9 @@ export async function POST(request: NextRequest) {
       userId: topupRequest.userId,
       userName: topupRequest.user?.name,
       userPhone: topupRequest.user?.phone,
-      amount: topupRequest.amount,
+      originalAmount: amount,
+      parsedAmount: parsedAmount,
+      storedAmount: topupRequest.amount,
       paymentProofStored: !!topupRequest.paymentProof,
     });
 
@@ -244,10 +267,10 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         activity: "topup_request",
-        description: `Created topup request for ${amount} PKR`,
+        description: `Created topup request for ${parsedAmount} PKR`,
         metadata: JSON.stringify({
           requestId: topupRequest.id,
-          amount,
+          amount: parsedAmount,
           walletType: selectedWallet.walletType,
           walletNumber: (selectedWallet as any).walletNumber,
           usdtWalletAddress: (selectedWallet as any).usdtWalletAddress,

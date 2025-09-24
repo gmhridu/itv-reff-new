@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { authMiddleware } from '@/lib/api/api-auth';
-import { db } from '@/lib/db';
-import { NotificationService } from '@/lib/notification-service';
-import { NotificationType, NotificationSeverity } from '@prisma/client';
+import { NextRequest, NextResponse } from "next/server";
+import { authMiddleware } from "@/lib/api/api-auth";
+import { db } from "@/lib/db";
+import { NotificationService } from "@/lib/notification-service";
+import { NotificationType, NotificationSeverity } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,17 +10,17 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: "Authentication required" },
+        { status: 401 },
       );
     }
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
     const skip = (page - 1) * limit;
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: { watchedAt: 'desc' },
+        orderBy: { watchedAt: "desc" },
         take: limit,
         skip,
       }),
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      completedTasks: completedTasks.map(task => ({
+      completedTasks: completedTasks.map((task) => ({
         id: task.id,
         video: {
           id: task.video.id,
@@ -118,30 +118,32 @@ export async function GET(request: NextRequest) {
         hasPrev: page > 1,
       },
     });
-
   } catch (error) {
-    console.error('Get completed tasks error:', error);
+    console.error("Get completed tasks error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
 
 async function sendTaskCompletionNotification(
   userId: string,
-  rewardAmount: number
+  rewardAmount: number,
 ) {
   try {
-    await NotificationService.createNotification({
-      type: 'TASK_COMPLETED' as any, // Using string literal instead of enum property
-      title: 'Task Reward Received',
-      message: `You've earned PKR${rewardAmount.toFixed(2)} for completing your daily task.`,
-      severity: 'SUCCESS',
-      actionUrl: '/dashboard/task',
-    }, userId);
+    await NotificationService.createNotification(
+      {
+        type: "TASK_COMPLETED" as any, // Using string literal instead of enum property
+        title: "Task Reward Received",
+        message: `You've earned PKR${rewardAmount.toFixed(2)} for completing your daily task.`,
+        severity: "SUCCESS",
+        actionUrl: "/dashboard/task",
+      },
+      userId,
+    );
   } catch (error) {
-    console.error('Error sending task completion notification:', error);
+    console.error("Error sending task completion notification:", error);
   }
 }
 
@@ -151,8 +153,8 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
+        { error: "Authentication required" },
+        { status: 401 },
       );
     }
 
@@ -167,10 +169,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!fullUser) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const body = await request.json();
@@ -179,8 +178,8 @@ export async function POST(request: NextRequest) {
     // Validate input
     if (!videoId || !watchDuration) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
+        { error: "Missing required fields" },
+        { status: 400 },
       );
     }
 
@@ -203,8 +202,8 @@ export async function POST(request: NextRequest) {
 
     if (existingTask) {
       return NextResponse.json(
-        { error: 'Task already completed today' },
-        { status: 400 }
+        { error: "Task already completed today" },
+        { status: 400 },
       );
     }
 
@@ -214,10 +213,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!video) {
-      return NextResponse.json(
-        { error: 'Video not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
     // Calculate reward (simplified logic)
@@ -232,18 +228,17 @@ export async function POST(request: NextRequest) {
         watchDuration,
         rewardEarned: rewardAmount,
         positionLevel: fullUser.currentPositionId || undefined,
-        ipAddress: request.headers.get('x-forwarded-for') || undefined,
-        deviceId: request.headers.get('user-agent') || undefined,
+        ipAddress: request.headers.get("x-forwarded-for") || undefined,
+        deviceId: request.headers.get("user-agent") || undefined,
         isVerified: true, // Simplified for this example
       },
     });
 
-    // Update user wallet balance
+    // Update user commission balance (Daily Task Commission only)
     const updatedUser = await db.user.update({
       where: { id: user.id },
       data: {
-        walletBalance: { increment: rewardAmount },
-        totalEarnings: { increment: rewardAmount },
+        commissionBalance: { increment: rewardAmount },
       },
     });
 
@@ -251,12 +246,12 @@ export async function POST(request: NextRequest) {
     await db.walletTransaction.create({
       data: {
         userId: user.id,
-        type: 'TASK_INCOME',
+        type: "TASK_INCOME",
         amount: rewardAmount,
-        balanceAfter: updatedUser.walletBalance,
+        balanceAfter: updatedUser.commissionBalance,
         description: `Task completion reward for video: ${video.title}`,
         referenceId: `TASK_${task.id}`,
-        status: 'COMPLETED',
+        status: "COMPLETED",
       },
     });
 
@@ -264,19 +259,18 @@ export async function POST(request: NextRequest) {
     await sendTaskCompletionNotification(user.id, rewardAmount);
 
     return NextResponse.json({
-      message: 'Task completed successfully',
+      message: "Task completed successfully",
       task: {
         id: task.id,
         rewardEarned: task.rewardEarned,
         completedAt: task.watchedAt.toISOString(),
       },
     });
-
   } catch (error) {
-    console.error('Complete task error:', error);
+    console.error("Complete task error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         currentPositionId: true,
+        depositPaid: true,
         userPlan: {
           where: { status: "ACTIVE" },
           include: { plan: true },
@@ -67,11 +68,17 @@ export async function GET(request: NextRequest) {
     // Get security refund requests
     let securityRefundRequests: SecurityRefundRequest[] = [];
     try {
-      const requests = await (prisma as any).securityRefundRequest.findMany({
+      const requests = await prisma.securityRefundRequest.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: "desc" },
       });
-      securityRefundRequests = requests || [];
+      // Convert null values to undefined to match interface
+      securityRefundRequests = (requests || []).map(request => ({
+        ...request,
+        requestNote: request.requestNote ?? undefined,
+        adminNotes: request.adminNotes ?? undefined,
+        processedAt: request.processedAt ?? undefined,
+      }));
     } catch (error) {
       console.warn("Security refund requests not available:", error);
       securityRefundRequests = [];
@@ -92,23 +99,17 @@ export async function GET(request: NextRequest) {
       const previousLevel = currentLevel - 1;
 
       if (previousLevel > 0) {
-        // Get the previous level plan details
+        // Get the previous level position details
         try {
-          const previousPlan = await prisma.plan.findFirst({
-            where: {
-              OR: [
-                { name: { contains: `L${previousLevel}` } },
-                { name: { contains: `Level ${previousLevel}` } },
-                { name: `L${previousLevel}` },
-              ],
-            },
+          const previousPositionLevel = await prisma.positionLevel.findUnique({
+            where: { level: previousLevel },
           });
 
-          if (previousPlan) {
-            previousLevelDeposit = previousPlan.price;
+          if (previousPositionLevel) {
+            previousLevelDeposit = previousPositionLevel.deposit;
           }
         } catch (error) {
-          console.warn("Previous plan not found:", error);
+          console.warn("Previous position level not found:", error);
         }
 
         // Check if user hasn't already got refund for this level
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
         currentLevel: currentPosition?.level || 0,
         currentLevelName: currentPosition?.name || "Intern",
         previousLevelDeposit: previousLevelDeposit || 0,
-        securityDeposited: userWithDetails.userPlan?.[0]?.amountPaid || 0,
+        securityDeposited: userWithDetails.depositPaid || 0,
         refundRequests: securityRefundRequests,
       },
     });
@@ -167,6 +168,7 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         currentPositionId: true,
+        depositPaid: true,
         userPlan: {
           where: { status: "ACTIVE" },
           include: { plan: true },
@@ -224,13 +226,19 @@ export async function POST(request: NextRequest) {
     // Check for existing refund requests
     let existingRefundRequests: SecurityRefundRequest[] = [];
     try {
-      const requests = await (prisma as any).securityRefundRequest.findMany({
+      const requests = await prisma.securityRefundRequest.findMany({
         where: {
           userId: user.id,
           status: { in: ["PENDING", "APPROVED"] },
         },
       });
-      existingRefundRequests = requests || [];
+      // Convert null values to undefined to match interface
+      existingRefundRequests = (requests || []).map(request => ({
+        ...request,
+        requestNote: request.requestNote ?? undefined,
+        adminNotes: request.adminNotes ?? undefined,
+        processedAt: request.processedAt ?? undefined,
+      }));
     } catch (error) {
       console.warn("Error checking existing refund requests:", error);
     }
@@ -253,20 +261,14 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Get previous level plan details
-    const previousPlan = await prisma.plan.findFirst({
-      where: {
-        OR: [
-          { name: { contains: `L${previousLevel}` } },
-          { name: { contains: `Level ${previousLevel}` } },
-          { name: `L${previousLevel}` },
-        ],
-      },
+    // Get previous level position details
+    const previousPositionLevel = await prisma.positionLevel.findUnique({
+      where: { level: previousLevel },
     });
 
-    if (!previousPlan) {
+    if (!previousPositionLevel) {
       response = NextResponse.json(
-        { success: false, error: "Previous level plan not found" },
+        { success: false, error: "Previous level position not found" },
         { status: 404 },
       );
       return addAPISecurityHeaders(response);
@@ -275,12 +277,12 @@ export async function POST(request: NextRequest) {
     // Create refund request
     let refundRequest: any = null;
     try {
-      refundRequest = await (prisma as any).securityRefundRequest.create({
+      refundRequest = await prisma.securityRefundRequest.create({
         data: {
           userId: user.id,
           fromLevel: previousLevel,
           toLevel: currentLevel,
-          refundAmount: previousPlan.price,
+          refundAmount: previousPositionLevel.deposit,
           status: "PENDING",
           requestNote: `Security deposit refund request from Level ${previousLevel} to Level ${currentLevel}`,
         },
@@ -300,7 +302,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: user.id,
           activity: "security_refund_request",
-          description: `Requested security refund of ${previousPlan.price} PKR from Level ${previousLevel}`,
+          description: `Requested security refund of ${previousPositionLevel.deposit} PKR from Level ${previousLevel}`,
           ipAddress:
             request.headers.get("x-forwarded-for") ||
             request.headers.get("x-real-ip") ||
@@ -310,7 +312,7 @@ export async function POST(request: NextRequest) {
             refundRequestId: refundRequest?.id,
             fromLevel: previousLevel,
             toLevel: currentLevel,
-            refundAmount: previousPlan.price,
+            refundAmount: previousPositionLevel.deposit,
           }),
         },
       });

@@ -47,6 +47,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { DateRangePicker } from "../ui/date-picker";
+import { formatPKR } from "@/lib/currency";
+
+// Use the centralized currency formatting utility
+// (formatPKR imported from @/lib/currency)
 
 interface TopupRequest {
   id: string;
@@ -112,7 +117,10 @@ export const TopupHistory = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [dateRange, setDateRange] = useState({ from: "", to: "" });
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({ from: undefined, to: undefined });
   const [searchTerm, setSearchTerm] = useState("");
 
   // Modal states
@@ -153,12 +161,32 @@ export const TopupHistory = () => {
       });
 
       if (statusFilter !== "ALL") params.append("status", statusFilter);
-      if (dateRange.from) params.append("dateFrom", dateRange.from);
-      if (dateRange.to) params.append("dateTo", dateRange.to);
+      if (dateRange.from)
+        params.append("dateFrom", dateRange.from.toISOString().split("T")[0]);
+      if (dateRange.to)
+        params.append("dateTo", dateRange.to.toISOString().split("T")[0]);
       if (searchTerm) params.append("search", searchTerm);
+
+      console.log("Fetching topup history with filters:", {
+        statusFilter,
+        dateRange,
+        searchTerm,
+        page: pagination.page,
+        limit: pagination.limit,
+        urlParams: params.toString(),
+      });
 
       const response = await fetch(`/api/admin/topup-history?${params}`);
       const data = await response.json();
+
+      console.log("Topup history response:", {
+        success: data.success,
+        totalRequests: data.data?.topupRequests?.length || 0,
+        statistics: data.data?.statistics,
+        statusFilter: statusFilter,
+        requestStatuses:
+          data.data?.topupRequests?.map((r: any) => r.status) || [],
+      });
 
       if (data.success) {
         setTopupRequests(data.data.topupRequests);
@@ -282,9 +310,7 @@ export const TopupHistory = () => {
     return icons[status as keyof typeof icons] || icons.PENDING;
   };
 
-  const formatCurrency = (amount: number) => {
-    return `PKR ${amount.toLocaleString()}`;
-  };
+  // Using formatPKR utility from currency module
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -337,11 +363,23 @@ export const TopupHistory = () => {
 
   // Load data on component mount and when filters change
   useEffect(() => {
+    console.log("TopupHistory: useEffect triggered for fetch", {
+      page: pagination.page,
+      statusFilter,
+      dateRange,
+      searchTerm,
+    });
     fetchTopupHistory();
-  }, [pagination.page, statusFilter, dateRange]);
+  }, [pagination.page, statusFilter, dateRange.from, dateRange.to, searchTerm]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
+    console.log("TopupHistory: Filter change detected, resetting to page 1", {
+      statusFilter,
+      dateRange,
+      searchTerm,
+      currentPage: pagination.page,
+    });
     if (pagination.page !== 1) {
       setPagination((prev) => ({ ...prev, page: 1 }));
     }
@@ -361,7 +399,7 @@ export const TopupHistory = () => {
                     Total Requests
                   </p>
                   <p className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-                    {statistics.total}
+                    {statistics.total.toLocaleString()}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -379,7 +417,7 @@ export const TopupHistory = () => {
                     Total Amount
                   </p>
                   <p className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
-                    {formatCurrency(statistics.totalAmount)}
+                    {formatPKR(statistics.totalAmount)}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -397,7 +435,7 @@ export const TopupHistory = () => {
                     Pending Amount
                   </p>
                   <p className="text-lg sm:text-2xl font-bold text-amber-600 truncate">
-                    {formatCurrency(statistics.pendingAmount)}
+                    {formatPKR(statistics.pendingAmount)}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -492,7 +530,7 @@ export const TopupHistory = () => {
                   Average Amount
                 </p>
                 <p className="text-base sm:text-lg font-bold text-gray-900 truncate">
-                  {formatCurrency(getAverageAmount())}
+                  {formatPKR(getAverageAmount())}
                 </p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -506,7 +544,7 @@ export const TopupHistory = () => {
                   Approved Amount
                 </p>
                 <p className="text-base sm:text-lg font-bold text-green-600 truncate">
-                  {formatCurrency(statistics.approvedAmount)}
+                  {formatPKR(statistics.approvedAmount)}
                 </p>
               </div>
             </div>
@@ -548,40 +586,45 @@ export const TopupHistory = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                console.log(
+                  "StatusFilter changing from",
+                  statusFilter,
+                  "to",
+                  value,
+                );
+                setStatusFilter(value);
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
+                <SelectItem value="ALL">
+                  All Status ({statistics.total})
+                </SelectItem>
+                <SelectItem value="PENDING">
+                  Pending ({statistics.pending})
+                </SelectItem>
+                <SelectItem value="APPROVED">
+                  Approved ({statistics.approved})
+                </SelectItem>
+                <SelectItem value="REJECTED">
+                  Rejected ({statistics.rejected})
+                </SelectItem>
               </SelectContent>
             </Select>
 
-            <div>
-              <Input
-                type="date"
-                placeholder="From Date"
-                value={dateRange.from}
-                onChange={(e) =>
-                  setDateRange((prev) => ({ ...prev, from: e.target.value }))
-                }
-              />
-            </div>
-
-            <div>
-              <Input
-                type="date"
-                placeholder="To Date"
-                value={dateRange.to}
-                onChange={(e) =>
-                  setDateRange((prev) => ({ ...prev, to: e.target.value }))
-                }
-              />
-            </div>
+            <DateRangePicker
+              from={dateRange.from}
+              to={dateRange.to}
+              onDateRangeChange={(from, to) => setDateRange({ from, to })}
+              placeholder="Select date range"
+              className="w-full"
+            />
           </div>
         </CardContent>
       </Card>
@@ -634,7 +677,7 @@ export const TopupHistory = () => {
                   onClick={() => {
                     setSearchTerm("");
                     setStatusFilter("ALL");
-                    setDateRange({ from: "", to: "" });
+                    setDateRange({ from: undefined, to: undefined });
                   }}
                   variant="outline"
                 >
@@ -672,7 +715,7 @@ export const TopupHistory = () => {
                           </div>
                           <div className="min-w-0 flex-1">
                             <h3 className="font-semibold text-base sm:text-lg text-gray-900 truncate">
-                              {formatCurrency(request.amount)}
+                              {formatPKR(request.amount)}
                             </h3>
                             <p className="text-xs sm:text-sm text-gray-500 truncate">
                               Request ID: {request.id.slice(-8)}
@@ -906,7 +949,7 @@ export const TopupHistory = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-xl sm:text-2xl font-bold truncate">
-                    {formatCurrency(selectedRequest.amount)}
+                    {formatPKR(selectedRequest.amount)}
                   </h3>
                   <p className="text-sm sm:text-base text-gray-600 truncate">
                     Request ID: {selectedRequest.id}
@@ -1208,7 +1251,7 @@ export const TopupHistory = () => {
             <DialogTitle>Process Topup Request</DialogTitle>
             <DialogDescription>
               {selectedRequest &&
-                `Process ${selectedRequest.user.name}'s topup request for ${formatCurrency(selectedRequest.amount)}`}
+                `Process ${selectedRequest.user.name}'s topup request for ${formatPKR(selectedRequest.amount)}`}
             </DialogDescription>
           </DialogHeader>
 

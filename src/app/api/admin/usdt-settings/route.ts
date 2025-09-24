@@ -33,12 +33,17 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Parse USDT rate as integer to avoid floating point precision issues
+    let usdtToPkrRate = 295; // Default rate
+    if (usdtRateSetting) {
+      const parsedRate = parseFloat(usdtRateSetting.value);
+      usdtToPkrRate = Math.round(parsedRate); // Round to nearest integer
+    }
+
     return NextResponse.json({
       success: true,
       data: {
-        usdtToPkrRate: usdtRateSetting
-          ? parseFloat(usdtRateSetting.value)
-          : 295,
+        usdtToPkrRate,
         lastUpdated: usdtRateSetting?.updatedAt || null,
         usdtWallet,
         bonusPercentage: 3, // Fixed 3% bonus
@@ -71,28 +76,39 @@ export async function PUT(request: NextRequest) {
     const { usdtToPkrRate, walletHolderName, usdtWalletAddress, qrCodeUrl } =
       body;
 
-    // Validate USDT rate
-    if (
-      usdtToPkrRate &&
-      (typeof usdtToPkrRate !== "number" || usdtToPkrRate <= 0)
-    ) {
-      return NextResponse.json(
-        { success: false, error: "Invalid USDT to PKR rate" },
-        { status: 400 },
-      );
+    // Validate and parse USDT rate
+    let parsedUsdtRate: number | null = null;
+    if (usdtToPkrRate) {
+      if (typeof usdtToPkrRate === "string") {
+        parsedUsdtRate = parseFloat(usdtToPkrRate);
+      } else if (typeof usdtToPkrRate === "number") {
+        parsedUsdtRate = usdtToPkrRate;
+      }
+
+      // Round to avoid floating point precision issues
+      if (parsedUsdtRate) {
+        parsedUsdtRate = Math.round(parsedUsdtRate);
+      }
+
+      if (!parsedUsdtRate || parsedUsdtRate <= 0) {
+        return NextResponse.json(
+          { success: false, error: "Invalid USDT to PKR rate" },
+          { status: 400 },
+        );
+      }
     }
 
     // Update USDT rate if provided
-    if (usdtToPkrRate) {
+    if (parsedUsdtRate) {
       await prisma.setting.upsert({
         where: { key: "usdt_to_pkr_rate" },
         update: {
-          value: usdtToPkrRate.toString(),
+          value: parsedUsdtRate.toString(),
           updatedAt: new Date(),
         },
         create: {
           key: "usdt_to_pkr_rate",
-          value: usdtToPkrRate.toString(),
+          value: parsedUsdtRate.toString(),
         },
       });
     }
@@ -170,7 +186,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: "USDT settings updated successfully",
       data: {
-        usdtToPkrRate,
+        usdtToPkrRate: parsedUsdtRate,
         usdtWallet,
       },
     });

@@ -40,6 +40,7 @@ import {
 import { TopupWalletManagement } from "@/components/topup/TopupWalletManagement";
 import { TopupHistory } from "@/components/topup/TopupHistory";
 import { UsdtSettingsManagement } from "./UsdtSettingsManagement";
+import { formatPKR } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 
 interface DashboardStats {
@@ -266,7 +267,7 @@ export function TopUpManagementClient() {
               <p className="text-2xl font-bold text-gray-900">
                 {typeof value === "number" &&
                 title.toLowerCase().includes("amount")
-                  ? `${value.toLocaleString()} PKR`
+                  ? formatPKR(value)
                   : value.toLocaleString()}
               </p>
               {trend && trendValue && (

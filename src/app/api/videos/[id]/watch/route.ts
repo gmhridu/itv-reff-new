@@ -158,12 +158,11 @@ export async function POST(
       },
     });
 
-    // Update user's wallet balance and total earnings
+    // Update user's commission balance (Daily Task Commission only)
     await db.user.update({
       where: { id: user.id },
       data: {
-        walletBalance: user.walletBalance + rewardEarned,
-        totalEarnings: user.totalEarnings + rewardEarned,
+        commissionBalance: user.commissionBalance + rewardEarned,
       },
     });
 
@@ -173,7 +172,7 @@ export async function POST(
         userId: user.id,
         type: "TASK_INCOME",
         amount: rewardEarned,
-        balanceAfter: user.walletBalance + rewardEarned,
+        balanceAfter: user.commissionBalance + rewardEarned,
         description: `Task reward: ${video.title} (${position.name})`,
         referenceId: `TASK_${videoTask.id}`,
         status: "COMPLETED",
@@ -273,7 +272,7 @@ export async function POST(
     return NextResponse.json({
       message: "Task completed successfully",
       rewardEarned: rewardEarned,
-      newBalance: user.walletBalance + rewardEarned,
+      newCommissionBalance: user.commissionBalance + rewardEarned,
       tasksCompletedToday: todayTasksCount + 1,
       dailyTaskLimit: dailyLimit,
       positionLevel: position.name,

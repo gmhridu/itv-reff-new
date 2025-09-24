@@ -749,7 +749,7 @@ const UserOverview = () => {
               </div>
 
               {/* Final Total Available for Withdrawal - Enhanced */}
-              <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white rounded-lg p-5 shadow-lg">
+              {/* <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white rounded-lg p-5 shadow-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
@@ -819,7 +819,7 @@ const UserOverview = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </CardContent>
         </Card>

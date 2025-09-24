@@ -109,6 +109,8 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       skip,
+      originalStatus: status,
+      statusInWhere: where.status,
     });
 
     // Get topup requests with pagination
@@ -144,12 +146,19 @@ export async function GET(request: NextRequest) {
     console.log("Topup requests fetched:", {
       totalFound: total,
       requestsInPage: topupRequests.length,
+      statusDistribution: {
+        pending: topupRequests.filter((r) => r.status === "PENDING").length,
+        approved: topupRequests.filter((r) => r.status === "APPROVED").length,
+        rejected: topupRequests.filter((r) => r.status === "REJECTED").length,
+      },
       firstRequestUserId: topupRequests[0]?.userId,
       firstRequestUserName: topupRequests[0]?.user?.name,
       firstRequestUserPhone: topupRequests[0]?.user?.phone,
+      firstRequestStatus: topupRequests[0]?.status,
+      allRequestStatuses: topupRequests.map((r) => r.status),
     });
 
-    // Get statistics
+    // Get statistics - ensure we handle all status values correctly
     const [
       totalCount,
       pendingCount,
@@ -167,20 +176,31 @@ export async function GET(request: NextRequest) {
         .aggregate({
           _sum: { amount: true },
         })
-        .then((result) => result._sum.amount || 0),
+        .then((result) => Math.round(result._sum.amount || 0)),
       prisma.topupRequest
         .aggregate({
           _sum: { amount: true },
           where: { status: "PENDING" },
         })
-        .then((result) => result._sum.amount || 0),
+        .then((result) => Math.round(result._sum.amount || 0)),
       prisma.topupRequest
         .aggregate({
           _sum: { amount: true },
           where: { status: "APPROVED" },
         })
-        .then((result) => result._sum.amount || 0),
+        .then((result) => Math.round(result._sum.amount || 0)),
     ]);
+
+    // Debug statistics
+    console.log("Statistics calculated:", {
+      totalCount,
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      totalAmount,
+      pendingAmount,
+      approvedAmount,
+    });
 
     // Verify data integrity
     const requestsWithIssues = topupRequests.filter((req) => !req.user);

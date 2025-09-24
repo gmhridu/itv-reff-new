@@ -73,24 +73,44 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create transaction record
+    // Get user with wallet balance for transaction
+    const userWithBalance = await db.user.findUnique({
+      where: { id: user.id },
+      select: { id: true, walletBalance: true, depositPaid: true },
+    });
+
+    if (!userWithBalance) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check if user has sufficient balance
+    if (userWithBalance.walletBalance < plan.price) {
+      return NextResponse.json(
+        { error: "Insufficient wallet balance for plan subscription" },
+        { status: 400 },
+      );
+    }
+
+    // Create transaction record for plan subscription
     await db.walletTransaction.create({
       data: {
         userId: user.id,
         type: "DEBIT",
         amount: plan.price,
-        balanceAfter: user.walletBalance - plan.price,
+        balanceAfter: userWithBalance.walletBalance - plan.price,
         description: `Plan subscription: ${plan.name}`,
         referenceId: `PLAN_${userPlan.id}`,
         status: "COMPLETED",
       },
     });
 
-    // Update user's wallet balance
+    // Update user's wallet balance (deduct from Current Balance)
+    // Update security deposited (add to Security Deposited)
     await db.user.update({
       where: { id: user.id },
       data: {
-        walletBalance: user.walletBalance - plan.price,
+        walletBalance: userWithBalance.walletBalance - plan.price,
+        depositPaid: userWithBalance.depositPaid + plan.price,
       },
     });
 

@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
         id: true,
         walletBalance: true,
         totalEarnings: true,
+        commissionBalance: true,
+        depositPaid: true,
       }
     });
 
@@ -30,9 +32,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get security refunds for grand total calculation
+    let totalSecurityRefund = 0;
+    try {
+      const securityRefunds = await db.securityRefundRequest.findMany({
+        where: {
+          userId: user.id,
+          status: "APPROVED",
+        },
+      });
+
+      totalSecurityRefund = securityRefunds.reduce(
+        (sum: number, refund: any) => sum + refund.refundAmount,
+        0,
+      );
+    } catch (error) {
+      console.warn("Security refund table not available yet:", error);
+    }
+
+    // Calculate grand total according to rules: Total Earnings + Security Refund
+    const grandTotal = (freshUser.totalEarnings || 0) + totalSecurityRefund;
+
     return NextResponse.json({
-      balance: freshUser.walletBalance,
-      totalEarnings: freshUser.totalEarnings,
+      currentBalance: freshUser.walletBalance, // Only top-ups after admin approval
+      securityDeposited: freshUser.depositPaid, // Plan subscription amounts
+      commissionBalance: freshUser.commissionBalance, // Daily task commissions
+      totalEarnings: freshUser.totalEarnings, // Only the 5 specified earning types
+      securityRefund: totalSecurityRefund, // Approved security refunds
+      grandTotal, // Total Earnings + Security Refund
     });
 
   } catch (error) {

@@ -101,7 +101,7 @@ export async function PATCH(
           await prisma.walletTransaction.create({
             data: {
               userId: securityRefund.userId,
-              type: "CREDIT",
+              type: "SECURITY_REFUND",
               amount: securityRefund.refundAmount,
               balanceAfter: newBalance,
               description: `Security refund - Level downgrade (${securityRefund.fromLevel} → ${securityRefund.toLevel})`,

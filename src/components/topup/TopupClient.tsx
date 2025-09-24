@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import {
+  formatPKR,
+  sanitizeAmountInput,
+  isValidCurrencyAmount,
+  formatAmountForInput,
+} from "@/lib/currency";
+import {
   Wallet,
   CreditCard,
   Upload,
@@ -314,15 +320,23 @@ export function TopupClient() {
       return;
     }
 
-    const amountNumber = parseFloat(amount);
-    if (isNaN(amountNumber) || amountNumber < 100) {
+    // Validate amount using utility function
+    const validation = isValidCurrencyAmount(amount, {
+      minAmount: 100,
+      maxAmount: 1000000,
+      allowZero: false,
+    });
+
+    if (!validation.valid) {
       toast({
         title: "Error",
-        description: "Amount must be at least 100 PKR",
+        description: validation.error || "Invalid amount",
         variant: "destructive",
       });
       return;
     }
+
+    const amountNumber = parseInt(amount, 10);
 
     setSubmitting(true);
 
@@ -792,16 +806,20 @@ export function TopupClient() {
                   <div className="space-y-2">
                     <Label htmlFor="amount">Amount (PKR)</Label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
+                        Rs
+                      </span>
                       <Input
                         id="amount"
-                        type="number"
+                        type="text"
                         placeholder="Enter amount (minimum 100 PKR)"
                         value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
+                        onChange={(e) => {
+                          // Sanitize input to only allow numbers
+                          const value = sanitizeAmountInput(e.target.value);
+                          setAmount(value);
+                        }}
                         className="pl-10 cursor-pointer"
-                        min="100"
-                        step="1"
                         required
                       />
                     </div>
@@ -978,7 +996,7 @@ export function TopupClient() {
                   {/* Submit Button */}
                   <Button
                     type="submit"
-                    className="w-full cursor-pointer mb-8"
+                    className="w-full cursor-pointer mb-12"
                     disabled={submitting || !selectedWallet || !amount}
                   >
                     {submitting ? (
@@ -1048,7 +1066,7 @@ export function TopupClient() {
                             <div className="space-y-2">
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold text-lg">
-                                  {request.amount} PKR
+                                  {formatPKR(request.amount)}
                                 </span>
                                 {getStatusBadge(request.status)}
                               </div>
