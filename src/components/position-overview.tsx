@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Crown,
   Star,
@@ -103,14 +104,14 @@ export default function PostionOverview() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(`Position upgrade successful! ${data.message}`);
+        toast.success(`Position upgrade successful! ${data.message}`);
         fetchCurrentPosition(); // Refresh current position
       } else {
-        alert(data.error || "Position upgrade failed");
+        toast.error(data.error || "Position upgrade failed");
       }
     } catch (error) {
       console.error("Position upgrade error:", error);
-      alert("Position upgrade failed");
+      toast.error("Position upgrade failed");
     } finally {
       setUpgrading(null);
     }

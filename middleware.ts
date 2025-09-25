@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { AdminMiddleware } from "@/lib/admin-middleware";
-import { SecureTokenManager } from "@/lib/token-manager";
+import { AdminMiddleware } from "./src/lib/admin-middleware";
+import { SecureTokenManager } from "./src/lib/token-manager";
 
 async function handleTokenRefresh(
   req: NextRequest,
@@ -90,51 +90,7 @@ export async function middleware(req: NextRequest) {
   const isProtectedApiRoute =
     isApiRoute && !pathname.startsWith("/api/auth/") && !isAdminApiRoute;
 
-  let userPayload: any = null;
-  if (token) {
-    userPayload = SecureTokenManager.verifyAccessToken(token);
-  }
-
-  if (userPayload) {
-    if (isAuthPage) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    return NextResponse.next();
-  }
-
-  if (isProtectedRoute || isProtectedApiRoute) {
-    const refreshResponse = await handleTokenRefresh(req);
-    if (refreshResponse) {
-      // If refresh is successful, continue with the refreshed request
-      if (refreshResponse.status === 307) { // Redirect response
-        return refreshResponse;
-      }
-      // If refresh is successful, the response has the new cookies.
-      // We rewrite this response to the original URL to continue the user's request.
-      return NextResponse.rewrite(req.url, refreshResponse);
-    }
-
-    // If refresh fails, redirect to login
-    const loginUrl = new URL("/", req.url);
-    if (isProtectedRoute) {
-      loginUrl.searchParams.set("redirect_after_login", pathname);
-    }
-    const res = NextResponse.redirect(loginUrl);
-    res.cookies.delete("access_token");
-    res.cookies.delete("refresh-token");
-
-    if (isProtectedApiRoute) {
-      // For API routes, we still want to return a 401 for client-side handling
-      // but ensure the client redirects to login
-      return NextResponse.json(
-        { error: "Authentication required", redirect: "/" },
-        { status: 401 },
-      );
-    }
-
-    return res;
-  }
-
+  // Handle admin routes first - they should bypass regular user authentication
   if (isAdminRoute) {
     try {
       const admin = await AdminMiddleware.authenticateAdmin(req);
@@ -162,6 +118,83 @@ export async function middleware(req: NextRequest) {
       });
       return response;
     }
+  }
+
+  // Handle admin login page
+  if (isAdminLoginPage && token) {
+    try {
+      const admin = await AdminMiddleware.authenticateAdmin(req);
+      if (admin) {
+        const redirectPath = req.cookies.get(
+          "admin_redirect_after_login",
+        )?.value;
+        const targetUrl = redirectPath || "/admin/analytics";
+        const response = NextResponse.redirect(new URL(targetUrl, req.url));
+        response.cookies.delete("admin_redirect_after_login");
+        return response;
+      }
+    } catch (error) {
+      console.error("Admin login page check error:", error);
+    }
+  }
+
+  // Regular user authentication logic (only for non-admin routes)
+  let userPayload: any = null;
+  if (token) {
+    userPayload = SecureTokenManager.verifyAccessToken(token);
+  }
+
+  // If token exists but is invalid/expired, try to refresh it for any page
+  if (token && !userPayload) {
+    const refreshResponse = await handleTokenRefresh(req);
+    if (refreshResponse) {
+      // If refresh is successful, continue with the refreshed request
+      if (refreshResponse.status === 307) { // Redirect response
+        return refreshResponse;
+      }
+      // If refresh is successful, the response has the new cookies.
+      // We rewrite this response to the original URL to continue the user's request.
+      return NextResponse.rewrite(req.url);
+    }
+
+    // If refresh fails, redirect to login for any page
+    const loginUrl = new URL("/", req.url);
+    if (isProtectedRoute) {
+      loginUrl.searchParams.set("redirect_after_login", pathname);
+    }
+    const res = NextResponse.redirect(loginUrl);
+    res.cookies.delete("access_token");
+    res.cookies.delete("refresh-token");
+    return res;
+  }
+
+  if (userPayload) {
+    if (isAuthPage) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (isProtectedRoute || isProtectedApiRoute) {
+    // If no token or refresh failed, redirect to login
+    const loginUrl = new URL("/", req.url);
+    if (isProtectedRoute) {
+      loginUrl.searchParams.set("redirect_after_login", pathname);
+    }
+    const res = NextResponse.redirect(loginUrl);
+    res.cookies.delete("access_token");
+    res.cookies.delete("refresh-token");
+
+    if (isProtectedApiRoute) {
+      // For API routes, we still want to return a 401 for client-side handling
+      // but ensure the client redirects to login
+      return NextResponse.json(
+        { error: "Authentication required", redirect: "/" },
+        { status: 401 },
+      );
+    }
+
+    return res;
   }
 
   if (isAdminLoginPage && token) {
