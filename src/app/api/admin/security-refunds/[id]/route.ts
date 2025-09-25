@@ -88,33 +88,31 @@ export async function PATCH(
           throw new Error("Insufficient security deposit for refund");
         }
 
-        const newWalletBalance =
-          currentUser.walletBalance + securityRefund.refundAmount;
         const newSecurityDeposited =
           currentUser.depositPaid - securityRefund.refundAmount;
 
-        // Deduct from Security Deposited and Add to Current Balance
+        // Deduct from Security Deposited and add to Security Refund field
         await prisma.user.update({
           where: { id: securityRefund.userId },
           data: {
-            walletBalance: {
-              increment: securityRefund.refundAmount, // Add to Current Balance
-            },
             depositPaid: {
               decrement: securityRefund.refundAmount, // Deduct from Security Deposited
+            },
+            securityRefund: {
+              increment: securityRefund.refundAmount, // Add to Security Refund field for withdrawal
             },
           },
         });
 
-        // Create wallet transaction record
+        // Create wallet transaction record (for audit purposes only)
         try {
           await prisma.walletTransaction.create({
             data: {
               userId: securityRefund.userId,
               type: "SECURITY_REFUND",
               amount: securityRefund.refundAmount,
-              balanceAfter: newWalletBalance,
-              description: `Security refund - Level downgrade (${securityRefund.fromLevel} → ${securityRefund.toLevel}) - Added to Current Balance`,
+              balanceAfter: currentUser.walletBalance, // No change to current balance
+              description: `Security refund - Level downgrade (${securityRefund.fromLevel} → ${securityRefund.toLevel}) - Available for withdrawal`,
               status: "COMPLETED",
               referenceId: `SEC_REF_${id}`,
               metadata: JSON.stringify({
@@ -123,7 +121,9 @@ export async function PATCH(
                 toLevel: securityRefund.toLevel,
                 processedBy: session.user.id,
                 deductedFromSecurityDeposit: securityRefund.refundAmount,
-                addedToCurrentBalance: securityRefund.refundAmount,
+                addedToSecurityRefund: securityRefund.refundAmount, // Added to securityRefund field
+                addedToCurrentBalance: 0, // No addition to current balance
+                addedToWithdrawal: true, // Security refund added to withdrawal availability
                 newSecurityDeposited: newSecurityDeposited,
               }),
             },

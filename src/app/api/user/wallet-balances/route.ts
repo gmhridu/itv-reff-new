@@ -104,13 +104,13 @@ export async function GET(request: NextRequest) {
       totalSecurityRefund = 0;
     }
 
-    // According to user-overview.tsx requirements:
+    // According to requirements:
     // - Current Balance (mainWallet) = Only topup balance (NOT part of Total Available for Withdrawal)
     // - Commission Wallet = Total Earnings (the 5 earning types)
     // - Security Deposited = Level deposit amounts (NOT part of Total Available for Withdrawal)
-    // - Total Available for Withdrawal = ONLY Total Earnings (5 types) - Security Refund is NOT included
+    // - Total Available for Withdrawal = Total Earnings (5 types) + Security Refund
 
-    const totalAvailableForWithdrawal = actualTotalEarnings; // Only Total Earnings (5 commission types)
+    const totalAvailableForWithdrawal = actualTotalEarnings + totalSecurityRefund; // Total Earnings + Security Refund
 
     response = NextResponse.json({
       success: true,
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
         // Additional fields for clarity and future use
         securityDeposited: freshUser.depositPaid || 0, // Security deposits (NOT part of withdrawal)
         securityRefund: totalSecurityRefund, // Security refunds (NOT part of withdrawal)
-        totalAvailableForWithdrawal: totalAvailableForWithdrawal, // ONLY Total Earnings (5 commission types)
+        totalAvailableForWithdrawal: totalAvailableForWithdrawal, // Total Earnings + Security Refund
       },
 
       // Additional metadata
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
           securityRefund: totalSecurityRefund,
           totalAvailableForWithdrawal: totalAvailableForWithdrawal,
         },
-        note: "Total Available for Withdrawal = ONLY Total Earnings (5 types). Security Refund, Current Balance and Security Deposited are NOT included.",
+        note: "Total Available for Withdrawal = Total Earnings (5 types) + Security Refund. Current Balance and Security Deposited are NOT included.",
       },
     });
 

@@ -154,11 +154,10 @@ export class TaskManagementBonusService {
         : "MANAGEMENT_BONUS_C";
 
     await db.$transaction(async (tx) => {
-      // Update user's balance
+      // Update user's balance (only add to totalEarnings, not walletBalance)
       await tx.user.update({
         where: { id: userId },
         data: {
-          walletBalance: { increment: bonusAmount },
           totalEarnings: { increment: bonusAmount },
         },
       });

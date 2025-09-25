@@ -97,7 +97,7 @@ interface EarningsData {
       currentBalance: number; // Only topup balance
       securityDeposited: number; // Level deposit amount
       commissionWallet: number; // Commission earnings
-      totalAvailableForWithdrawal: number; // Only Total Earnings + Security Refund
+      totalAvailableForWithdrawal: number; // Total Earnings (5 types) + Security Refund
     };
   };
 }
@@ -461,7 +461,7 @@ const UserOverview = () => {
                 )}
               </p>
               <div className="flex items-center gap-2">
-                <p className="text-xs text-green-200">Main Wallet</p>
+                <p className="text-xs text-green-200">Topup Balance Only</p>
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               </div>
             </div>
@@ -482,7 +482,7 @@ const UserOverview = () => {
                     "0.00"
                   )}
                 </p>
-                <p className="text-xs text-green-300">From tasks & referrals</p>
+                <p className="text-xs text-green-300">5 Commission Types Only</p>
               </div>
               <div className="bg-white/15 rounded-lg p-3 border border-white/5">
                 <div className="flex items-center justify-between mb-1">
@@ -515,17 +515,26 @@ const UserOverview = () => {
                   <p className="text-3xl font-bold text-yellow-200 mb-2">
                     PKR{" "}
                     {earningsData?.data?.wallet?.totalAvailableForWithdrawal?.toFixed(
-                      2,
+                      2
                     ) || "0.00"}
                   </p>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs text-yellow-200/90">
                       <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
                       <span>
-                        Total Earnings: PKR{" "}
+                        Total Earnings (5 Types): PKR{" "}
                         {earningsData?.data?.breakdown?.totalEarning?.toFixed(
-                          2,
+                          2
                         ) || "0.00"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-yellow-200/90">
+                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                      <span>
+                        + Security Refund: PKR{" "}
+                        {(
+                          earningsData?.data?.security?.totalRefunds || 0
+                        ).toFixed(2)}
                       </span>
                     </div>
                   </div>
@@ -663,7 +672,7 @@ const UserOverview = () => {
                         {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        },
+                        }
                       ) || "0.00"}
                     </p>
                     <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full mt-2">
@@ -688,7 +697,7 @@ const UserOverview = () => {
                       </p>
                       <p className="text-sm text-gray-600">
                         {(earningsData?.data?.security?.totalRefunds || 0) > 0
-                          ? "Approved refunds from previous level upgrades (added to Current Balance)"
+                          ? "Approved refunds from previous level upgrades (added to withdrawal only)"
                           : "No refunds available yet - upgrade your level to unlock"}
                       </p>
                     </div>
@@ -705,7 +714,7 @@ const UserOverview = () => {
                     </p>
                     <p className="text-xs text-green-600 mt-1">
                       {(earningsData?.data?.security?.totalRefunds || 0) > 0
-                        ? "Added to Current Balance"
+                        ? "Added to withdrawal (not current balance)"
                         : "Available after level upgrade"}
                     </p>
                   </div>
@@ -718,7 +727,7 @@ const UserOverview = () => {
                         Security deposits from{" "}
                         {earningsData?.data?.security?.refundHistory?.length ||
                           "previous"}{" "}
-                        level upgrade(s) refunded and added to Current Balance
+                        level upgrade(s) refunded and added to withdrawal availability
                       </span>
                     </div>
                   </div>
@@ -748,6 +757,18 @@ const UserOverview = () => {
                           })}
                         </span>
                       </div>
+                      <div className="flex items-center justify-between">
+                        <span>🛡️ Security Refund:</span>
+                        <span className="font-medium">
+                          PKR{" "}
+                          {(
+                            earningsData?.data?.security?.totalRefunds || 0
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
                       <div className="border-t border-yellow-300/30 pt-1 mt-2">
                         <div className="flex items-center justify-between font-semibold">
                           <span>📊 Total Available for Withdrawal:</span>
@@ -758,7 +779,7 @@ const UserOverview = () => {
                               {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
-                              },
+                              }
                             ) || "0.00"}
                           </span>
                         </div>
@@ -773,7 +794,7 @@ const UserOverview = () => {
                         {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
-                        },
+                        }
                       ) || "0.00"}
                     </p>
                     <div className="bg-white/20 px-3 py-1 rounded-full">

@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
           walletBalance: true, // Current Balance (topup balance only)
           commissionBalance: true, // Commission wallet
           depositPaid: true, // Security Deposited
+          securityRefund: true, // Security refund amount available for withdrawal
         },
       });
     });
@@ -154,27 +155,8 @@ export async function GET(request: NextRequest) {
     // Calculate actual total earnings from transactions
     const actualTotalEarnings = earningTransactions._sum.amount || 0;
 
-    // Get security refunds (separate from earnings) with retry logic
-    let totalSecurityRefund = 0;
-    try {
-      const securityRefunds = await withRetry(async (prisma) => {
-        return await prisma.securityRefundRequest.aggregate({
-          where: {
-            userId: user.id,
-            status: "APPROVED",
-          },
-          _sum: {
-            refundAmount: true,
-          },
-        });
-      });
-
-      totalSecurityRefund = securityRefunds._sum.refundAmount || 0;
-    } catch (error: any) {
-      console.warn("Security refund table not available yet:", error.message);
-      // Don't fail the entire request if security refunds aren't available
-      totalSecurityRefund = 0;
-    }
+    // Get security refund from user table (accumulated approved refunds)
+    const userSecurityRefund = freshUser.securityRefund || 0;
 
     // According to requirements:
     // - Current Balance = Only topup balance (NOT part of Total Earnings or Total Available for Withdrawal)
@@ -187,11 +169,11 @@ export async function GET(request: NextRequest) {
       currentBalance: freshUser.walletBalance || 0, // Only topup balance after admin approval
       securityDeposited: freshUser.depositPaid || 0, // Level subscription deposit amounts
       commissionBalance: actualTotalEarnings, // Commission earnings (matches Total Earnings)
-      securityRefund: totalSecurityRefund, // Approved security refunds (separate from earnings)
+      securityRefund: userSecurityRefund, // Approved security refunds (stored separately)
 
       // Total calculations
       totalEarnings: actualTotalEarnings, // Only the 5 specified earning types
-      totalAvailableForWithdrawal: actualTotalEarnings, // Only Total Earnings (5 commission types)
+      totalAvailableForWithdrawal: actualTotalEarnings + userSecurityRefund, // Total Earnings + Security Refund
 
       // Detailed breakdown of Total Earnings (5 types only)
       earningsBreakdown: {
@@ -203,7 +185,7 @@ export async function GET(request: NextRequest) {
       },
 
       // Legacy field for backward compatibility
-      grandTotal: actualTotalEarnings + totalSecurityRefund, // Same as totalAvailableForWithdrawal
+      grandTotal: actualTotalEarnings + userSecurityRefund, // Same as totalAvailableForWithdrawal
     });
   } catch (error: any) {
     console.error("Get wallet balance error:", error);

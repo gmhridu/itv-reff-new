@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authMiddleware } from "@/lib/api/api-auth";
 import { db } from "@/lib/db";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
+import { authMiddleware } from "@/lib/api/api-auth";
 
 export async function GET(request: NextRequest) {
   let response: NextResponse;
@@ -175,27 +175,6 @@ export async function GET(request: NextRequest) {
       new Date(),
     );
 
-    // Get security refund information (SEPARATE from earnings)
-    let securityRefunds: any[] = [];
-    let totalSecurityRefund = 0;
-
-    try {
-      securityRefunds = await db.securityRefundRequest.findMany({
-        where: {
-          userId: user.id,
-          status: "APPROVED",
-        },
-      });
-
-      totalSecurityRefund = securityRefunds.reduce(
-        (sum: number, refund: any) => sum + refund.refundAmount,
-        0,
-      );
-    } catch (error) {
-      console.warn("Security refund table not available yet:", error);
-      totalSecurityRefund = 0;
-    }
-
     // Get current user wallet information
     const currentUser = await db.user.findUnique({
       where: { id: user.id },
@@ -203,13 +182,17 @@ export async function GET(request: NextRequest) {
         walletBalance: true, // Current Balance (topup balance)
         commissionBalance: true, // Commission wallet
         depositPaid: true, // Security Deposited
+        securityRefund: true, // Security refund amount available for withdrawal
       },
     });
 
+    // Get security refund information from user table (accumulated approved refunds)
+    const userSecurityRefund = currentUser?.securityRefund || 0;
+
     // According to requirements:
-    // Total Available for Withdrawal = ONLY Total Earnings (5 types)
-    // (NOT including Current Balance/Security Deposited/Security Refunds)
-    const totalAvailableForWithdrawal = allTimeEarnings.totalEarning;
+    // Total Available for Withdrawal = Total Earnings (5 types) + Security Refund
+    // (NOT including Current Balance/Security Deposited)
+    const totalAvailableForWithdrawal = allTimeEarnings.totalEarning + userSecurityRefund;
 
     const earningsData = {
       success: true,
@@ -251,15 +234,15 @@ export async function GET(request: NextRequest) {
         },
 
         security: {
-          totalRefunds: totalSecurityRefund,
-          refundHistory: securityRefunds,
+          totalRefunds: userSecurityRefund,
+          refundHistory: [], // Can be populated from securityRefundRequest table if needed for detailed history
         },
 
         wallet: {
           currentBalance: currentUser?.walletBalance || 0, // Only topup balance
           securityDeposited: currentUser?.depositPaid || 0, // Level deposit amount
           commissionWallet: allTimeEarnings.totalEarning, // Commission earnings (matches Total Earnings)
-          totalAvailableForWithdrawal, // Only Total Earnings (5 types only)
+          totalAvailableForWithdrawal: allTimeEarnings.totalEarning + userSecurityRefund, // Total Earnings + Security Refund
         },
 
         recentTransactions: allEarningTransactions.slice(0, 20).map((t) => ({

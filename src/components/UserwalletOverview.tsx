@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -15,58 +15,37 @@ import {
 import { redirect, useRouter } from "next/navigation";
 import { Button } from "./ui/button";
 
+interface WalletData {
+  currentBalance: number;
+  securityDeposited: number;
+  commissionBalance: number;
+  totalEarnings: number;
+  securityRefund: number;
+  totalAvailableForWithdrawal: number;
+  earningsBreakdown: {
+    dailyTaskCommission: number;
+    referralInviteCommission: number;
+    referralTaskCommission: number;
+    usdtTopupBonus: number;
+    specialCommission: number;
+  };
+}
+
+interface Transaction {
+  id: string;
+  type: "CREDIT" | "DEBIT";
+  amount: number;
+  balanceAfter: number;
+  description: string;
+  referenceId: string;
+  status: string;
+  metadata: any;
+  createdAt: string;
+}
+
 const transactionData = {
-  recharge: [
-    {
-      id: "2025082102033124774131311",
-      amount: "52000",
-      date: "2025-08-21 02:03:31",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082102031862466293756",
-      amount: "52000",
-      date: "2025-08-21 02:03:18",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082102031154656503801",
-      amount: "52000",
-      date: "2025-08-21 02:03:11",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082102001228341761621",
-      amount: "52000",
-      date: "2025-08-21 02:00:12",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082101592793789817061",
-      amount: "20000",
-      date: "2025-08-21 01:59:27",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082101592253152308041",
-      amount: "20000",
-      date: "2025-08-21 01:59:22",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082101590383704842351",
-      amount: "20000",
-      date: "2025-08-21 01:59:03",
-      status: "Pending payment",
-    },
-    {
-      id: "2025082101581417436459421",
-      amount: "20000",
-      date: "2025-08-21 01:58:14",
-      status: "Pending payment",
-    },
-  ],
-  withdrawal: [],
+  recharge: [] as Transaction[],
+  withdrawal: [] as Transaction[],
 };
 
 const getStatusIcon = (status) => {
@@ -97,7 +76,41 @@ const getStatusColor = (status) => {
 
 export default function UserWalletOverview() {
   const [activeRecordTab, setActiveRecordTab] = useState("recharge");
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    fetchWalletData();
+    fetchTransactions();
+  }, []);
+
+  const fetchWalletData = async () => {
+    try {
+      const response = await fetch("/api/wallet/balance");
+      if (response.ok) {
+        const data = await response.json();
+        setWalletData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching wallet data:", error);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    try {
+      const response = await fetch("/api/wallet/transactions?limit=10");
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const redirectToWithdraw = () => {
     redirect("/withdraw");
@@ -106,6 +119,17 @@ export default function UserWalletOverview() {
   const handleBack = () => {
     router.back();
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading wallet...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
@@ -140,10 +164,12 @@ export default function UserWalletOverview() {
                   <Wallet className="w-4 h-4" />
                   <p className="text-sm font-medium opacity-90">Main Wallet</p>
                 </div>
-                <p className="text-2xl font-bold">PKR 0.00</p>
+                <p className="text-2xl font-bold">
+                  PKR {loading ? "0.00" : (walletData?.currentBalance || 0).toFixed(2)}
+                </p>
                 <div className="flex items-center gap-1 justify-center md:justify-start mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span className="text-xs opacity-75">Available Balance</span>
+                  <span className="text-xs opacity-75">Topup Balance Only</span>
                 </div>
               </div>
 
@@ -159,10 +185,12 @@ export default function UserWalletOverview() {
                     Commission Wallet
                   </p>
                 </div>
-                <p className="text-2xl font-bold">PKR 14,300.00</p>
+                <p className="text-2xl font-bold">
+                  PKR {loading ? "0.00" : (walletData?.totalEarnings || 0).toFixed(2)}
+                </p>
                 <div className="flex items-center gap-1 justify-center md:justify-end mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  <span className="text-xs opacity-75">Total Earnings</span>
+                  <span className="text-xs opacity-75">5 Commission Types Only</span>
                 </div>
               </div>
             </div>
@@ -218,7 +246,12 @@ export default function UserWalletOverview() {
 
             {/* Transaction List */}
             <div className="p-4">
-              {transactionData[activeRecordTab].length === 0 ? (
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-3"></div>
+                  <p className="text-gray-500">Loading transactions...</p>
+                </div>
+              ) : transactions.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-gray-400 mb-3">
                     <Wallet className="w-12 h-12 mx-auto opacity-50" />
@@ -230,27 +263,32 @@ export default function UserWalletOverview() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {transactionData[activeRecordTab].map(
-                    (transaction, index) => (
+                  {transactions
+                    .filter((transaction) =>
+                      activeRecordTab === "recharge"
+                        ? transaction.type === "CREDIT"
+                        : transaction.type === "DEBIT"
+                    )
+                    .map((transaction, index) => (
                       <div
-                        key={index}
+                        key={transaction.id || index}
                         className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           {/* Left Side - Transaction ID and Amount */}
                           <div className="flex-1">
                             <p className="text-xs text-gray-600 mb-1 font-mono">
-                              {transaction.id}
+                              {transaction.referenceId || transaction.id}
                             </p>
                             <p className="text-lg font-bold text-indigo-600">
-                              PKR {parseInt(transaction.amount).toLocaleString()}
+                              PKR {transaction.amount.toLocaleString()}
                             </p>
                           </div>
 
                           {/* Right Side - Date and Status */}
                           <div className="text-right">
                             <p className="text-xs text-gray-600 mb-1">
-                              {transaction.date}
+                              {new Date(transaction.createdAt).toLocaleDateString()}
                             </p>
                             <div
                               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium ${getStatusColor(
@@ -263,8 +301,7 @@ export default function UserWalletOverview() {
                           </div>
                         </div>
                       </div>
-                    )
-                  )}
+                    ))}
                 </div>
               )}
             </div>

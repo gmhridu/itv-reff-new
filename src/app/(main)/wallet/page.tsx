@@ -15,13 +15,10 @@ import { Label } from "@/components/ui/label";
 import {
   Wallet,
   TrendingUp,
-  TrendingDown,
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
-  Filter,
   Download,
-  Eye,
 } from "lucide-react";
 
 interface Transaction {
@@ -182,7 +179,7 @@ export default function WalletPage() {
                 PKR {walletData?.currentBalance.toFixed(2) || "0.00"}
               </div>
               <p className="text-xs text-muted-foreground">
-                Topup balance only
+                Topup balance only (no security refunds)
               </p>
             </CardContent>
           </Card>
@@ -217,7 +214,7 @@ export default function WalletPage() {
                 {walletData?.totalAvailableForWithdrawal.toFixed(2) || "0.00"}
               </div>
               <p className="text-xs text-muted-foreground">
-                Total Earnings only (5 commission types)
+                Total Earnings + Security Refund
               </p>
             </CardContent>
           </Card>
@@ -230,7 +227,7 @@ export default function WalletPage() {
               Total Earnings Breakdown
             </CardTitle>
             <CardDescription>
-              Your earnings from the 5 specific commission types only
+              Your earnings from the 5 specific commission types (excludes Security Refund)
             </CardDescription>
             <div className="text-2xl font-bold text-blue-600">
               PKR {walletData?.totalEarnings.toFixed(2) || "0.00"}
@@ -338,7 +335,7 @@ export default function WalletPage() {
                     PKR {walletData.securityRefund.toFixed(2)}
                   </div>
                   <p className="text-xs text-gray-700">
-                    Approved refunds (not part of earnings)
+                    Approved security deposit refunds (included in withdrawal amount)
                   </p>
                 </div>
               )}

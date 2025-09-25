@@ -26,7 +26,7 @@ export interface ThreeTierRewardResult {
 }
 
 export class EnhancedReferralService {
-  
+
   private static readonly REWARD_RATES: ReferralRewardRates = {
     L1: { A: 200, B: 60, C: 20 },
     L2: { A: 500, B: 150, C: 50 },
@@ -121,7 +121,7 @@ export class EnhancedReferralService {
       for (const hierarchyEntry of hierarchy) {
         const referrer = hierarchyEntry.referrer;
         const referrerPosition = referrer.currentPosition;
-        
+
         if (!referrerPosition || referrerPosition.name === 'Intern') continue;
 
         const rewardAmount = this.calculateReferralReward(
@@ -141,7 +141,7 @@ export class EnhancedReferralService {
           );
 
           result.totalRewardsDistributed += rewardAmount;
-          
+
           if (hierarchyEntry.level === 'A_LEVEL') {
             result.rewardsBreakdown.aLevel = {
               userId: referrer.id,
@@ -231,11 +231,10 @@ export class EnhancedReferralService {
                            level === 'B_LEVEL' ? 'REFERRAL_REWARD_B' : 'REFERRAL_REWARD_C';
 
     await db.$transaction(async (tx) => {
-      // Update referrer's balance
+      // Update referrer's balance (only add to totalEarnings, not walletBalance)
       await tx.user.update({
         where: { id: referrerId },
         data: {
-          walletBalance: { increment: amount },
           totalEarnings: { increment: amount }
         }
       });

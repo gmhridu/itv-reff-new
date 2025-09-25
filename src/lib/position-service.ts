@@ -136,7 +136,7 @@ export class PositionService {
             currentPositionId: targetPosition.id,
             positionStartDate: startDate,
             positionEndDate: endDate,
-            depositPaid: targetPosition.deposit,
+            depositPaid: { increment: targetPosition.deposit }, // Add to existing deposit instead of overwriting
             isIntern: targetPosition.name === 'Intern'
           }
         });

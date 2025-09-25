@@ -531,12 +531,19 @@ export const WithdrawClient = () => {
               </div>
               <div className="mt-2 text-sm text-gray-600">
                 <div className="flex justify-between">
-                  <span>Total Earnings :</span>
+                  <span>Total Earnings (5 Types) :</span>
                   <span>
                     PKR {(walletBalances.totalEarnings || 0).toFixed(2)}
                   </span>
                 </div>
-
+                {walletBalances.securityRefund > 0 && (
+                  <div className="flex justify-between">
+                    <span>Security Refund :</span>
+                    <span>
+                      PKR {(walletBalances.securityRefund || 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
