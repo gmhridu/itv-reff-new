@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
 import { PositionService } from "@/lib/position-service";
-import { EnhancedReferralService } from "@/lib/enhanced-referral-service";
+import { ReferralService } from "@/lib/referral-service";
 import { UserNotificationService } from "@/lib/user-notification-service";
 
 export async function POST(request: NextRequest) {
@@ -41,18 +41,18 @@ export async function POST(request: NextRequest) {
 
     // If upgrade successful and user has referrers, process referral rewards
     if (upgradeResult.newPosition) {
-      const referralResult =
-        await EnhancedReferralService.processThreeTierReferralRewards(
-          user.id,
-          upgradeResult.newPosition.name,
-        );
+      const referralResult = await ReferralService.processReferralQualification(
+        user.id,
+        upgradeResult.newPosition.name,
+      );
 
-      if (
-        referralResult.success &&
-        referralResult.totalRewardsDistributed > 0
-      ) {
+      if (referralResult.success && referralResult.rewards) {
         console.log(
-          `Referral rewards distributed for position upgrade: ${referralResult.totalRewardsDistributed} PKR`,
+          `Position upgrade commissions distributed: ${referralResult.rewards.reduce((sum, r) => sum + r.amount, 0)} PKR`,
+        );
+      } else if (referralResult.reason) {
+        console.log(
+          `Position upgrade commissions not processed: ${referralResult.reason}`,
         );
       }
 
@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
           unitPrice: upgradeResult.newPosition.unitPrice,
         },
         referralRewards: {
-          totalDistributed: referralResult.totalRewardsDistributed,
-          breakdown: referralResult.rewardsBreakdown,
+          totalDistributed: referralResult.rewards?.reduce((sum, r) => sum + r.amount, 0) || 0,
+          breakdown: referralResult.rewards || [],
         },
       });
     }

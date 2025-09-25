@@ -29,8 +29,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Generate referral link
-    const referralLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}?ref=${freshUser.referralCode}`;
+    // Generate referral link with register path
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://icl.finance';
+    const referralLink = `${baseUrl}/register?ref=${freshUser.referralCode}`;
 
     return NextResponse.json({
       referralCode: freshUser.referralCode,

@@ -8,6 +8,7 @@ import { addAPISecurityHeaders } from '@/lib/security-headers';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { SecureTokenManager } from '@/lib/token-manager';
 import { createUser } from '@/lib/api/auth';
+import { db } from '@/lib/db';
 
 // Store CAPTCHA codes in memory (in production, use Redis or similar)
 const captchaStore = new Map<string, { code: string; expiresAt: number }>();
@@ -19,12 +20,12 @@ function generateAndStoreCaptcha(request: NextRequest): string {
   for (let i = 0; i < 6; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  
+
   const clientId = getClientIP(request) + request.headers.get('user-agent');
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-  
+
   captchaStore.set(clientId, { code: result, expiresAt });
-  
+
   // Clean up expired entries periodically
   if (Math.random() < 0.1) { // 10% chance to clean up
     const now = Date.now();
@@ -34,7 +35,7 @@ function generateAndStoreCaptcha(request: NextRequest): string {
       }
     }
   }
-  
+
   return result;
 }
 
@@ -42,23 +43,23 @@ function generateAndStoreCaptcha(request: NextRequest): string {
 function verifyCaptcha(request: NextRequest, code: string): boolean {
   const clientId = getClientIP(request) + request.headers.get('user-agent');
   const captchaData = captchaStore.get(clientId);
-  
+
   if (!captchaData) {
     return false;
   }
-  
+
   // Check if expired
   if (Date.now() > captchaData.expiresAt) {
     captchaStore.delete(clientId);
     return false;
   }
-  
+
   // Check if code matches
   const isValid = captchaData.code === code.toUpperCase();
-  
+
   // Remove the used CAPTCHA
   captchaStore.delete(clientId);
-  
+
   return isValid;
 }
 
@@ -195,6 +196,7 @@ export async function POST(request: NextRequest) {
 
     // Process referral if provided
     let referralReward = 0;
+    let referrerId: string | null = null;
     if (validatedData.referralCode) {
       const referralResult = await ReferralService.processReferralRegistration(
         validatedData.referralCode,
@@ -206,10 +208,19 @@ export async function POST(request: NextRequest) {
         referralReward = referralResult.rewardAmount || 0;
       }
 
+      // Get the referrer ID for hierarchy building
+      const referrer = await db.user.findUnique({
+        where: { referralCode: validatedData.referralCode },
+        select: { id: true }
+      });
+      referrerId = referrer?.id || null;
+
       // Build referral hierarchy for the new user
       try {
-        await EnhancedReferralService.buildReferralHierarchy(user.id);
-        console.log(`✅ Referral hierarchy built for user: ${user.phone}`);
+        if (referrerId) {
+          await ReferralService.buildReferralHierarchy(user.id, referrerId);
+          console.log(`✅ Referral hierarchy built for user: ${user.phone}`);
+        }
       } catch (error) {
         console.error(`❌ Failed to build referral hierarchy for user ${user.phone}:`, error);
         // Don't fail registration if hierarchy building fails
@@ -289,7 +300,7 @@ export async function POST(request: NextRequest) {
 // Add a GET endpoint to generate CAPTCHA codes
 export async function GET(request: NextRequest) {
   const captchaCode = generateAndStoreCaptcha(request);
-  
+
   // Return the CAPTCHA code (in a real implementation, you might return an image)
   return NextResponse.json({ captcha: captchaCode });
 }

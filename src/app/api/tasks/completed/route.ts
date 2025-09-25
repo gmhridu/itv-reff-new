@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { NotificationService } from "@/lib/notification-service";
 import { NotificationType, NotificationSeverity } from "@prisma/client";
 import { ReferralService } from "@/lib/referral-service";
+import { TaskBonusService } from "@/lib/task-bonus-service";
 
 export async function GET(request: NextRequest) {
   try {
@@ -256,25 +257,43 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Process referral task commissions (8%-3%-1% multi-level)
+    // Check if user has completed 100% of daily tasks and process bonus if eligible
     try {
-      const referralResult =
-        await ReferralService.processReferralTaskCommission(
+      // First check the user's daily task completion status
+      const completionStatus = await TaskBonusService.checkDailyTaskCompletion(
+        user.id,
+      );
+
+      console.log(
+        `User ${user.id} task completion: ${completionStatus.tasksCompleted}/${completionStatus.tasksRequired} (${completionStatus.completionPercentage.toFixed(1)}%)`,
+      );
+
+      // If this completion brings them to 100%, process the bonus
+      if (completionStatus.isComplete) {
+        const bonusResult = await TaskBonusService.processDailyTaskBonus(
           user.id,
-          rewardAmount,
         );
 
-      if (referralResult.success && referralResult.rewards) {
+        if (bonusResult.success && bonusResult.rewards) {
+          console.log(
+            `✅ Task bonus commissions processed for user ${user.id}:`,
+            bonusResult.rewards,
+          );
+          console.log(
+            `Total bonus distributed: PKR ${bonusResult.rewards.reduce((sum, r) => sum + r.amount, 0)}`,
+          );
+        } else {
+          console.log(
+            `⚠️ Task bonus not processed for user ${user.id}: ${bonusResult.message}`,
+          );
+        }
+      } else {
         console.log(
-          `Referral task commissions processed for user ${user.id}:`,
-          referralResult.rewards,
+          `User ${user.id} has not completed 100% of daily tasks yet (${completionStatus.completionPercentage.toFixed(1)}%). No bonus commission.`,
         );
       }
-    } catch (referralError) {
-      console.error(
-        "Failed to process referral task commissions:",
-        referralError,
-      );
+    } catch (bonusError) {
+      console.error("Failed to process task bonus commissions:", bonusError);
     }
 
     // Send notification

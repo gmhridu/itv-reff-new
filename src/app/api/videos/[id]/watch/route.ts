@@ -3,7 +3,7 @@ import { authMiddleware, validateVideoWatchRequest } from "@/lib/api/api-auth";
 import { db } from "@/lib/db";
 import { ReferralService } from "@/lib/referral-service";
 import { PositionService } from "@/lib/position-service";
-import { TaskManagementBonusService } from "@/lib/task-management-bonus-service";
+import { TaskBonusService } from "@/lib/task-bonus-service";
 import { EnhancedReferralService } from "@/lib/enhanced-referral-service";
 import { UserNotificationService } from "@/lib/user-notification-service";
 
@@ -81,6 +81,19 @@ export async function POST(
     const position = userPosition.position!;
     const rewardPerVideo = position.unitPrice;
     const dailyLimit = position.tasksPerDay;
+
+    // Get user's current commission balance
+    const userWithBalance = await db.user.findUnique({
+      where: { id: user.id },
+      select: { commissionBalance: true },
+    });
+
+    if (!userWithBalance) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 },
+      );
+    }
 
     // Count today's watched videos
     const todayTasksCount = await PositionService.getDailyTasksCompleted(
@@ -162,7 +175,7 @@ export async function POST(
     await db.user.update({
       where: { id: user.id },
       data: {
-        commissionBalance: user.commissionBalance + rewardEarned,
+        commissionBalance: userWithBalance.commissionBalance + rewardEarned,
       },
     });
 
@@ -172,7 +185,7 @@ export async function POST(
         userId: user.id,
         type: "TASK_INCOME",
         amount: rewardEarned,
-        balanceAfter: user.commissionBalance + rewardEarned,
+        balanceAfter: userWithBalance.commissionBalance + rewardEarned,
         description: `Task reward: ${video.title} (${position.name})`,
         referenceId: `TASK_${videoTask.id}`,
         status: "COMPLETED",
@@ -194,64 +207,36 @@ export async function POST(
       },
     });
 
-    // Distribute management bonuses to upline
-    const bonusResult =
-      await TaskManagementBonusService.distributeManagementBonuses(
-        user.id,
-        rewardEarned,
-        new Date(),
-      );
+    // Check if user has completed 100% of daily tasks for task bonus
+    const dailyTasksCompleted = await PositionService.getDailyTasksCompleted(user.id);
+    const dailyTaskLimit = position.tasksPerDay;
+    const completionPercentage = (dailyTasksCompleted / dailyTaskLimit) * 100;
 
-    if (bonusResult.success && bonusResult.totalBonusDistributed > 0) {
-      console.log(
-        `Management bonuses distributed: ${bonusResult.totalBonusDistributed} PKR`,
-      );
-    }
+    // Initialize bonus result
+    let bonusResult: any = { success: false, rewards: [], message: "No bonus processed" };
 
-    // Process referral rewards
-    const totalVideosWatched = await db.userVideoTask.count({
-      where: { userId: user.id },
-    });
+    // Only distribute task bonuses if user completed 100% of daily tasks
+    if (completionPercentage >= 100) {
+      bonusResult = await TaskBonusService.processDailyTaskBonus(user.id);
 
-    // Check for first video referral reward
-    if (totalVideosWatched === 1) {
-      const firstVideoResult =
-        await ReferralService.processReferralQualification(
-          user.id,
-          "first_video",
-        );
-
-      if (firstVideoResult.success && firstVideoResult.rewardAmount) {
+      if (bonusResult.success && bonusResult.rewards) {
         console.log(
-          `First video referral reward: $${firstVideoResult.rewardAmount} awarded`,
+          `Task bonuses distributed: ${bonusResult.rewards.reduce((sum: number, r: any) => sum + r.amount, 0)} PKR (100% daily tasks completed)`,
         );
+      } else {
+        console.log(`Task bonus processing failed: ${bonusResult.message}`);
       }
-    }
-
-    // Check for weekly activity milestone (7 videos)
-    if (totalVideosWatched === 7) {
-      await ReferralService.processReferralQualification(
-        user.id,
-        "weekly_activity",
+    } else {
+      console.log(
+        `Task bonus not distributed: ${completionPercentage.toFixed(1)}% completed (${dailyTasksCompleted}/${dailyTaskLimit} tasks)`,
       );
     }
 
-    // Check for high earner milestone ($50 total earnings)
-    const updatedUser = await db.user.findUnique({
-      where: { id: user.id },
-      select: { totalEarnings: true },
-    });
-
-    if (
-      updatedUser &&
-      updatedUser.totalEarnings >= 50 &&
-      updatedUser.totalEarnings - rewardEarned < 50
-    ) {
-      await ReferralService.processReferralQualification(
-        user.id,
-        "high_earner",
-      );
-    }
+    // Note: Referral commissions are now handled on position upgrades, not video milestones
+    // This ensures one-time commission per referred user when they upgrade their position level
+    console.log(
+      `Video task completed for user ${user.id}. Referral commissions will be given when user upgrades their position level.`,
+    );
 
     // Send notification about video completion and earnings
     try {
@@ -272,12 +257,13 @@ export async function POST(
     return NextResponse.json({
       message: "Task completed successfully",
       rewardEarned: rewardEarned,
-      newCommissionBalance: user.commissionBalance + rewardEarned,
+      newCommissionBalance: userWithBalance.commissionBalance + rewardEarned,
       tasksCompletedToday: todayTasksCount + 1,
       dailyTaskLimit: dailyLimit,
       positionLevel: position.name,
-      managementBonusDistributed: bonusResult.totalBonusDistributed,
-      bonusBreakdown: bonusResult.bonusBreakdown,
+      taskBonusDistributed: bonusResult.success ? bonusResult.rewards?.reduce((sum: number, r: any) => sum + r.amount, 0) || 0 : 0,
+      taskBonusBreakdown: bonusResult.rewards || [],
+      completionPercentage: completionPercentage,
       debug: {
         watchDuration: watchDuration,
         minimumRequired: MINIMUM_WATCH_TIME,

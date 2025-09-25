@@ -134,20 +134,44 @@ export class ReferralService {
     }
   }
 
-  // Process referral qualification (when referred user tops up AND subscribes to plan)
+  // Process referral qualification (when referred user upgrades position level)
   static async processReferralQualification(
     userId: string,
-    planAmount: number,
+    positionLevelName: string,
   ): Promise<{
     success: boolean;
     rewards?: Array<{
       referrerId: string;
       level: string;
       amount: number;
-      type: "invite";
+      type: "position_upgrade";
     }>;
+    reason?: string;
   }> {
     try {
+      // Check if this user has already given commission to referrers (one-time only)
+      const existingCommissionTransactions = await db.walletTransaction.findMany({
+        where: {
+          type: {
+            in: ["REFERRAL_REWARD_A", "REFERRAL_REWARD_B", "REFERRAL_REWARD_C"],
+          },
+          status: "COMPLETED",
+          metadata: {
+            contains: `"referredUserId":"${userId}"`
+          }
+        },
+      });
+
+      if (existingCommissionTransactions.length > 0) {
+        console.log(
+          `User ${userId} has already given commission to referrers, no additional commissions will be given`,
+        );
+        return {
+          success: false,
+          reason: "User has already given commission to referrers - one-time only per referred user",
+        };
+      }
+
       // Find user's referral hierarchy
       const hierarchyLevels = await db.referralHierarchy.findMany({
         where: { userId },
@@ -159,34 +183,80 @@ export class ReferralService {
         orderBy: { level: "asc" },
       });
 
+      // Check if commissions have already been given for this user by checking wallet transactions for referrers
+      for (const hierarchy of hierarchyLevels) {
+        const existingCommissionTransactions = await db.walletTransaction.findMany({
+          where: {
+            userId: hierarchy.referrerId,
+            type: {
+              in: ["REFERRAL_REWARD_A", "REFERRAL_REWARD_B", "REFERRAL_REWARD_C"],
+            },
+            status: "COMPLETED",
+          },
+        });
+
+        // Check if any of these transactions are for the current user
+        for (const transaction of existingCommissionTransactions) {
+          if (transaction.metadata) {
+            try {
+              const metadata = JSON.parse(transaction.metadata);
+              if (metadata.referredUserId === userId) {
+                console.log(
+                  `Commissions already processed for user ${userId} by referrer ${hierarchy.referrerId}, existing transaction:`,
+                  transaction,
+                );
+                return {
+                  success: false,
+                  reason: "Commissions have already been given for this referred user",
+                };
+              }
+            } catch (error) {
+              // If metadata parsing fails, continue checking
+              continue;
+            }
+          }
+        }
+      }
+
       if (hierarchyLevels.length === 0) {
-        return { success: false };
+        return { success: false, reason: "No referral hierarchy found" };
       }
 
       const rewards: Array<{
         referrerId: string;
         level: string;
         amount: number;
-        type: "invite";
+        type: "position_upgrade";
       }> = [];
 
-      // Award referral invite commission to each level
-      // Level A (direct referrer) → 10%
-      // Level B (2nd level) → 3%
-      // Level C (3rd level) → 1%
-      const commissionRates = {
-        A_LEVEL: 0.1, // 10%
-        B_LEVEL: 0.03, // 3%
-        C_LEVEL: 0.01, // 1%
+      // Position-based commission rates (one-time per referred user)
+      const positionCommissionRates = {
+        L1: { A_LEVEL: 200, B_LEVEL: 60, C_LEVEL: 20 },
+        L2: { A_LEVEL: 500, B_LEVEL: 150, C_LEVEL: 50 },
+        L3: { A_LEVEL: 2000, B_LEVEL: 600, C_LEVEL: 200 },
+        L4: { A_LEVEL: 5000, B_LEVEL: 1500, C_LEVEL: 500 },
+        L5: { A_LEVEL: 10000, B_LEVEL: 3000, C_LEVEL: 1000 },
+        L6: { A_LEVEL: 25000, B_LEVEL: 7500, C_LEVEL: 2500 },
+        L7: { A_LEVEL: 50000, B_LEVEL: 15000, C_LEVEL: 5000 },
+        L8: { A_LEVEL: 100000, B_LEVEL: 30000, C_LEVEL: 10000 },
+        L9: { A_LEVEL: 200000, B_LEVEL: 60000, C_LEVEL: 20000 },
+        L10: { A_LEVEL: 400000, B_LEVEL: 120000, C_LEVEL: 40000 },
+        L11: { A_LEVEL: 800000, B_LEVEL: 240000, C_LEVEL: 80000 },
       };
 
+      // Get the commission rates for this position level
+      const rates = positionCommissionRates[positionLevelName as keyof typeof positionCommissionRates];
+      if (!rates) {
+        console.log(`No commission rates defined for position level: ${positionLevelName}`);
+        return { success: false, reason: "No commission rates defined for this position level" };
+      }
+
+      // Process each level separately
       for (const hierarchy of hierarchyLevels) {
         if (hierarchy.referrer.status !== "ACTIVE") continue;
 
-        const commissionRate = commissionRates[hierarchy.level];
-        if (!commissionRate) continue;
-
-        const commissionAmount = planAmount * commissionRate;
+        const commissionAmount = rates[hierarchy.level as keyof typeof rates];
+        if (!commissionAmount) continue;
 
         // Determine transaction type based on level
         const transactionType =
@@ -203,32 +273,35 @@ export class ReferralService {
           commissionAmount,
           transactionType,
           hierarchy.level,
-          planAmount,
+          positionLevelName,
         );
 
         rewards.push({
           referrerId: hierarchy.referrerId,
           level: hierarchy.level,
           amount: commissionAmount,
-          type: "invite" as const,
+          type: "position_upgrade" as const,
         });
       }
 
-      // Mark referral activity as qualified
+      // Mark referral activity as rewarded - only update activities that were created for this specific user
+      const totalCommission = rewards.reduce((sum, reward) => sum + reward.amount, 0);
       await db.referralActivity.updateMany({
         where: {
           referredUserId: userId,
           status: "REGISTERED",
         },
         data: {
-          status: "QUALIFIED",
+          status: "REWARDED",
+          rewardAmount: totalCommission,
+          rewardPaidAt: new Date(),
         },
       });
 
       return { success: true, rewards };
     } catch (error) {
       console.error("Error processing referral qualification:", error);
-      return { success: false };
+      return { success: false, reason: "Internal error occurred" };
     }
   }
 
@@ -320,7 +393,7 @@ export class ReferralService {
   }
 
   // Build referral hierarchy for multi-level commissions
-  private static async buildReferralHierarchy(
+  static async buildReferralHierarchy(
     newUserId: string,
     directReferrerId: string,
   ): Promise<void> {
@@ -371,14 +444,14 @@ export class ReferralService {
     }
   }
 
-  // Award referral invite commission
+  // Award referral position upgrade commission
   private static async awardReferralInviteCommission(
     referrerId: string,
     referredUserId: string,
     commissionAmount: number,
     transactionType: string,
     level: string,
-    planAmount: number,
+    positionLevelName: string,
   ): Promise<void> {
     try {
       // Get referred user info for transaction description
@@ -387,48 +460,53 @@ export class ReferralService {
         select: { name: true, email: true, phone: true },
       });
 
-      // Update referrer's commission balance (NOT main wallet)
-      await db.user.update({
-        where: { id: referrerId },
-        data: {
-          commissionBalance: { increment: commissionAmount },
-        },
+      // Use database transaction to ensure consistency
+      await db.$transaction(async (tx) => {
+        // Update referrer's commission balance (NOT main wallet)
+        await tx.user.update({
+          where: { id: referrerId },
+          data: {
+            commissionBalance: { increment: commissionAmount },
+          },
+        });
+
+        // Get updated balance for transaction record
+        const updatedReferrer = await tx.user.findUnique({
+          where: { id: referrerId },
+          select: { commissionBalance: true },
+        });
+
+        const levelName =
+          level === "A_LEVEL"
+            ? "Direct"
+            : level === "B_LEVEL"
+              ? "2nd Level"
+              : "3rd Level";
+
+        // Create transaction record
+        await tx.walletTransaction.create({
+          data: {
+            userId: referrerId,
+            type: transactionType as any,
+            amount: commissionAmount,
+            balanceAfter: updatedReferrer!.commissionBalance,
+            description: `Position Upgrade Commission - ${levelName}: ${referredUser?.name || referredUser?.phone} upgraded to ${positionLevelName} (PKR ${commissionAmount})`,
+            referenceId: `POSITION_UPGRADE_${level}_${referredUserId}_${Date.now()}`,
+            status: "COMPLETED",
+            metadata: JSON.stringify({
+              referredUserId,
+              level,
+              positionLevelName,
+              commissionAmount,
+              type: "position_upgrade",
+            }),
+          },
+        });
       });
 
-      // Get updated balance for transaction record
-      const updatedReferrer = await db.user.findUnique({
-        where: { id: referrerId },
-        select: { commissionBalance: true },
-      });
-
-      const levelName =
-        level === "A_LEVEL"
-          ? "Direct (10%)"
-          : level === "B_LEVEL"
-            ? "2nd Level (3%)"
-            : "3rd Level (1%)";
-
-      // Create transaction record
-      await db.walletTransaction.create({
-        data: {
-          userId: referrerId,
-          type: transactionType as any,
-          amount: commissionAmount,
-          balanceAfter: updatedReferrer!.commissionBalance,
-          description: `Referral Invite Commission - ${levelName}: ${referredUser?.name || referredUser?.phone} subscribed to plan (PKR ${planAmount})`,
-          referenceId: `REFERRAL_INVITE_${level}_${referredUserId}_${Date.now()}`,
-          status: "COMPLETED",
-          metadata: JSON.stringify({
-            referredUserId,
-            level,
-            planAmount,
-            commissionRate:
-              level === "A_LEVEL" ? "10%" : level === "B_LEVEL" ? "3%" : "1%",
-          }),
-        },
-      });
+      console.log(`Position upgrade commission awarded: ${referrerId} received PKR ${commissionAmount} from ${referredUserId}'s ${positionLevelName} upgrade`);
     } catch (error) {
-      console.error("Error awarding referral invite commission:", error);
+      console.error("Error awarding referral position upgrade commission:", error);
       throw error;
     }
   }
@@ -498,7 +576,7 @@ export class ReferralService {
   // Generate referral link
   static generateReferralLink(referralCode: string, baseUrl?: string): string {
     const url =
-      baseUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      baseUrl || process.env.NEXT_PUBLIC_APP_URL || "https://icl.finance";
     return `${url}/register?ref=${referralCode}`;
   }
 

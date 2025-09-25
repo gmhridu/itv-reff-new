@@ -52,8 +52,14 @@ export interface WatchVideoRequest {
 export interface WatchVideoResponse {
   success: boolean;
   message: string;
-  reward?: number;
-  newBalance?: number;
+  rewardEarned?: number;
+  newCommissionBalance?: number;
+  tasksCompletedToday?: number;
+  dailyTaskLimit?: number;
+  positionLevel?: string;
+  taskBonusDistributed?: number;
+  taskBonusBreakdown?: any[];
+  completionPercentage?: number;
   tasksRemaining?: number;
 }
 

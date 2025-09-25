@@ -35,19 +35,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already has an active plan
-    const existingPlan = await db.userPlan.findFirst({
+    const existingActivePlan = await db.userPlan.findFirst({
       where: {
         userId: user.id,
         status: "ACTIVE",
       },
     });
 
-    if (existingPlan) {
+    if (existingActivePlan) {
       return NextResponse.json(
         { error: "You already have an active plan" },
         { status: 400 },
       );
     }
+
+    // Check if this is user's first ever subscription (for referral commission purposes)
+    const isFirstSubscription =
+      (await db.userPlan.findFirst({
+        where: {
+          userId: user.id,
+        },
+      })) === null;
 
     // In a real implementation, you would process the payment here
     // For now, we'll simulate successful payment
@@ -115,25 +123,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Process referral invite commissions (10%-3%-1% multi-level)
-    try {
-      const referralResult = await ReferralService.processReferralQualification(
-        user.id,
-        plan.price,
-      );
-
-      if (referralResult.success && referralResult.rewards) {
-        console.log(
-          `Referral invite commissions processed for user ${user.id}:`,
-          referralResult.rewards,
-        );
-      }
-    } catch (referralError) {
-      console.error(
-        "Failed to process referral invite commissions:",
-        referralError,
-      );
-    }
+    // Note: Referral commissions are now handled on position upgrades, not plan subscriptions
+    // This ensures one-time commission per referred user when they upgrade their position level
+    console.log(
+      `Plan subscription completed for user ${user.id}. Referral commissions will be given when user upgrades their position level.`,
+    );
 
     // Send plan subscription notification
     try {

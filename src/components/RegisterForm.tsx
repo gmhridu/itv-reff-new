@@ -42,6 +42,7 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
   const [captchaCode, setCaptchaCode] = useState("");
   const [userCaptchaInput, setUserCaptchaInput] = useState("");
   const [captchaError, setCaptchaError] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   const getFullYear = () => {
@@ -68,6 +69,17 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
   // Generate initial CAPTCHA on component mount
   useEffect(() => {
     setCaptchaCode(generateCaptchaCode());
+  }, []);
+
+  // Auto-fill referral code from URL parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      if (refCode) {
+        setReferralCode(refCode);
+      }
+    }
   }, []);
 
   // Use useActionState with the registerAction
@@ -280,10 +292,23 @@ export default function RegisterForm({ registerAction }: RegisterFormProps) {
                     name="referralCode"
                     type="text"
                     placeholder="Enter referral code"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
                     className="bg-slate-50/50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-emerald-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 pl-12 h-12 rounded-xl transition-all duration-200"
                     disabled={isPending}
                   />
+                  {referralCode && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                 </div>
+                {referralCode && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <Gift className="w-3 h-3" />
+                    Referral code auto-filled from link
+                  </p>
+                )}
               </div>
 
               {/* CAPTCHA Section */}
