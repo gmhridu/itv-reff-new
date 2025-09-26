@@ -53,54 +53,99 @@ export async function GET(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Calculate ONLY the 5 specified earning types for Total Earnings with retry logic
-    const earningTransactions = await withRetry(async (prisma) => {
-      return await prisma.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: {
-            in: [
-              "TASK_INCOME", // 1. Daily Task Commission
-              "REFERRAL_REWARD_A", // 2. Referral Invite Commission - Level A (10%)
-              "REFERRAL_REWARD_B", // 2. Referral Invite Commission - Level B (3%)
-              "REFERRAL_REWARD_C", // 2. Referral Invite Commission - Level C (1%)
-              "MANAGEMENT_BONUS_A", // 3. Referral Task Commission - Level A (8%)
-              "MANAGEMENT_BONUS_B", // 3. Referral Task Commission - Level B (3%)
-              "MANAGEMENT_BONUS_C", // 3. Referral Task Commission - Level C (1%)
-              "TOPUP_BONUS", // 4. USDT Top-up Bonus (3%)
-              "SPECIAL_COMMISSION", // 5. Special Commission
-            ] as any,
-          },
-          status: "COMPLETED",
-        },
-        _sum: {
-          amount: true,
-        },
-      });
-    });
+    // Calculate individual commission balances using hierarchical system (same as withdrawal logic)
+    const commissionTypes = [
+      { type: "TASK_INCOME", name: "Daily Task Commission" },
+      { type: "REFERRAL_REWARD_A", name: "Referral Invite Commission" },
+      { type: "REFERRAL_REWARD_B", name: "Referral Task Commission B" },
+      { type: "REFERRAL_REWARD_C", name: "Referral Task Commission C" },
+      { type: "TOPUP_BONUS", name: "USDT Top-up Bonus (3%)" },
+      { type: "SPECIAL_COMMISSION", name: "Special Commission" },
+    ];
 
-    // Calculate actual total earnings from transactions (ONLY the 5 earning types)
-    const actualTotalEarnings = earningTransactions._sum.amount || 0;
+    // Calculate balance for each commission type (includes both earnings and deductions)
+    let actualTotalEarnings = 0;
+    const commissionBreakdown: { [key: string]: number } = {};
 
-    // Get security refunds (separate from earnings) with retry logic
-    let totalSecurityRefund = 0;
-    try {
-      const securityRefunds = await withRetry(async (prisma) => {
-        return await prisma.securityRefundRequest.aggregate({
+    console.log(`[DEBUG] Calculating balances for user: ${user.id}`);
+
+    for (const commission of commissionTypes) {
+      const balance = await withRetry(async (prisma) => {
+        return await prisma.walletTransaction.aggregate({
           where: {
             userId: user.id,
-            status: "APPROVED",
+            type: commission.type as any,
+            status: "COMPLETED",
           },
-          _sum: {
-            refundAmount: true,
-          },
+          _sum: { amount: true },
         });
       });
 
-      totalSecurityRefund = securityRefunds._sum.refundAmount || 0;
+      const rawBalance = balance._sum.amount || 0;
+      const currentBalance = Math.max(0, rawBalance); // Ensure no negative balances
+      commissionBreakdown[commission.type] = currentBalance;
+      actualTotalEarnings += currentBalance;
+
+      console.log(`[DEBUG] ${commission.name}: raw=${rawBalance}, displayed=${currentBalance}`);
+    }
+
+    console.log(`[DEBUG] Total Commission Earnings: ${actualTotalEarnings}`);
+
+    // Get security refunds with withdrawal deductions properly accounted for
+    let totalSecurityRefund = 0;
+    try {
+      // Strategy: Always prioritize transaction-based calculation over request-based
+      // This ensures withdrawal deductions are properly reflected
+
+      // First, get all security refund transactions (credits and deductions)
+      const securityRefundTransactions = await withRetry(async (prisma) => {
+        return await prisma.walletTransaction.aggregate({
+          where: {
+            userId: user.id,
+            type: "SECURITY_REFUND" as any,
+            status: "COMPLETED",
+          },
+          _sum: { amount: true },
+        });
+      });
+
+      const transactionAmount = securityRefundTransactions._sum.amount || 0;
+      console.log(`[DEBUG] Security Refund Transactions Sum: ${transactionAmount}`);
+
+      if (transactionAmount > 0) {
+        // If we have positive transaction balance, use it (accounts for deductions)
+        totalSecurityRefund = transactionAmount;
+        console.log(`[DEBUG] Using transaction-based security refund: ${totalSecurityRefund}`);
+      } else {
+        // Fallback: Check approved requests if no transactions exist
+        const securityRefunds = await withRetry(async (prisma) => {
+          return await prisma.securityRefundRequest.aggregate({
+            where: {
+              userId: user.id,
+              status: "APPROVED",
+            },
+            _sum: {
+              refundAmount: true,
+            },
+          });
+        });
+
+        const requestAmount = securityRefunds._sum.refundAmount || 0;
+        console.log(`[DEBUG] Security Refund Requests Sum: ${requestAmount}`);
+
+        // If there are approved requests but no transactions, we need to create initial transactions
+        if (requestAmount > 0 && transactionAmount === 0) {
+          console.log(`[DEBUG] Found approved security refund requests without transactions - this needs manual intervention`);
+          // For now, use the request amount but log this issue
+          totalSecurityRefund = requestAmount;
+        } else {
+          totalSecurityRefund = Math.max(0, transactionAmount);
+        }
+      }
+
+      console.log(`[DEBUG] Final Security Refund: ${totalSecurityRefund}`);
     } catch (error: any) {
-      console.warn("Security refund table not available yet:", error.message);
-      // Don't fail the entire request if security refunds aren't available
+      console.warn("Security refund calculation error:", error.message);
       totalSecurityRefund = 0;
     }
 
@@ -111,6 +156,11 @@ export async function GET(request: NextRequest) {
     // - Total Available for Withdrawal = Total Earnings (5 types) + Security Refund
 
     const totalAvailableForWithdrawal = actualTotalEarnings + totalSecurityRefund; // Total Earnings + Security Refund
+
+    console.log(`[DEBUG] Final Calculation:`);
+    console.log(`[DEBUG] - Total Earnings: ${actualTotalEarnings}`);
+    console.log(`[DEBUG] - Security Refund: ${totalSecurityRefund}`);
+    console.log(`[DEBUG] - Total Available for Withdrawal: ${totalAvailableForWithdrawal}`);
 
     response = NextResponse.json({
       success: true,
@@ -132,6 +182,7 @@ export async function GET(request: NextRequest) {
           totalEarnings: actualTotalEarnings,
           securityRefund: totalSecurityRefund,
           totalAvailableForWithdrawal: totalAvailableForWithdrawal,
+          commissionBreakdown: commissionBreakdown,
         },
         note: "Total Available for Withdrawal = Total Earnings (5 types) + Security Refund. Current Balance and Security Deposited are NOT included.",
       },

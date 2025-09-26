@@ -1,61 +1,62 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
+// prisma/schema.prisma
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // uncomment next line if you use Prisma <5.10
+ directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 model User {
-  id                  String                @id @default(cuid())
-  email               String?               @unique
-  name                String?
-  phone               String                @unique
-  password            String
-  emailVerified       Boolean               @default(false)
-  phoneVerified       Boolean               @default(false)
-  referralCode        String                @unique
-  referredBy          String?
-  status              UserStatus            @default(ACTIVE)
-  ipAddress           String?
-  deviceId            String?
-  walletBalance       Float                 @default(0)
-  totalEarnings       Float                 @default(0)
-  currentPositionId   String?
-  positionStartDate   DateTime?
-  positionEndDate     DateTime?
-  depositPaid         Float                 @default(0)
-  isIntern            Boolean               @default(true)
-  failedLoginAttempts Int?                  @default(0)
-  lastFailedLogin     DateTime?
-  lockedUntil         DateTime?
-  lastLoginAt         DateTime?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  commissionBalance   Float                 @default(0)
-  securityRefund      Float                 @default(0)
-  fundPassword        String?
-  activityLogs        ActivityLog[]
-  bankCards           BankCard[]
-  referralActivities  ReferralActivity[]
-  referrerHierarchy   ReferralHierarchy[]   @relation("ReferrerHierarchy")
-  referralHierarchy   ReferralHierarchy[]   @relation("UserReferralHierarchy")
-  systemLogs          SystemLog[]
-  subordinateBonuses  TaskManagementBonus[] @relation("SubordinateBonuses")
-  managementBonuses   TaskManagementBonus[] @relation("UserManagementBonuses")
-  TopupRequest        TopupRequest[]
-  userAnnouncements   UserAnnouncement[]
-  userOffers          UserOffer[]
-  userPlan            UserPlan?
-  userProfile         UserProfile?
-  videoTasks          UserVideoTask[]
-  currentPosition        PositionLevel?           @relation(fields: [currentPositionId], references: [id])
-  referrer               User?                    @relation("UserReferrals", fields: [referredBy], references: [id])
-  referrals              User[]                   @relation("UserReferrals")
+  id                     String                  @id @default(cuid())
+  email                  String?                 @unique
+  name                   String?
+  phone                  String                  @unique
+  password               String
+  emailVerified          Boolean                 @default(false)
+  phoneVerified          Boolean                 @default(false)
+  referralCode           String                  @unique
+  referredBy             String?
+  status                 UserStatus              @default(ACTIVE)
+  ipAddress              String?
+  deviceId               String?
+  walletBalance          Float                   @default(0)
+  totalEarnings          Float                   @default(0)
+  currentPositionId      String?
+  positionStartDate      DateTime?
+  positionEndDate        DateTime?
+  depositPaid            Float                   @default(0)
+  isIntern               Boolean                 @default(true)
+  failedLoginAttempts    Int?                    @default(0)
+  lastFailedLogin        DateTime?
+  lockedUntil            DateTime?
+  lastLoginAt            DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  commissionBalance      Float                   @default(0)
+  securityRefund         Float                   @default(0)
+  fundPassword           String?
+  activityLogs           ActivityLog[]
+  bankCards              BankCard[]
+  referralActivities     ReferralActivity[]
+  referrerHierarchy      ReferralHierarchy[]     @relation("ReferrerHierarchy")
+  referralHierarchy      ReferralHierarchy[]     @relation("UserReferralHierarchy")
+  systemLogs             SystemLog[]
+  subordinateBonuses     TaskManagementBonus[]   @relation("SubordinateBonuses")
+  managementBonuses      TaskManagementBonus[]   @relation("UserManagementBonuses")
+  TopupRequest           TopupRequest[]
+  userAnnouncements      UserAnnouncement[]
+  userOffers             UserOffer[]
+  userPlan               UserPlan?
+  userProfile            UserProfile?
+  videoTasks             UserVideoTask[]
+  currentPosition        PositionLevel?          @relation(fields: [currentPositionId], references: [id])
+  referrer               User?                   @relation("UserReferrals", fields: [referredBy], references: [id])
+  referrals              User[]                  @relation("UserReferrals")
   transactions           WalletTransaction[]
   withdrawalRequests     WithdrawalRequest[]
   securityRefundRequests SecurityRefundRequest[]
@@ -539,19 +540,19 @@ model SliderImage {
 }
 
 model SecurityRefundRequest {
-  id            String                  @id @default(cuid())
-  userId        String
-  fromLevel     Int
-  toLevel       Int
-  refundAmount  Float
-  status        SecurityRefundStatus    @default(PENDING)
-  requestNote   String?
-  adminNotes    String?
-  processedAt   DateTime?
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
+  id           String               @id @default(cuid())
+  userId       String
+  fromLevel    Int
+  toLevel      Int
+  refundAmount Float
+  status       SecurityRefundStatus @default(PENDING)
+  requestNote  String?
+  adminNotes   String?
+  processedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 
-  user          User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("security_refund_requests")
 }
@@ -694,15 +695,15 @@ enum SecurityRefundStatus {
 }
 
 model PasswordReset {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
-  used      Boolean  @default(false)
+  used      Boolean   @default(false)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])

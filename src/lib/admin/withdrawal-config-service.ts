@@ -216,9 +216,62 @@ export class WithdrawalConfigService {
       };
     }
 
-    // Check total available balance (Main Wallet + Commission Wallet)
-    const totalAvailableBalance =
-      (user.walletBalance || 0) + (user.commissionBalance || 0);
+    // Calculate individual commission balances using hierarchical system
+    const commissionTypes = [
+      { type: "TASK_INCOME" as any, name: "Daily Task Commission" },
+      { type: "REFERRAL_REWARD_A" as any, name: "Referral Invite Commission" },
+      { type: "REFERRAL_REWARD_B" as any, name: "Referral Task Commission B" },
+      { type: "REFERRAL_REWARD_C" as any, name: "Referral Task Commission C" },
+      { type: "TOPUP_BONUS" as any, name: "USDT Top-up Bonus (3%)" },
+      { type: "SPECIAL_COMMISSION" as any, name: "Special Commission" },
+    ];
+
+    // Calculate balance for each commission type
+    let totalCommissionBalance = 0;
+
+    for (const commission of commissionTypes) {
+      const balance = await prisma.walletTransaction.aggregate({
+        where: {
+          userId: userId,
+          type: commission.type,
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
+      });
+
+      const currentBalance = Math.max(0, balance._sum.amount || 0); // Ensure no negative balances
+      totalCommissionBalance += currentBalance;
+    }
+
+    // Get security refunds (calculated separately as last resort)
+    let totalSecurityRefund = 0;
+    try {
+      const securityRefunds = await prisma.securityRefundRequest.aggregate({
+        where: {
+          userId: userId,
+          status: "APPROVED",
+        },
+        _sum: { refundAmount: true },
+      });
+      totalSecurityRefund = securityRefunds._sum.refundAmount || 0;
+
+      // Also check for security refund transaction credits
+      const securityRefundTransactions = await prisma.walletTransaction.aggregate({
+        where: {
+          userId: userId,
+          type: "SECURITY_REFUND" as any,
+          status: "COMPLETED" as any,
+        },
+        _sum: { amount: true },
+      });
+      totalSecurityRefund = Math.max(totalSecurityRefund, securityRefundTransactions._sum.amount || 0);
+    } catch (error: any) {
+      console.warn("Security refund calculation error:", error.message);
+      totalSecurityRefund = 0;
+    }
+
+    // Total available balance for withdrawal = All Commission Types + Security Refund
+    const totalAvailableBalance = totalCommissionBalance + totalSecurityRefund;
 
     // Calculate fees and total deduction
     const calculation = await this.calculateWithdrawal(

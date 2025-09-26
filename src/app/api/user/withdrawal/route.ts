@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin/notification-service";
 import { NotificationService } from "@/lib/notification-service";
 import { withdrawalConfigService } from "@/lib/admin/withdrawal-config-service";
+import { TransactionType, TransactionStatus } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   let response: NextResponse;
@@ -75,29 +76,63 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Get user with wallet balances using raw query
-    const userData = await prisma.$queryRaw<
-      {
-        walletBalance: number;
-        commissionBalance: number;
-        totalAvailableBalance: number;
-      }[]
-    >`
-      SELECT "walletBalance", "commissionBalance",
-             ("walletBalance" + "commissionBalance") as "totalAvailableBalance"
-      FROM "users"
-      WHERE "id" = ${user.id}
-    `;
+    // Calculate individual commission balances (hierarchical order)
+    const commissionTypes = [
+      { type: TransactionType.TASK_INCOME, name: "Daily Task Commission" },
+      { type: TransactionType.REFERRAL_REWARD_A, name: "Referral Invite Commission" },
+      { type: TransactionType.REFERRAL_REWARD_B, name: "Referral Task Commission B" },
+      { type: TransactionType.REFERRAL_REWARD_C, name: "Referral Task Commission C" },
+      { type: TransactionType.TOPUP_BONUS, name: "USDT Top-up Bonus (3%)" },
+      { type: TransactionType.SPECIAL_COMMISSION, name: "Special Commission" },
+    ];
 
-    if (!userData || userData.length === 0) {
-      response = NextResponse.json(
-        { error: "User not found" },
-        { status: 404 },
-      );
-      return addAPISecurityHeaders(response);
+    // Calculate balance for each commission type
+    const commissionBalances: { [key: string]: number } = {};
+    let totalCommissionBalance = 0;
+
+    for (const commission of commissionTypes) {
+      const balance = await prisma.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: commission.type,
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
+      });
+
+      const currentBalance = balance._sum.amount || 0;
+      commissionBalances[commission.type] = Math.max(0, currentBalance); // Ensure no negative balances
+      totalCommissionBalance += commissionBalances[commission.type];
     }
 
-    const totalAvailableBalance = userData[0].totalAvailableBalance;
+    // Get security refunds (calculated separately as last resort)
+    let totalSecurityRefund = 0;
+    try {
+      const securityRefunds = await prisma.securityRefundRequest.aggregate({
+        where: {
+          userId: user.id,
+          status: "APPROVED",
+        },
+        _sum: { refundAmount: true },
+      });
+      totalSecurityRefund = securityRefunds._sum.refundAmount || 0;
+
+      // Also check for security refund transaction credits
+      const securityRefundTransactions = await prisma.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: TransactionType.SECURITY_REFUND,
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
+      });
+      totalSecurityRefund = Math.max(totalSecurityRefund, securityRefundTransactions._sum.amount || 0);
+    } catch (error: any) {
+      console.warn("Security refund calculation error:", error.message);
+      totalSecurityRefund = 0;
+    }
+
+    const totalAvailableBalance = totalCommissionBalance + totalSecurityRefund;
 
     // Get withdrawal configuration
     const config = await withdrawalConfigService.getWithdrawalConfig();
@@ -161,37 +196,115 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Deduct amount from commission wallet (as per requirement)
-    await prisma.$executeRaw`
-      UPDATE "users"
-      SET "commissionBalance" = "commissionBalance" - ${totalDeduction}
-      WHERE "id" = ${user.id}
-    `;
+    // Implement hierarchical deduction system
+    // Order: Daily Task → Referral Invite → Referral Task B → Referral Task C → USDT Bonus → Special → Security Refund
 
-    // Create wallet transaction record
-    await prisma.walletTransaction.create({
+    let remainingDeduction = totalDeduction;
+    const deductionBreakdown: { [key: string]: number } = {};
+
+    // Step 1: Deduct from commission types in hierarchical order
+    for (const commission of commissionTypes) {
+      if (remainingDeduction <= 0) break;
+
+      const availableBalance = commissionBalances[commission.type];
+      if (availableBalance > 0) {
+        const deductionAmount = Math.min(remainingDeduction, availableBalance);
+        deductionBreakdown[commission.type] = deductionAmount;
+        remainingDeduction -= deductionAmount;
+
+        // Create deduction transaction directly
+        await prisma.walletTransaction.create({
+          data: {
+            userId: user.id,
+            type: commission.type,
+            amount: -deductionAmount, // Negative for deduction
+            balanceAfter: 0, // Not affecting walletBalance
+            description: `Withdrawal deduction from ${commission.name} - ${isUsdtWithdrawal ? 'USDT' : bankCard.bankName}`,
+            referenceId: `${commission.type.toLowerCase()}-deduction-${withdrawalRequest.id}`,
+            status: TransactionStatus.COMPLETED,
+            metadata: JSON.stringify({
+              withdrawalRequestId: withdrawalRequest.id,
+              deductionType: commission.type,
+              commissionName: commission.name,
+              originalBalance: availableBalance,
+              deductionAmount: deductionAmount,
+              balanceAfterDeduction: availableBalance - deductionAmount,
+              isWithdrawalDeduction: true,
+            }),
+          },
+        });
+      }
+    }
+
+    // Step 2: If still amount remaining, deduct from Security Refund
+    let securityRefundDeduction = 0;
+    if (remainingDeduction > 0 && totalSecurityRefund > 0) {
+      securityRefundDeduction = Math.min(remainingDeduction, totalSecurityRefund);
+      deductionBreakdown["SECURITY_REFUND"] = securityRefundDeduction;
+      remainingDeduction -= securityRefundDeduction;
+
+      // Create security refund deduction transaction
+      await prisma.walletTransaction.create({
+        data: {
+          userId: user.id,
+          type: TransactionType.SECURITY_REFUND,
+          amount: -securityRefundDeduction, // Negative for deduction
+          balanceAfter: 0, // Not affecting walletBalance
+          description: `Withdrawal deduction from Security Refund - ${isUsdtWithdrawal ? 'USDT' : bankCard.bankName}`,
+          referenceId: `security-refund-deduction-${withdrawalRequest.id}`,
+          status: TransactionStatus.COMPLETED,
+          metadata: JSON.stringify({
+            withdrawalRequestId: withdrawalRequest.id,
+            deductionType: "security_refund",
+            originalSecurityRefund: totalSecurityRefund,
+            deductionAmount: securityRefundDeduction,
+            securityRefundAfterDeduction: totalSecurityRefund - securityRefundDeduction,
+            isWithdrawalDeduction: true,
+          }),
+        },
+      });
+    }
+
+    // Verify we have enough balance for the withdrawal
+    if (remainingDeduction > 0) {
+      throw new Error(`Insufficient balance for withdrawal. Missing: PKR ${remainingDeduction.toFixed(2)}`);
+    }
+
+    // Store hierarchical deduction details in withdrawal request metadata
+    const updatedPaymentDetails = {
+      bankName: bankCard.bankName,
+      accountNumber: bankCard.accountNumber,
+      cardHolderName: bankCard.cardHolderName,
+      walletType: walletType,
+      handlingFee: handlingFee,
+      isUsdtWithdrawal: isUsdtWithdrawal,
+      usdtRate: config.usdtToPkrRate,
+      usdtAmount: calculation.usdtAmount,
+      usdtNetworkFee: config.usdtNetworkFee,
+      usdtAmountAfterFee: calculation.usdtAmountAfterFee,
+      hierarchicalDeductionDetails: {
+        totalDeduction: totalDeduction,
+        deductionBreakdown: deductionBreakdown,
+        originalCommissionBalances: commissionBalances,
+        originalSecurityRefund: totalSecurityRefund,
+        commissionDeductionOrder: commissionTypes.map(c => ({
+          type: c.type,
+          name: c.name,
+          originalBalance: commissionBalances[c.type],
+          deducted: deductionBreakdown[c.type] || 0,
+          balanceAfter: commissionBalances[c.type] - (deductionBreakdown[c.type] || 0),
+        })),
+        securityRefundDeduction: securityRefundDeduction,
+        securityRefundAfter: totalSecurityRefund - securityRefundDeduction,
+        totalAvailableBalance: totalAvailableBalance,
+      },
+    };
+
+    // Update withdrawal request with detailed deduction information
+    await prisma.withdrawalRequest.update({
+      where: { id: withdrawalRequest.id },
       data: {
-        userId: user.id,
-        type: "DEBIT",
-        amount: -totalDeduction,
-        balanceAfter: userData[0].commissionBalance - totalDeduction,
-        description: isUsdtWithdrawal
-          ? `USDT withdrawal request - ${bankCard.accountNumber.slice(0, 8)}...${bankCard.accountNumber.slice(-8)}`
-          : `Withdrawal request - ${bankCard.bankName} ${bankCard.accountNumber} (including 10% handling fee)`,
-        referenceId: withdrawalRequest.id,
-        status: "COMPLETED",
-        metadata: JSON.stringify({
-          walletType: walletType,
-          withdrawalAmount: withdrawalAmount,
-          handlingFee: handlingFee,
-          paymentMethod: bankCard.bankName,
-          accountNumber: bankCard.accountNumber,
-          isUsdtWithdrawal: isUsdtWithdrawal,
-          usdtRate: config.usdtToPkrRate,
-          usdtAmount: calculation.usdtAmount,
-          usdtNetworkFee: config.usdtNetworkFee,
-          usdtAmountAfterFee: calculation.usdtAmountAfterFee,
-        }),
+        paymentDetails: JSON.stringify(updatedPaymentDetails),
       },
     });
 

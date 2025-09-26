@@ -111,4 +111,32 @@ export class NotificationService {
       throw error;
     }
   }
+
+  static async emitToUser(userId: string, data: any) {
+    try {
+      if (!io) {
+        console.warn('Socket.IO not initialized, cannot emit to user');
+        return;
+      }
+
+      io.to(`user_${userId}`).emit('notification', data);
+    } catch (error) {
+      console.error('Error emitting to user:', error);
+      throw error;
+    }
+  }
+
+  static async emitToRoom(room: string, data: any) {
+    try {
+      if (!io) {
+        console.warn('Socket.IO not initialized, cannot emit to room');
+        return;
+      }
+
+      io.to(room).emit('notification', data);
+    } catch (error) {
+      console.error('Error emitting to room:', error);
+      throw error;
+    }
+  }
 }

@@ -4,6 +4,11 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Type-safe global declaration for development
+declare global {
+  var prisma: PrismaClient | undefined;
+}
+
 // Database connection configuration with retry mechanism
 const createPrismaClient = () => {
   return new PrismaClient({
@@ -13,18 +18,10 @@ const createPrismaClient = () => {
         : ["error"],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: process.env.DATABASE_URL!,
       },
     },
     errorFormat: "pretty",
-    // Connection pool configuration
-    __internal: {
-      engine: {
-        connectTimeout: 30000, // 30 seconds
-        queryTimeout: 30000, // 30 seconds
-        retryConnectCount: 10,
-      },
-    },
   });
 };
 
@@ -82,14 +79,14 @@ async function connectWithRetry(
 }
 
 // Create database client with connection retry
-export const db = globalForPrisma.prisma ?? createPrismaClient();
+export const db = globalThis.prisma ?? createPrismaClient();
 
 // Connection state tracking
 let isConnected = false;
 let connectionPromise: Promise<void> | null = null;
 
 // Initialize connection with retry mechanism
-if (!globalForPrisma.prisma) {
+if (!globalThis.prisma) {
   // Always attempt connection but handle failures gracefully
   connectionPromise = connectWithRetry(db)
     .then(() => {
@@ -105,7 +102,7 @@ if (!globalForPrisma.prisma) {
 }
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
+  globalThis.prisma = db;
 }
 
 // Graceful shutdown with error handling
@@ -171,9 +168,19 @@ export async function checkDatabaseConnection(): Promise<{
     console.error("Database health check failed:", error);
     isConnected = false;
 
+    // Provide more helpful error messages for common issues
+    let errorMessage = error.message;
+    if (error.message?.includes("Can't reach database server")) {
+      errorMessage = "Database server is unreachable. This may be due to:\n" +
+        "1. Database is paused (Neon auto-pauses inactive databases)\n" +
+        "2. Network connectivity issues\n" +
+        "3. Incorrect connection credentials\n" +
+        "Please check your Neon console and resume the database if paused.";
+    }
+
     return {
       healthy: false,
-      error: error.message,
+      error: errorMessage,
       latency: Date.now() - startTime,
     };
   }
