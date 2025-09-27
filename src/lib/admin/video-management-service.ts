@@ -1,4 +1,4 @@
-import { db as prisma, withRetry } from "@/lib/db";
+import { db as prisma } from "@/lib/db";
 import {
   VideoManagement,
   VideoUploadData,
@@ -80,37 +80,35 @@ export class VideoManagementService {
    * Create new video
    */
   async createVideo(videoData: VideoUploadData): Promise<VideoManagement> {
-    const video = await withRetry(async (db) =>
-      db.video.create({
-        data: {
-          title: videoData.title,
-          description: videoData.description,
-          url: videoData.url,
-          thumbnailUrl: videoData.thumbnailUrl,
-          duration: videoData.duration,
-          rewardAmount: videoData.rewardAmount,
-          positionLevelId: videoData.positionLevelId,
-          availableFrom: videoData.availableFrom,
-          availableTo: videoData.availableTo,
-          isActive: videoData.isActive ?? true,
-          uploadMethod: "file",
-          cloudinaryPublicId: videoData.cloudinaryPublicId,
-          tags: videoData.tags ? JSON.stringify(videoData.tags) : null,
-        },
-        include: {
-          positionLevel: true,
-          videoTasks: {
-            where: { isVerified: true },
-            select: {
-              id: true,
-              rewardEarned: true,
-              watchDuration: true,
-              watchedAt: true,
-            },
+    const video = await prisma.video.create({
+      data: {
+        title: videoData.title,
+        description: videoData.description,
+        url: videoData.url,
+        thumbnailUrl: videoData.thumbnailUrl,
+        duration: videoData.duration,
+        rewardAmount: videoData.rewardAmount,
+        positionLevelId: videoData.positionLevelId,
+        availableFrom: videoData.availableFrom,
+        availableTo: videoData.availableTo,
+        isActive: videoData.isActive ?? true,
+        uploadMethod: "file",
+        cloudinaryPublicId: videoData.cloudinaryPublicId,
+        tags: videoData.tags ? JSON.stringify(videoData.tags) : null,
+      },
+      include: {
+        positionLevel: true,
+        videoTasks: {
+          where: { isVerified: true },
+          select: {
+            id: true,
+            rewardEarned: true,
+            watchDuration: true,
+            watchedAt: true,
           },
         },
-      }),
-    );
+      },
+    });
 
     return this.mapVideoToVideoManagement(video);
   }
@@ -161,24 +159,22 @@ export class VideoManagementService {
       updatePayload.cloudinaryPublicId = cloudinaryPublicId;
     if (tags !== undefined) updatePayload.tags = JSON.stringify(tags);
 
-    const video = await withRetry(async (db) =>
-      db.video.update({
-        where: { id: videoId },
-        data: updatePayload,
-        include: {
-          positionLevel: true,
-          videoTasks: {
-            where: { isVerified: true },
-            select: {
-              id: true,
-              rewardEarned: true,
-              watchDuration: true,
-              watchedAt: true,
-            },
+    const video = await prisma.video.update({
+      where: { id: videoId },
+      data: updatePayload,
+      include: {
+        positionLevel: true,
+        videoTasks: {
+          where: { isVerified: true },
+          select: {
+            id: true,
+            rewardEarned: true,
+            watchDuration: true,
+            watchedAt: true,
           },
         },
-      }),
-    );
+      },
+    });
 
     return this.mapVideoToVideoManagement(video);
   }

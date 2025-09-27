@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { SecureTokenManager } from "@/lib/token-manager";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
-import { db, withRetry, checkDatabaseConnection } from "@/lib/db";
+import { db } from "@/lib/db";
 
 // Schema for validating bank card data
 const bankCardSchema = z
@@ -55,21 +55,6 @@ export async function GET(request: NextRequest) {
   let response: NextResponse;
 
   try {
-    // Check database connection first
-    const dbHealth = await checkDatabaseConnection();
-    if (!dbHealth.healthy) {
-      console.error("Database health check failed:", dbHealth.error);
-      response = NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-      return addAPISecurityHeaders(response);
-    }
-
     // Authenticate user
     const authResult = await authenticate(request);
     if ("error" in authResult) {
@@ -82,25 +67,23 @@ export async function GET(request: NextRequest) {
 
     const userId = authResult.userId;
 
-    const bankCards = await withRetry(async (prisma) => {
-      return await prisma.bankCard.findMany({
-        where: {
-          userId,
-          isActive: true,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-            },
+    const bankCards = await db.bankCard.findMany({
+      where: {
+        userId,
+        isActive: true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
           },
         },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     // Mask account numbers for security
@@ -116,22 +99,6 @@ export async function GET(request: NextRequest) {
     return addAPISecurityHeaders(response);
   } catch (error: any) {
     console.error("Error fetching bank cards:", error);
-
-    // Handle specific database connection errors
-    if (
-      error.message?.includes("Database connection failed") ||
-      error.message?.includes("Can't reach database server")
-    ) {
-      response = NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-      return addAPISecurityHeaders(response);
-    }
 
     response = NextResponse.json(
       {
@@ -168,10 +135,8 @@ export async function POST(request: NextRequest) {
     const validatedData = bankCardSchema.parse(cardData);
 
     // Check if user exists
-    const user = await withRetry(async (prisma) => {
-      return await prisma.user.findUnique({
-        where: { id: userId },
-      });
+    const user = await db.user.findUnique({
+      where: { id: userId },
     });
 
     if (!user) {
@@ -179,14 +144,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already has a card with the same account number
-    const existingCard = await withRetry(async (prisma) => {
-      return await prisma.bankCard.findFirst({
-        where: {
-          userId,
-          accountNumber: validatedData.accountNumber,
-          isActive: true,
-        },
-      });
+    const existingCard = await db.bankCard.findFirst({
+      where: {
+        userId,
+        accountNumber: validatedData.accountNumber,
+        isActive: true,
+      },
     });
 
     if (existingCard) {
@@ -197,22 +160,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new bank card
-    const bankCard = await withRetry(async (prisma) => {
-      return await prisma.bankCard.create({
-        data: {
-          userId,
-          ...validatedData,
-        },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-            },
+    const bankCard = await db.bankCard.create({
+      data: {
+        userId,
+        ...validatedData,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
           },
         },
-      });
+      },
     });
 
     // Return masked account number
@@ -243,22 +204,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("Error creating bank card:", error);
-
-    // Handle specific database connection errors
-    if (
-      error.message?.includes("Database connection failed") ||
-      error.message?.includes("Can't reach database server")
-    ) {
-      response = NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-      return addAPISecurityHeaders(response);
-    }
 
     response = NextResponse.json(
       {
@@ -299,14 +244,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check if card exists and belongs to user
-    const existingCard = await withRetry(async (prisma) => {
-      return await prisma.bankCard.findFirst({
-        where: {
-          id: cardId,
-          userId,
-          isActive: true,
-        },
-      });
+    const existingCard = await db.bankCard.findFirst({
+      where: {
+        id: cardId,
+        userId,
+        isActive: true,
+      },
     });
 
     if (!existingCard) {
@@ -317,11 +260,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Deactivate the card instead of deleting
-    const deactivatedCard = await withRetry(async (prisma) => {
-      return await prisma.bankCard.update({
-        where: { id: cardId },
-        data: { isActive: false },
-      });
+    const deactivatedCard = await db.bankCard.update({
+      where: { id: cardId },
+      data: { isActive: false },
     });
 
     response = NextResponse.json({
@@ -332,22 +273,6 @@ export async function DELETE(request: NextRequest) {
     return addAPISecurityHeaders(response);
   } catch (error: any) {
     console.error("Error deleting bank card:", error);
-
-    // Handle specific database connection errors
-    if (
-      error.message?.includes("Database connection failed") ||
-      error.message?.includes("Can't reach database server")
-    ) {
-      response = NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-      return addAPISecurityHeaders(response);
-    }
 
     response = NextResponse.json(
       {
