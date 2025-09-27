@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db as prisma } from "@/lib/db";
 
 // PATCH /api/admin/security-refunds/[id] - Process security refund (approve/reject)
 export async function PATCH(
@@ -20,7 +20,7 @@ export async function PATCH(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { action, adminNotes, refundMethod } = body;
 
@@ -32,9 +32,7 @@ export async function PATCH(
     }
 
     // Find the security refund request
-    const securityRefund = await (
-      prisma as any
-    ).securityRefundRequest.findUnique({
+    const securityRefund = await prisma.securityRefundRequest.findUnique({
       where: { id },
       include: {
         user: true,
@@ -62,7 +60,7 @@ export async function PATCH(
     };
 
     // Update the security refund request
-    const updatedRefund = await (prisma as any).securityRefundRequest.update({
+    const updatedRefund = await prisma.securityRefundRequest.update({
       where: { id },
       data: updateData,
       include: {
@@ -140,7 +138,7 @@ export async function PATCH(
       } catch (refundProcessError) {
         console.error("Error processing refund:", refundProcessError);
         // Revert status if refund processing fails
-        await (prisma as any).securityRefundRequest.update({
+        await prisma.securityRefundRequest.update({
           where: { id },
           data: { status: "PENDING" },
         });
@@ -196,11 +194,9 @@ export async function GET(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
-    const securityRefund = await (
-      prisma as any
-    ).securityRefundRequest.findUnique({
+    const securityRefund = await prisma.securityRefundRequest.findUnique({
       where: { id },
       include: {
         user: {
@@ -274,11 +270,9 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
-    const securityRefund = await (
-      prisma as any
-    ).securityRefundRequest.findUnique({
+    const securityRefund = await prisma.securityRefundRequest.findUnique({
       where: { id },
     });
 
@@ -296,7 +290,7 @@ export async function DELETE(
       );
     }
 
-    await (prisma as any).securityRefundRequest.delete({
+    await prisma.securityRefundRequest.delete({
       where: { id },
     });
 
