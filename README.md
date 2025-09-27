@@ -320,6 +320,30 @@ SOCKET_IO_PATH="/api/socketio"
    npm start
    ```
 
+### Docker Deployment
+
+The application includes Docker support for easy deployment:
+
+1. **Using Docker Compose (Recommended)**:
+   ```bash
+   # For production with PostgreSQL database
+   docker-compose up -d
+   
+   # For development with SQLite database
+   docker-compose -f docker-compose.dev.yml up -d
+   ```
+
+2. **Using Docker only**:
+   ```bash
+   # Build the image
+   docker build -t itv-reff-new .
+   
+   # Run the container
+   docker run -p 3000:3000 itv-reff-new
+   ```
+
+See [DOCKER_COMPOSE.md](docs/DOCKER_COMPOSE.md) for detailed instructions on using the Docker Compose configurations.
+
 ### Database Migration
 
 For production deployments, use migrations instead of `db:push`:

@@ -42,7 +42,8 @@
     "setup:topup-wallets": "npx tsx scripts/setup-topup-wallets.ts",
     "test:topup-api": "npx tsx scripts/test-topup-api.ts",
     "test:topup-endpoints": "npx tsx scripts/test-topup-endpoints.ts",
-    "test:realtime": "npx tsx scripts/test-realtime-features.ts"
+    "test:realtime": "npx tsx scripts/test-realtime-features.ts",
+    "test:docker": "npx tsx scripts/test-docker-setup.ts"
   },
   "dependencies": {
     "@cloudinary/react": "^1.14.3",
