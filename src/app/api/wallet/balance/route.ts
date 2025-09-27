@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
-import { db, withRetry, checkDatabaseConnection } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
-    // Check database connection first
-    const dbHealth = await checkDatabaseConnection();
-    if (!dbHealth.healthy) {
-      console.error("Database health check failed:", dbHealth.error);
-      return NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-    }
-
     const user = await authMiddleware(request);
 
     if (!user) {
@@ -27,48 +13,44 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get fresh user data with retry logic
-    const freshUser = await withRetry(async (prisma) => {
-      return await prisma.user.findUnique({
-        where: { id: user.id },
-        select: {
-          id: true,
-          walletBalance: true, // Current Balance (topup balance only)
-          commissionBalance: true, // Commission wallet
-          depositPaid: true, // Security Deposited
-          securityRefund: true, // Security refund amount available for withdrawal
-        },
-      });
+    // Get fresh user data
+    const freshUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        walletBalance: true, // Current Balance (topup balance only)
+        commissionBalance: true, // Commission wallet
+        depositPaid: true, // Security Deposited
+        securityRefund: true, // Security refund amount available for withdrawal
+      },
     });
 
     if (!freshUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Calculate ONLY the 5 specified earning types for Total Earnings with retry logic
-    const earningTransactions = await withRetry(async (prisma) => {
-      return await prisma.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: {
-            in: [
-              "TASK_INCOME", // 1. Daily Task Commission
-              "REFERRAL_REWARD_A", // 2. Referral Invite Commission - Level A (10%)
-              "REFERRAL_REWARD_B", // 2. Referral Invite Commission - Level B (3%)
-              "REFERRAL_REWARD_C", // 2. Referral Invite Commission - Level C (1%)
-              "MANAGEMENT_BONUS_A", // 3. Referral Task Commission - Level A (8%)
-              "MANAGEMENT_BONUS_B", // 3. Referral Task Commission - Level B (3%)
-              "MANAGEMENT_BONUS_C", // 3. Referral Task Commission - Level C (1%)
-              "TOPUP_BONUS", // 4. USDT Top-up Bonus (3%)
-              "SPECIAL_COMMISSION", // 5. Special Commission
-            ] as any,
-          },
-          status: "COMPLETED",
+    // Calculate ONLY the 5 specified earning types for Total Earnings
+    const earningTransactions = await db.walletTransaction.aggregate({
+      where: {
+        userId: user.id,
+        type: {
+          in: [
+            "TASK_INCOME", // 1. Daily Task Commission
+            "REFERRAL_REWARD_A", // 2. Referral Invite Commission - Level A (10%)
+            "REFERRAL_REWARD_B", // 2. Referral Invite Commission - Level B (3%)
+            "REFERRAL_REWARD_C", // 2. Referral Invite Commission - Level C (1%)
+            "MANAGEMENT_BONUS_A", // 3. Referral Task Commission - Level A (8%)
+            "MANAGEMENT_BONUS_B", // 3. Referral Task Commission - Level B (3%)
+            "MANAGEMENT_BONUS_C", // 3. Referral Task Commission - Level C (1%)
+            "TOPUP_BONUS", // 4. USDT Top-up Bonus (3%)
+            "SPECIAL_COMMISSION", // 5. Special Commission
+          ] as any,
         },
-        _sum: {
-          amount: true,
-        },
-      });
+        status: "COMPLETED",
+      },
+      _sum: {
+        amount: true,
+      },
     });
 
     // Get breakdown of each earning type with retry logic
@@ -80,75 +62,65 @@ export async function GET(request: NextRequest) {
       specialCommission,
     ] = await Promise.all([
       // 1. Daily Task Commission
-      withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: "TASK_INCOME",
-            status: "COMPLETED",
-          },
-          _sum: { amount: true },
-        });
+      db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: "TASK_INCOME",
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       }),
 
       // 2. Referral Invite Commission (Multi-level)
-      withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: {
-              in: [
-                "REFERRAL_REWARD_A",
-                "REFERRAL_REWARD_B",
-                "REFERRAL_REWARD_C",
-              ],
-            },
-            status: "COMPLETED",
+      db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: {
+            in: [
+              "REFERRAL_REWARD_A",
+              "REFERRAL_REWARD_B",
+              "REFERRAL_REWARD_C",
+            ],
           },
-          _sum: { amount: true },
-        });
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       }),
 
       // 3. Referral Task Commission (Multi-level)
-      withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: {
-              in: [
-                "MANAGEMENT_BONUS_A",
-                "MANAGEMENT_BONUS_B",
-                "MANAGEMENT_BONUS_C",
-              ],
-            },
-            status: "COMPLETED",
+      db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: {
+            in: [
+              "MANAGEMENT_BONUS_A",
+              "MANAGEMENT_BONUS_B",
+              "MANAGEMENT_BONUS_C",
+            ],
           },
-          _sum: { amount: true },
-        });
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       }),
 
       // 4. USDT Top-up Bonus
-      withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: "TOPUP_BONUS",
-            status: "COMPLETED",
-          },
-          _sum: { amount: true },
-        });
+      db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: "TOPUP_BONUS",
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       }),
 
       // 5. Special Commission
-      withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: "SPECIAL_COMMISSION",
-            status: "COMPLETED",
-          },
-          _sum: { amount: true },
-        });
+      db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: "SPECIAL_COMMISSION",
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       }),
     ]);
 

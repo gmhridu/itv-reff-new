@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromServer } from "@/lib/api/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,17 +37,17 @@ export async function GET(req: NextRequest) {
 
     // Get notifications
     const [notifications, totalCount] = await Promise.all([
-      prisma.systemNotification.findMany({
+      db.systemNotification.findMany({
         where: whereClause,
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
-      prisma.systemNotification.count({ where: whereClause }),
+      db.systemNotification.count({ where: whereClause }),
     ]);
 
     // Get unread count
-    const unreadCount = await prisma.systemNotification.count({
+    const unreadCount = await db.systemNotification.count({
       where: {
         ...whereClause,
         isRead: false,
@@ -111,7 +111,7 @@ export async function PATCH(req: NextRequest) {
       }
 
       // Update notification
-      const updatedNotification = await prisma.systemNotification.updateMany({
+      const updatedNotification = await db.systemNotification.updateMany({
         where: {
           id: notificationId,
           OR: [
@@ -143,7 +143,7 @@ export async function PATCH(req: NextRequest) {
 
     if (action === "mark-all-read") {
       // Mark all notifications as read for this user
-      await prisma.systemNotification.updateMany({
+      await db.systemNotification.updateMany({
         where: {
           OR: [
             { targetType: "USER", targetId: user.id },

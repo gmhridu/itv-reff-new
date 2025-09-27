@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { NotificationType, NotificationSeverity } from "@prisma/client";
 
 interface NotificationData {
@@ -17,7 +17,7 @@ export class UserNotificationService {
    */
   static async createNotification(data: NotificationData) {
     try {
-      const notification = await prisma.systemNotification.create({
+      const notification = await db.systemNotification.create({
         data: {
           type: data.type,
           title: data.title,
@@ -414,7 +414,7 @@ export class UserNotificationService {
     metadata?: Record<string, any>,
   ) {
     try {
-      const notifications = await prisma.systemNotification.createMany({
+      const notifications = await db.systemNotification.createMany({
         data: userIds.map((userId) => ({
           type,
           title,
@@ -439,7 +439,7 @@ export class UserNotificationService {
    */
   static async getUnreadCount(userId: string): Promise<number> {
     try {
-      const count = await prisma.systemNotification.count({
+      const count = await db.systemNotification.count({
         where: {
           OR: [{ targetType: "USER", targetId: userId }, { targetType: "ALL" }],
           isRead: false,

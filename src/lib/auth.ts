@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { cookies } from "next/headers";
 
 export interface AuthUser {
@@ -91,7 +91,7 @@ export async function getServerSession(
 
       let adminUser;
       if (currentUserId) {
-        adminUser = await prisma.adminUser.findUnique({
+        adminUser = await db.adminUser.findUnique({
           where: { id: currentUserId },
           select: {
             id: true,
@@ -105,7 +105,7 @@ export async function getServerSession(
 
       // Fallback to first admin if no specific user found
       if (!adminUser) {
-        adminUser = await prisma.adminUser.findFirst({
+        adminUser = await db.adminUser.findFirst({
           where: {
             role: {
               in: ["ADMIN", "SUPER_ADMIN"],
@@ -150,7 +150,7 @@ export async function getServerSession(
 
       let regularUser;
       if (currentUserId) {
-        regularUser = await prisma.user.findUnique({
+        regularUser = await db.user.findUnique({
           where: { id: currentUserId },
           select: {
             id: true,

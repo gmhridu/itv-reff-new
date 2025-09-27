@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { authMiddleware } from "@/lib/api/api-auth";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
 
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get available admin wallets
-    const wallets = await prisma.adminWallet.findMany({
+    const wallets = await db.adminWallet.findMany({
       where: { isActive: true },
       select: {
         id: true,
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get USDT to PKR rate
-    const usdtRateSetting = await prisma.setting.findUnique({
+    const usdtRateSetting = await db.setting.findUnique({
       where: { key: "usdt_to_pkr_rate" },
     });
 
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     const [userRequests, total] = await Promise.all([
-      prisma.topupRequest.findMany({
+      db.topupRequest.findMany({
         where: { userId: user.id },
         skip,
         take: limit,
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
-      prisma.topupRequest.count({
+      db.topupRequest.count({
         where: { userId: user.id },
       }),
     ]);
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if selected wallet exists and is active
-    const selectedWallet = await prisma.adminWallet.findUnique({
+    const selectedWallet = await db.adminWallet.findUnique({
       where: { id: selectedWalletId },
     });
 
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for pending requests
-    const pendingRequest = await prisma.topupRequest.findFirst({
+    const pendingRequest = await db.topupRequest.findFirst({
       where: {
         userId: user.id,
         status: "PENDING",
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create topup request with parsed integer amount
-    const topupRequest = await prisma.topupRequest.create({
+    const topupRequest = await db.topupRequest.create({
       data: {
         userId: user.id,
         amount: parsedAmount,
@@ -263,7 +263,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Log the activity
-    await prisma.activityLog.create({
+    await db.activityLog.create({
       data: {
         userId: user.id,
         activity: "topup_request",

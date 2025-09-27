@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
-import { db as prisma } from "@/lib/db";
+import { db } from "@/lib/db";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
 
 // Interface for security refund request
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's basic info
-    const userWithDetails = await prisma.user.findUnique({
+    const userWithDetails = await db.user.findUnique({
       where: { id: user.id },
       select: {
         id: true,
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     let currentPosition: any = null;
     if (userWithDetails.currentPositionId) {
       try {
-        currentPosition = await prisma.positionLevel.findUnique({
+        currentPosition = await db.positionLevel.findUnique({
           where: { id: userWithDetails.currentPositionId },
         });
       } catch (error) {
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     // Get security refund requests
     let securityRefundRequests: SecurityRefundRequest[] = [];
     try {
-      const requests = await prisma.securityRefundRequest.findMany({
+      const requests = await db.securityRefundRequest.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: "desc" },
       });
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       if (previousLevel > 0) {
         // Get the previous level position details
         try {
-          const previousPositionLevel = await prisma.positionLevel.findUnique({
+          const previousPositionLevel = await db.positionLevel.findUnique({
             where: { level: previousLevel },
           });
 
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user's basic info
-    const userWithDetails = await prisma.user.findUnique({
+    const userWithDetails = await db.user.findUnique({
       where: { id: user.id },
       select: {
         id: true,
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current position
-    const currentPosition = await prisma.positionLevel.findUnique({
+    const currentPosition = await db.positionLevel.findUnique({
       where: { id: userWithDetails.currentPositionId },
     });
 
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
     // Check for existing refund requests
     let existingRefundRequests: SecurityRefundRequest[] = [];
     try {
-      const requests = await prisma.securityRefundRequest.findMany({
+      const requests = await db.securityRefundRequest.findMany({
         where: {
           userId: user.id,
           status: { in: ["PENDING", "APPROVED"] },
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get previous level position details
-    const previousPositionLevel = await prisma.positionLevel.findUnique({
+    const previousPositionLevel = await db.positionLevel.findUnique({
       where: { level: previousLevel },
     });
 
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
     // Create refund request
     let refundRequest: any = null;
     try {
-      refundRequest = await prisma.securityRefundRequest.create({
+      refundRequest = await db.securityRefundRequest.create({
         data: {
           userId: user.id,
           fromLevel: previousLevel,
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     try {
-      await prisma.activityLog.create({
+      await db.activityLog.create({
         data: {
           userId: user.id,
           activity: "security_refund_request",

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
 export async function GET(
@@ -21,7 +21,7 @@ export async function GET(
 
     const { id } = params;
 
-    const wallet = await prisma.adminWallet.findUnique({
+    const wallet = await db.adminWallet.findUnique({
       where: { id },
       include: {
         _count: {
@@ -92,7 +92,7 @@ export async function PUT(
     } = body;
 
     // Check if wallet exists
-    const existingWallet = await prisma.adminWallet.findUnique({
+    const existingWallet = await db.adminWallet.findUnique({
       where: { id },
     });
 
@@ -109,7 +109,7 @@ export async function PUT(
         usdtWalletAddress &&
         usdtWalletAddress !== (existingWallet as any).usdtWalletAddress
       ) {
-        const duplicateWallet = await prisma.adminWallet.findFirst({
+        const duplicateWallet = await db.adminWallet.findFirst({
           where: {
             walletType: existingWallet.walletType,
             id: { not: id },
@@ -131,7 +131,7 @@ export async function PUT(
         walletNumber &&
         walletNumber !== (existingWallet as any).walletNumber
       ) {
-        const duplicateWallet = await prisma.adminWallet.findFirst({
+        const duplicateWallet = await db.adminWallet.findFirst({
           where: {
             walletNumber,
             walletType: existingWallet.walletType,
@@ -156,7 +156,7 @@ export async function PUT(
     if (qrCodeUrl !== undefined) updateData.qrCodeUrl = qrCodeUrl || null;
     if (typeof isActive === "boolean") updateData.isActive = isActive;
 
-    const updatedWallet = await prisma.adminWallet.update({
+    const updatedWallet = await db.adminWallet.update({
       where: { id },
       data: updateData,
       include: {
@@ -170,7 +170,7 @@ export async function PUT(
 
     // Create audit log (non-blocking)
     try {
-      await prisma.auditLog.create({
+      await db.auditLog.create({
         data: {
           adminId: session.user.id,
           action: "BULK_UPDATE",
@@ -252,7 +252,7 @@ export async function DELETE(
     const { id } = params;
 
     // Check if wallet exists
-    const existingWallet = await prisma.adminWallet.findUnique({
+    const existingWallet = await db.adminWallet.findUnique({
       where: { id },
       include: {
         _count: {
@@ -283,13 +283,13 @@ export async function DELETE(
     }
 
     // Delete wallet
-    await prisma.adminWallet.delete({
+    await db.adminWallet.delete({
       where: { id },
     });
 
     // Create audit log (non-blocking)
     try {
-      await prisma.auditLog.create({
+      await db.auditLog.create({
         data: {
           adminId: session.user.id,
           action: "BULK_UPDATE",

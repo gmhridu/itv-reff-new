@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -17,12 +17,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get USDT to PKR rate
-    const usdtRateSetting = await prisma.setting.findUnique({
+    const usdtRateSetting = await db.setting.findUnique({
       where: { key: "usdt_to_pkr_rate" },
     });
 
     // Get USDT wallet info
-    const usdtWallet = await prisma.adminWallet.findFirst({
+    const usdtWallet = await db.adminWallet.findFirst({
       where: { walletType: "USDT_TRC20" as any, isActive: true },
       include: {
         _count: {
@@ -100,7 +100,7 @@ export async function PUT(request: NextRequest) {
 
     // Update USDT rate if provided
     if (parsedUsdtRate) {
-      await prisma.setting.upsert({
+      await db.setting.upsert({
         where: { key: "usdt_to_pkr_rate" },
         update: {
           value: parsedUsdtRate.toString(),
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest) {
     let usdtWallet: any = null;
     if (walletHolderName || usdtWalletAddress || qrCodeUrl !== undefined) {
       // Check if USDT wallet exists
-      const existingUsdtWallet = await prisma.adminWallet.findFirst({
+      const existingUsdtWallet = await db.adminWallet.findFirst({
         where: { walletType: "USDT_TRC20" as any },
       });
 
@@ -128,7 +128,7 @@ export async function PUT(request: NextRequest) {
         if (usdtWalletAddress) updateData.usdtWalletAddress = usdtWalletAddress;
         if (qrCodeUrl !== undefined) updateData.qrCodeUrl = qrCodeUrl || null;
 
-        usdtWallet = await prisma.adminWallet.update({
+        usdtWallet = await db.adminWallet.update({
           where: { id: existingUsdtWallet.id },
           data: updateData,
           include: {
@@ -149,7 +149,7 @@ export async function PUT(request: NextRequest) {
           walletNumber: null, // USDT doesn't use phone number
         };
 
-        usdtWallet = await prisma.adminWallet.create({
+        usdtWallet = await db.adminWallet.create({
           data: createData,
           include: {
             _count: {
@@ -164,7 +164,7 @@ export async function PUT(request: NextRequest) {
 
     // Create audit log
     try {
-      await prisma.auditLog.create({
+      await db.auditLog.create({
         data: {
           adminId: session.user.id,
           action: "BULK_UPDATE",

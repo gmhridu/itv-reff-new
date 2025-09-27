@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
 
     // Get topup requests with pagination
     const [topupRequests, total] = await Promise.all([
-      prisma.topupRequest.findMany({
+      db.topupRequest.findMany({
         where,
         skip,
         take: limit,
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
-      prisma.topupRequest.count({ where }),
+      db.topupRequest.count({ where }),
     ]);
 
     console.log("Topup requests fetched:", {
@@ -168,22 +168,22 @@ export async function GET(request: NextRequest) {
       pendingAmount,
       approvedAmount,
     ] = await Promise.all([
-      prisma.topupRequest.count(),
-      prisma.topupRequest.count({ where: { status: "PENDING" } }),
-      prisma.topupRequest.count({ where: { status: "APPROVED" } }),
-      prisma.topupRequest.count({ where: { status: "REJECTED" } }),
-      prisma.topupRequest
+      db.topupRequest.count(),
+      db.topupRequest.count({ where: { status: "PENDING" } }),
+      db.topupRequest.count({ where: { status: "APPROVED" } }),
+      db.topupRequest.count({ where: { status: "REJECTED" } }),
+      db.topupRequest
         .aggregate({
           _sum: { amount: true },
         })
         .then((result) => Math.round(result._sum.amount || 0)),
-      prisma.topupRequest
+      db.topupRequest
         .aggregate({
           _sum: { amount: true },
           where: { status: "PENDING" },
         })
         .then((result) => Math.round(result._sum.amount || 0)),
-      prisma.topupRequest
+      db.topupRequest
         .aggregate({
           _sum: { amount: true },
           where: { status: "APPROVED" },

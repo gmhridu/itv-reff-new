@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 // GET /api/admin/security-refunds - Fetch security refunds with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     try {
       // Get security refunds using dynamic table access
       const securityRefunds = await (
-        prisma as any
+        db as any
       ).securityRefundRequest.findMany({
         where: whereClause,
         include: {
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         take: limit,
       });
 
-      const totalCount = await (prisma as any).securityRefundRequest.count({
+      const totalCount = await (db as any).securityRefundRequest.count({
         where: whereClause,
       });
 
@@ -93,14 +93,14 @@ export async function GET(request: NextRequest) {
 
       // Get statistics
       const stats = {
-        total: await (prisma as any).securityRefundRequest.count(),
-        pending: await (prisma as any).securityRefundRequest.count({
+        total: await (db as any).securityRefundRequest.count(),
+        pending: await (db as any).securityRefundRequest.count({
           where: { status: "PENDING" },
         }),
-        approved: await (prisma as any).securityRefundRequest.count({
+        approved: await (db as any).securityRefundRequest.count({
           where: { status: "APPROVED" },
         }),
-        rejected: await (prisma as any).securityRefundRequest.count({
+        rejected: await (db as any).securityRefundRequest.count({
           where: { status: "REJECTED" },
         }),
       };
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user exists
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: userId },
     });
 
@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Create security refund request
-      const securityRefund = await (prisma as any).securityRefundRequest.create(
+      const securityRefund = await (db as any).securityRefundRequest.create(
         {
           data: {
             userId,
@@ -294,3 +294,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

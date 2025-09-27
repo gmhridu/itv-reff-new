@@ -1,4 +1,4 @@
-import { db as prisma, withRetry } from "@/lib/db";
+import { db } from "@/lib/db";
 import {
   VideoManagement,
   VideoUploadData,
@@ -34,7 +34,7 @@ export class VideoManagementService {
 
     const [videos, totalCount] = await Promise.all([
       this.getVideosWithDetails(whereClause, orderBy, skip, limit),
-      prisma.video.count({ where: whereClause }),
+      db.video.count({ where: whereClause }),
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);
@@ -55,7 +55,7 @@ export class VideoManagementService {
    * Get single video by ID with full details
    */
   async getVideoById(videoId: string): Promise<VideoManagement | null> {
-    const video = await prisma.video.findUnique({
+    const video = await db.video.findUnique({
       where: { id: videoId },
       include: {
         positionLevel: true,
@@ -80,37 +80,35 @@ export class VideoManagementService {
    * Create new video
    */
   async createVideo(videoData: VideoUploadData): Promise<VideoManagement> {
-    const video = await withRetry(async (db) =>
-      db.video.create({
-        data: {
-          title: videoData.title,
-          description: videoData.description,
-          url: videoData.url,
-          thumbnailUrl: videoData.thumbnailUrl,
-          duration: videoData.duration,
-          rewardAmount: videoData.rewardAmount,
-          positionLevelId: videoData.positionLevelId,
-          availableFrom: videoData.availableFrom,
-          availableTo: videoData.availableTo,
-          isActive: videoData.isActive ?? true,
-          uploadMethod: "file",
-          cloudinaryPublicId: videoData.cloudinaryPublicId,
-          tags: videoData.tags ? JSON.stringify(videoData.tags) : null,
-        },
-        include: {
-          positionLevel: true,
-          videoTasks: {
-            where: { isVerified: true },
-            select: {
-              id: true,
-              rewardEarned: true,
-              watchDuration: true,
-              watchedAt: true,
-            },
+    const video = await db.video.create({
+      data: {
+        title: videoData.title,
+        description: videoData.description,
+        url: videoData.url,
+        thumbnailUrl: videoData.thumbnailUrl,
+        duration: videoData.duration,
+        rewardAmount: videoData.rewardAmount,
+        positionLevelId: videoData.positionLevelId,
+        availableFrom: videoData.availableFrom,
+        availableTo: videoData.availableTo,
+        isActive: videoData.isActive ?? true,
+        uploadMethod: "file",
+        cloudinaryPublicId: videoData.cloudinaryPublicId,
+        tags: videoData.tags ? JSON.stringify(videoData.tags) : null,
+      },
+      include: {
+        positionLevel: true,
+        videoTasks: {
+          where: { isVerified: true },
+          select: {
+            id: true,
+            rewardEarned: true,
+            watchDuration: true,
+            watchedAt: true,
           },
         },
-      }),
-    );
+      },
+    });
 
     return this.mapVideoToVideoManagement(video);
   }
@@ -161,24 +159,22 @@ export class VideoManagementService {
       updatePayload.cloudinaryPublicId = cloudinaryPublicId;
     if (tags !== undefined) updatePayload.tags = JSON.stringify(tags);
 
-    const video = await withRetry(async (db) =>
-      db.video.update({
-        where: { id: videoId },
-        data: updatePayload,
-        include: {
-          positionLevel: true,
-          videoTasks: {
-            where: { isVerified: true },
-            select: {
-              id: true,
-              rewardEarned: true,
-              watchDuration: true,
-              watchedAt: true,
-            },
+    const video = await db.video.update({
+      where: { id: videoId },
+      data: updatePayload,
+      include: {
+        positionLevel: true,
+        videoTasks: {
+          where: { isVerified: true },
+          select: {
+            id: true,
+            rewardEarned: true,
+            watchDuration: true,
+            watchedAt: true,
           },
         },
-      }),
-    );
+      },
+    });
 
     return this.mapVideoToVideoManagement(video);
   }
@@ -189,19 +185,19 @@ export class VideoManagementService {
   async deleteVideo(videoId: string): Promise<boolean> {
     try {
       // Check if video has any tasks
-      const taskCount = await prisma.userVideoTask.count({
+      const taskCount = await db.userVideoTask.count({
         where: { videoId },
       });
 
       if (taskCount > 0) {
         // Soft delete - just mark as inactive
-        await prisma.video.update({
+        await db.video.update({
           where: { id: videoId },
           data: { isActive: false },
         });
       } else {
         // Hard delete if no tasks
-        await prisma.video.delete({
+        await db.video.delete({
           where: { id: videoId },
         });
       }
@@ -217,7 +213,7 @@ export class VideoManagementService {
    * Toggle video active status
    */
   async toggleVideoStatus(videoId: string): Promise<VideoManagement> {
-    const video = await prisma.video.findUnique({
+    const video = await db.video.findUnique({
       where: { id: videoId },
       select: { isActive: true },
     });
@@ -226,7 +222,7 @@ export class VideoManagementService {
       throw new Error("Video not found");
     }
 
-    const updatedVideo = await prisma.video.update({
+    const updatedVideo = await db.video.update({
       where: { id: videoId },
       data: { isActive: !video.isActive },
       include: {
@@ -258,7 +254,7 @@ export class VideoManagementService {
     const startDate =
       dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const results = await prisma.$queryRaw<
+    const results = await db.$queryRaw<
       {
         id: string;
         title: string;
@@ -317,15 +313,15 @@ export class VideoManagementService {
       totalRewardsPaid,
       videosByPosition,
     ] = await Promise.all([
-      prisma.video.count(),
-      prisma.video.count({ where: { isActive: true } }),
-      prisma.video.count({ where: { isActive: false } }),
-      prisma.userVideoTask.count({ where: { isVerified: true } }),
-      prisma.userVideoTask.aggregate({
+      db.video.count(),
+      db.video.count({ where: { isActive: true } }),
+      db.video.count({ where: { isActive: false } }),
+      db.userVideoTask.count({ where: { isVerified: true } }),
+      db.userVideoTask.aggregate({
         _sum: { rewardEarned: true },
         where: { isVerified: true },
       }),
-      prisma.video.groupBy({
+      db.video.groupBy({
         by: ["positionLevelId"],
         _count: true,
         where: { isActive: true },
@@ -333,7 +329,7 @@ export class VideoManagementService {
     ]);
 
     // Calculate average completion rate
-    const completionRateResult = await prisma.$queryRaw<
+    const completionRateResult = await db.$queryRaw<
       [{ avg_completion_rate: number }]
     >`
       SELECT AVG(
@@ -371,7 +367,7 @@ export class VideoManagementService {
    * Get available position levels
    */
   async getPositionLevels(): Promise<PositionLevelInfo[]> {
-    const levels = await prisma.positionLevel.findMany({
+    const levels = await db.positionLevel.findMany({
       where: { isActive: true },
       orderBy: { level: "asc" },
     });
@@ -437,7 +433,7 @@ export class VideoManagementService {
 
     for (const videoId of videoIds) {
       try {
-        await prisma.video.update({
+        await db.video.update({
           where: { id: videoId },
           data: updatePayload,
         });
@@ -462,7 +458,7 @@ export class VideoManagementService {
     const skip = (page - 1) * limit;
 
     const [watchHistory, totalCount] = await Promise.all([
-      prisma.userVideoTask.findMany({
+      db.userVideoTask.findMany({
         where: { videoId, isVerified: true },
         include: {
           user: {
@@ -477,7 +473,7 @@ export class VideoManagementService {
         skip,
         take: limit,
       }),
-      prisma.userVideoTask.count({
+      db.userVideoTask.count({
         where: { videoId, isVerified: true },
       }),
     ]);
@@ -549,7 +545,7 @@ export class VideoManagementService {
     skip: number,
     take: number,
   ): Promise<VideoManagement[]> {
-    const videos = await prisma.video.findMany({
+    const videos = await db.video.findMany({
       where,
       orderBy,
       skip,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { UserNotificationService } from "@/lib/user-notification-service";
 
@@ -27,7 +27,7 @@ export async function GET(
       );
     }
 
-    const topupRequest = await prisma.topupRequest.findUnique({
+    const topupRequest = await db.topupRequest.findUnique({
       where: { id },
       include: {
         user: {
@@ -123,7 +123,7 @@ export async function PUT(
     }
 
     // Get existing request
-    const existingRequest = await prisma.topupRequest.findUnique({
+    const existingRequest = await db.topupRequest.findUnique({
       where: { id },
       include: {
         user: true,
@@ -161,7 +161,7 @@ export async function PUT(
     }
 
     // Use transaction for consistency
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       // Update topup request
       const updatedRequest = await tx.topupRequest.update({
         where: { id },
@@ -285,7 +285,7 @@ export async function PUT(
     }
 
     // Create audit log
-    await prisma.auditLog.create({
+    await db.auditLog.create({
       data: {
         adminId: session.user.id,
         action: status === "APPROVED" ? "BULK_UPDATE" : "BULK_UPDATE",
@@ -345,7 +345,7 @@ export async function DELETE(
     const { id } = params;
 
     // Get existing request
-    const existingRequest = await prisma.topupRequest.findUnique({
+    const existingRequest = await db.topupRequest.findUnique({
       where: { id },
     });
 
@@ -365,12 +365,12 @@ export async function DELETE(
     }
 
     // Delete the request
-    await prisma.topupRequest.delete({
+    await db.topupRequest.delete({
       where: { id },
     });
 
     // Create audit log
-    await prisma.auditLog.create({
+    await db.auditLog.create({
       data: {
         adminId: session.user.id,
         action: "BULK_UPDATE",

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export interface DataIntegrityReport {
   orphanedTopupRequests: Array<{
@@ -37,7 +37,7 @@ export async function checkTopupDataIntegrity(): Promise<DataIntegrityReport> {
     console.log("Starting topup data integrity check...");
 
     // Get all topup requests with user and wallet data
-    const allTopupRequests = await prisma.topupRequest.findMany({
+    const allTopupRequests = await db.topupRequest.findMany({
       include: {
         user: {
           select: {
@@ -163,7 +163,7 @@ export async function fixOrphanedTopupRequests(dryRun: boolean = true): Promise<
     // Delete orphaned requests one by one to handle individual failures
     for (const request of orphanedRequests) {
       try {
-        await prisma.topupRequest.delete({
+        await db.topupRequest.delete({
           where: { id: request.id },
         });
         console.log(`Deleted orphaned topup request: ${request.id}`);
@@ -192,7 +192,7 @@ export async function verifyUserSessionData(userId: string): Promise<{
   issues: string[];
 }> {
   try {
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: userId },
       select: {
         id: true,

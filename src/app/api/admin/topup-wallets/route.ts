@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // Get wallets with pagination
     const [wallets, total] = await Promise.all([
-      prisma.adminWallet.findMany({
+      db.adminWallet.findMany({
         where,
         skip,
         take: limit,
@@ -52,18 +52,18 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
-      prisma.adminWallet.count({ where }),
+      db.adminWallet.count({ where }),
     ]);
 
     // Get statistics
-    const statistics = await prisma.adminWallet.aggregate({
+    const statistics = await db.adminWallet.aggregate({
       _count: {
         id: true,
       },
       where: { isActive: true },
     });
 
-    const inactiveCount = await prisma.adminWallet.count({
+    const inactiveCount = await db.adminWallet.count({
       where: { isActive: false },
     });
 
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const existingWallet = await prisma.adminWallet.findFirst({
+    const existingWallet = await db.adminWallet.findFirst({
       where: duplicateCondition,
     });
 
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       walletData.usdtWalletAddress = null;
     }
 
-    const newWallet = await prisma.adminWallet.create({
+    const newWallet = await db.adminWallet.create({
       data: walletData,
       include: {
         _count: {
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
 
     // Create audit log (non-blocking)
     try {
-      await prisma.auditLog.create({
+      await db.auditLog.create({
         data: {
           adminId: session.user.id,
           action: "BULK_UPDATE", // We can add a more specific action later

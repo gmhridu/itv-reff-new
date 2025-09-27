@@ -1,27 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
-import { db, withRetry, checkDatabaseConnection } from "@/lib/db";
+import { db } from "@/lib/db";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
 
 export async function GET(request: NextRequest) {
   let response: NextResponse;
 
   try {
-    // Check database connection first
-    const dbHealth = await checkDatabaseConnection();
-    if (!dbHealth.healthy) {
-      console.error("Database health check failed:", dbHealth.error);
-      response = NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-      return addAPISecurityHeaders(response);
-    }
-
     // Authenticate the user
     const user = await authMiddleware(request);
     if (!user) {
@@ -32,17 +17,15 @@ export async function GET(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    // Get fresh user data with retry logic
-    const freshUser = await withRetry(async (prisma) => {
-      return await prisma.user.findUnique({
-        where: { id: user.id },
-        select: {
-          id: true,
-          walletBalance: true, // Current Balance (topup balance only)
-          commissionBalance: true, // Commission wallet (legacy field)
-          depositPaid: true, // Security Deposited
-        },
-      });
+    // Get fresh user data
+    const freshUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        walletBalance: true, // Current Balance (topup balance only)
+        commissionBalance: true, // Commission wallet (legacy field)
+        depositPaid: true, // Security Deposited
+      },
     });
 
     if (!freshUser) {
@@ -70,15 +53,13 @@ export async function GET(request: NextRequest) {
     console.log(`[DEBUG] Calculating balances for user: ${user.id}`);
 
     for (const commission of commissionTypes) {
-      const balance = await withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: commission.type as any,
-            status: "COMPLETED",
-          },
-          _sum: { amount: true },
-        });
+      const balance = await db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: commission.type as any,
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       });
 
       const rawBalance = balance._sum.amount || 0;
@@ -98,15 +79,13 @@ export async function GET(request: NextRequest) {
       // This ensures withdrawal deductions are properly reflected
 
       // First, get all security refund transactions (credits and deductions)
-      const securityRefundTransactions = await withRetry(async (prisma) => {
-        return await prisma.walletTransaction.aggregate({
-          where: {
-            userId: user.id,
-            type: "SECURITY_REFUND" as any,
-            status: "COMPLETED",
-          },
-          _sum: { amount: true },
-        });
+      const securityRefundTransactions = await db.walletTransaction.aggregate({
+        where: {
+          userId: user.id,
+          type: "SECURITY_REFUND" as any,
+          status: "COMPLETED",
+        },
+        _sum: { amount: true },
       });
 
       const transactionAmount = securityRefundTransactions._sum.amount || 0;
@@ -118,16 +97,14 @@ export async function GET(request: NextRequest) {
         console.log(`[DEBUG] Using transaction-based security refund: ${totalSecurityRefund}`);
       } else {
         // Fallback: Check approved requests if no transactions exist
-        const securityRefunds = await withRetry(async (prisma) => {
-          return await prisma.securityRefundRequest.aggregate({
-            where: {
-              userId: user.id,
-              status: "APPROVED",
-            },
-            _sum: {
-              refundAmount: true,
-            },
-          });
+        const securityRefunds = await db.securityRefundRequest.aggregate({
+          where: {
+            userId: user.id,
+            status: "APPROVED",
+          },
+          _sum: {
+            refundAmount: true,
+          },
         });
 
         const requestAmount = securityRefunds._sum.refundAmount || 0;
