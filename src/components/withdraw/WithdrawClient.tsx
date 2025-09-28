@@ -30,17 +30,9 @@ import { useBankCards } from "@/hooks/useBankCards";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { WithdrawalHistory } from "./WithdrawalHistory";
-import { useNotifications } from "@/hooks/use-notifications";
 import { useWithdrawalInfo } from "@/hooks/useWithdrawalConfig";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 
 export const WithdrawClient = () => {
   const { bankCards, loading: isLoadingCards, refetch } = useBankCards();
@@ -53,7 +45,6 @@ export const WithdrawClient = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // State management
-  const [selectedWallet, setSelectedWallet] = useState("Commission Wallet");
   const [selectedMethod, setSelectedMethod] = useState("");
   const [amount, setAmount] = useState("");
   const [showNoBankCardsModal, setShowNoBankCardsModal] = useState(false);
@@ -74,22 +65,11 @@ export const WithdrawClient = () => {
   const [usdtAddress, setUsdtAddress] = useState("");
   const [usdtHolderName, setUsdtHolderName] = useState("");
   const [isAddingUsdtWallet, setIsAddingUsdtWallet] = useState(false);
-
-  // Initialize notifications hook with current user
-  const { refetch: refetchNotifications } = useNotifications({
-    userId: currentUser?.id || "",
-  });
-
   // Use predefined amounts from configuration
   const predefinedAmounts = withdrawalConfig?.predefinedAmounts || [
     500, 3000, 10000, 30000, 70000, 100000, 250000, 500000,
   ];
-
-  const walletOptions = [
-    { value: "Main Wallet", label: "Main Wallet" },
-    { value: "Commission Wallet", label: "Commission Wallet" },
-  ];
-
+  
   // Fetch current user and wallet balances on component mount
   useEffect(() => {
     fetchCurrentUser();
@@ -126,7 +106,6 @@ export const WithdrawClient = () => {
     }
   };
 
-  // Refresh bank cards when window gains focus (user returns from bank-card page)
   useEffect(() => {
     const handleFocus = () => {
       refetch();
@@ -234,10 +213,6 @@ export const WithdrawClient = () => {
     setAmount(value.toString());
   };
 
-  const handleWalletSelect = (wallet: string) => {
-    setSelectedWallet("Commission Wallet");
-  };
-
   const handleMethodSelect = (method: string) => {
     setSelectedMethod(method);
   };
@@ -297,7 +272,7 @@ export const WithdrawClient = () => {
     const isUsdtWithdrawal = isUsdtMethod();
     const calculation = calculateDisplayFees?.(
       withdrawalAmount,
-      isUsdtWithdrawal,
+      isUsdtWithdrawal
     );
     const totalRequired = calculation?.totalDeduction || withdrawalAmount;
 
@@ -353,21 +328,8 @@ export const WithdrawClient = () => {
             variant: "default",
           });
         }
-
-        // Reset form
         setAmount("");
-
-        // Refresh wallet balances
         fetchWalletBalances();
-
-        // Refresh notifications to show the new withdrawal notification
-        try {
-          setTimeout(() => {
-            refetchNotifications();
-          }, 1000); // Small delay to ensure notification is created
-        } catch (error) {
-          console.log("Failed to refresh notifications:", error);
-        }
       } else {
         toast({
           title: "Withdrawal Failed",
@@ -617,7 +579,7 @@ export const WithdrawClient = () => {
                                       ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
                                       : card.accountNumber);
                                   return displayName === selectedMethod;
-                                })?.bankName || "",
+                                })?.bankName || ""
                               )}
                           </span>
                           <div>
