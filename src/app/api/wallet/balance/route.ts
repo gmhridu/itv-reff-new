@@ -167,10 +167,10 @@ export async function GET(request: NextRequest) {
       userPhone: freshUser.phone || "",
       currentBalance: freshUser.walletBalance || 0,
       securityDeposited: freshUser.depositPaid || 0,
-      commissionBalance: actualTotalEarnings,
-      securityRefund: userSecurityRefund,
+      commissionBalance: freshUser.commissionBalance || 0,
+      securityRefund: freshUser.securityRefund || 0,
       totalEarnings: actualTotalEarnings,
-      totalAvailableForWithdrawal: actualTotalEarnings + userSecurityRefund,
+      totalAvailableForWithdrawal: freshUser.commissionBalance + freshUser.securityRefund || 0,
       earningsBreakdown: {
         dailyTaskCommission: sumAmount(dailyTask),
         referralInviteCommission: sumAmount(referralInvite),
