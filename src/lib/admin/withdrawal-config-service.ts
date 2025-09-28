@@ -1,3 +1,4 @@
+import { User } from "@prisma/client";
 import { settingsService } from "./settings-service";
 import { db as prisma } from "@/lib/db";
 
@@ -74,7 +75,7 @@ export class WithdrawalConfigService {
     try {
       // Try to get rate from database settings first
       const rateSetting = await settingsService.getSetting(
-        "system.usdtToPkrRate",
+        "system.usdtToPkrRate"
       );
       if (rateSetting && rateSetting.value > 0) {
         return rateSetting.value;
@@ -92,7 +93,7 @@ export class WithdrawalConfigService {
    * Update withdrawal configuration
    */
   async updateWithdrawalConfig(
-    config: Partial<WithdrawalConfig>,
+    config: Partial<WithdrawalConfig>
   ): Promise<WithdrawalConfig> {
     const updates: any = {};
 
@@ -131,10 +132,9 @@ export class WithdrawalConfigService {
    * Validate withdrawal request
    */
   async validateWithdrawal(
-    userId: string,
+    user: User,
     amount: number,
-    walletType: "Main Wallet" | "Commission Wallet",
-    paymentMethodId: string,
+    paymentMethodId: string
   ): Promise<WithdrawalValidationResult> {
     const config = await this.getWithdrawalConfig();
     const warnings: string[] = [];
@@ -147,47 +147,17 @@ export class WithdrawalConfigService {
       };
     }
 
-    // Check if amount is in predefined amounts
-    if (!config.predefinedAmounts.includes(amount)) {
-      return {
-        isValid: false,
-        error: "Please select from predefined withdrawal amounts only",
-      };
-    }
-
-    // Get user data
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        walletBalance: true,
-        commissionBalance: true,
-        isIntern: true,
-        currentPosition: {
-          select: { name: true },
-        },
-      },
-    });
-
     if (!user) {
       return {
         isValid: false,
         error: "User not found",
       };
     }
-
-    // Check if user is intern
-    if (user.isIntern || user.currentPosition?.name === "Intern") {
-      return {
-        isValid: false,
-        error: "Intern position earnings cannot be withdrawn",
-      };
-    }
-
     // Get payment method details
     const bankCard = await prisma.bankCard.findFirst({
       where: {
         id: paymentMethodId,
-        userId: userId,
+        userId: user.id,
         isActive: true,
       },
     });
@@ -216,73 +186,14 @@ export class WithdrawalConfigService {
       };
     }
 
-    // Calculate individual commission balances using hierarchical system
-    const commissionTypes = [
-      { type: "TASK_INCOME" as any, name: "Daily Task Commission" },
-      { type: "REFERRAL_REWARD_A" as any, name: "Referral Invite Commission" },
-      { type: "REFERRAL_REWARD_B" as any, name: "Referral Task Commission B" },
-      { type: "REFERRAL_REWARD_C" as any, name: "Referral Task Commission C" },
-      { type: "TOPUP_BONUS" as any, name: "USDT Top-up Bonus (3%)" },
-      { type: "SPECIAL_COMMISSION" as any, name: "Special Commission" },
-    ];
-
-    // Calculate balance for each commission type
-    let totalCommissionBalance = 0;
-
-    for (const commission of commissionTypes) {
-      const balance = await prisma.walletTransaction.aggregate({
-        where: {
-          userId: userId,
-          type: commission.type,
-          status: "COMPLETED",
-        },
-        _sum: { amount: true },
-      });
-
-      const currentBalance = Math.max(0, balance._sum.amount || 0); // Ensure no negative balances
-      totalCommissionBalance += currentBalance;
-    }
-
-    // Get security refunds (calculated separately as last resort)
-    let totalSecurityRefund = 0;
-    try {
-      const securityRefunds = await prisma.securityRefundRequest.aggregate({
-        where: {
-          userId: userId,
-          status: "APPROVED",
-        },
-        _sum: { refundAmount: true },
-      });
-      totalSecurityRefund = securityRefunds._sum.refundAmount || 0;
-
-      // Also check for security refund transaction credits
-      const securityRefundTransactions = await prisma.walletTransaction.aggregate({
-        where: {
-          userId: userId,
-          type: "SECURITY_REFUND" as any,
-          status: "COMPLETED" as any,
-        },
-        _sum: { amount: true },
-      });
-      totalSecurityRefund = Math.max(totalSecurityRefund, securityRefundTransactions._sum.amount || 0);
-    } catch (error: any) {
-      console.warn("Security refund calculation error:", error.message);
-      totalSecurityRefund = 0;
-    }
-
-    // Total available balance for withdrawal = All Commission Types + Security Refund
-    const totalAvailableBalance = totalCommissionBalance + totalSecurityRefund;
-
-    // Calculate fees and total deduction
-    const calculation = await this.calculateWithdrawal(
-      amount,
-      isUsdtWithdrawal,
-    );
-
-    if (totalAvailableBalance < calculation.totalDeduction) {
+    // check if user has enough balance
+    const totalAvailableBalance = user.walletBalance + user.commissionBalance;
+    if (totalAvailableBalance < amount) {
       return {
         isValid: false,
-        error: `Insufficient total available balance. Available: PKR ${totalAvailableBalance.toFixed(2)}, Required: PKR ${calculation.totalDeduction.toFixed(2)}`,
+        error: `Insufficient balance. Available: PKR ${totalAvailableBalance.toFixed(
+          2
+        )}, Required: PKR ${amount.toFixed(2)}`,
       };
     }
 
@@ -294,7 +205,7 @@ export class WithdrawalConfigService {
 
     const todaysWithdrawals = await prisma.withdrawalRequest.count({
       where: {
-        userId: userId,
+        userId: user.id,
         createdAt: {
           gte: today,
           lt: tomorrow,
@@ -312,19 +223,6 @@ export class WithdrawalConfigService {
       };
     }
 
-    // Add warnings for high amounts
-    if (amount >= 100000) {
-      warnings.push(
-        "Large withdrawal amounts may require additional verification.",
-      );
-    }
-
-    if (calculation.handlingFee > 0) {
-      warnings.push(
-        `A handling fee of PKR ${calculation.handlingFee.toFixed(2)} (${config.withdrawalFeePercentage}%) will be charged.`,
-      );
-    }
-
     return {
       isValid: true,
       warnings: warnings.length > 0 ? warnings : undefined,
@@ -336,7 +234,7 @@ export class WithdrawalConfigService {
    */
   async calculateWithdrawal(
     amount: number,
-    isUsdtWithdrawal: boolean = false,
+    isUsdtWithdrawal: boolean = false
   ): Promise<WithdrawalCalculation> {
     const config = await this.getWithdrawalConfig();
 

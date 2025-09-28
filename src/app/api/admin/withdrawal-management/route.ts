@@ -213,6 +213,7 @@ export async function PATCH(request: NextRequest) {
             email: true,
             walletBalance: true,
             commissionBalance: true,
+            securityRefund: true,
           },
         },
       },
@@ -240,68 +241,192 @@ export async function PATCH(request: NextRequest) {
       transactionId: transactionId || null,
     };
 
-    // If rejected, refund the amount by reversing the hierarchical deduction transactions
-    if (status === "REJECTED" && withdrawalRequest.status === "PENDING") {
-      // Parse hierarchical deduction details from payment details
-      const hierarchicalDetails = paymentDetails.hierarchicalDeductionDetails;
+    // If approved, deduct the withdrawal amount from user's commission balance first,
+    // then from security refund if commission balance is insufficient
+    if (status === "APPROVED" && withdrawalRequest.status === "PENDING") {
+      const userId = withdrawalRequest.userId;
+      const withdrawalAmount = withdrawalRequest.amount;
+      let commissionDeduction = 0;
+      let securityRefundDeduction = 0;
 
-      if (!hierarchicalDetails) {
-        console.error("No hierarchical deduction details found for withdrawal refund:", withdrawalRequestId);
-        // Fallback to simple refund if hierarchical details are missing
-        const refundAmount = withdrawalRequest.amount + (paymentDetails.handlingFee || 0);
-        await prisma.walletTransaction.create({
-          data: {
-            userId: withdrawalRequest.userId,
-            type: TransactionType.TASK_INCOME,
-            amount: refundAmount,
-            balanceAfter: 0, // Not affecting walletBalance directly
-            description: `Withdrawal refund (fallback) - ${withdrawalRequest.paymentMethod} (Request rejected)`,
-            referenceId: `fallback-refund-${withdrawalRequestId}`,
-            status: TransactionStatus.COMPLETED,
-            metadata: JSON.stringify({
-              originalWithdrawalId: withdrawalRequestId,
-              refundType: "fallback",
-              refundReason: "Withdrawal request rejected",
-              originalAmount: withdrawalRequest.amount,
-              handlingFee: paymentDetails.handlingFee || 0,
-              isRefundTransaction: true,
-            }),
-          },
-        });
+      // Get user's current balances
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          commissionBalance: true,
+          securityRefund: true,
+        },
+      });
+
+      if (!user) {
+        response = NextResponse.json(
+          { error: "User not found" },
+          { status: 404 },
+        );
+        return addAPISecurityHeaders(response);
+      }
+
+      // Deduct from commission balance first
+      if (user.commissionBalance >= withdrawalAmount) {
+        // Sufficient commission balance
+        commissionDeduction = withdrawalAmount;
       } else {
-        // Refund each commission type that was deducted
-        const deductionBreakdown = hierarchicalDetails.deductionBreakdown || {};
-
-        for (const [transactionType, deductionAmount] of Object.entries(deductionBreakdown)) {
-          if (deductionAmount && typeof deductionAmount === 'number' && deductionAmount > 0) {
-            // Find the commission name for this type
-            const commissionOrder = hierarchicalDetails.commissionDeductionOrder || [];
-            const commission = commissionOrder.find(c => c.type === transactionType);
-            const commissionName = commission?.name || transactionType;
-
-            await prisma.walletTransaction.create({
-              data: {
-                userId: withdrawalRequest.userId,
-                type: transactionType as any, // Use the same transaction type for refund
-                amount: deductionAmount, // Positive amount for refund
-                balanceAfter: 0, // Not affecting walletBalance directly
-                description: `Withdrawal refund to ${commissionName} - ${withdrawalRequest.paymentMethod} (Request rejected)`,
-                referenceId: `${transactionType.toLowerCase()}-refund-${withdrawalRequestId}`,
-                status: "COMPLETED" as any,
-                metadata: JSON.stringify({
-                  originalWithdrawalId: withdrawalRequestId,
-                  refundType: transactionType,
-                  commissionName: commissionName,
-                  refundReason: "Withdrawal request rejected",
-                  originalDeductionAmount: deductionAmount,
-                  isRefundTransaction: true,
-                }),
-              },
-            });
-          }
+        // Deduct all commission balance
+        commissionDeduction = user.commissionBalance;
+        // Deduct remaining amount from security refund
+        const remainingAmount = withdrawalAmount - commissionDeduction;
+        if (user.securityRefund >= remainingAmount) {
+          securityRefundDeduction = remainingAmount;
+        } else {
+          // Insufficient funds in both commission and security refund
+          response = NextResponse.json(
+            { error: "Insufficient funds for withdrawal" },
+            { status: 400 },
+          );
+          return addAPISecurityHeaders(response);
         }
       }
+
+      // Update user balances
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          commissionBalance: {
+            decrement: commissionDeduction,
+          },
+          securityRefund: {
+            decrement: securityRefundDeduction,
+          },
+        },
+      });
+
+      // Create wallet transactions for the deductions
+      const transactionPromises: Promise<any>[] = [];
+
+      // Transaction for commission deduction
+      if (commissionDeduction > 0) {
+        transactionPromises.push(
+          prisma.walletTransaction.create({
+            data: {
+              userId: userId,
+              type: TransactionType.DEBIT,
+              amount: -commissionDeduction, // Negative for deduction
+              balanceAfter: 0,
+              description: `Withdrawal approved - Commission balance deduction - ${withdrawalRequest.paymentMethod}`,
+              referenceId: `commission-deduction-${withdrawalRequestId}`,
+              status: TransactionStatus.COMPLETED,
+              metadata: JSON.stringify({
+                withdrawalRequestId,
+                deductionType: "commission",
+                originalAmount: withdrawalAmount,
+                deductionAmount: commissionDeduction,
+                isWithdrawalTransaction: true,
+              }),
+            },
+          })
+        );
+      }
+
+      // Transaction for security refund deduction
+      if (securityRefundDeduction > 0) {
+        transactionPromises.push(
+          prisma.walletTransaction.create({
+            data: {
+              userId: userId,
+              type: TransactionType.DEBIT,
+              amount: -securityRefundDeduction, // Negative for deduction
+              balanceAfter: 0,
+              description: `Withdrawal approved - Security refund deduction - ${withdrawalRequest.paymentMethod}`,
+              referenceId: `security-refund-deduction-${withdrawalRequestId}`,
+              status: TransactionStatus.COMPLETED,
+              metadata: JSON.stringify({
+                withdrawalRequestId,
+                deductionType: "securityRefund",
+                originalAmount: withdrawalAmount,
+                deductionAmount: securityRefundDeduction,
+                isWithdrawalTransaction: true,
+              }),
+            },
+          })
+        );
+      }
+
+      // Execute all transactions
+      await Promise.all(transactionPromises);
+
+      // Update payment details with deduction information
+      const updatedPaymentDetails = {
+        ...paymentDetails,
+        commissionDeduction,
+        securityRefundDeduction,
+        totalDeduction: commissionDeduction + securityRefundDeduction,
+      };
+
+      updateData.paymentDetails = JSON.stringify(updatedPaymentDetails);
     }
+
+    // If rejected, refund the amount by reversing the hierarchical deduction transactions
+    // if (status === "REJECTED" && withdrawalRequest.status === "PENDING") {
+    //   // Parse hierarchical deduction details from payment details
+    //   const hierarchicalDetails = paymentDetails.hierarchicalDeductionDetails;
+
+    //   if (!hierarchicalDetails) {
+    //     console.error("No hierarchical deduction details found for withdrawal refund:", withdrawalRequestId);
+    //     // Fallback to simple refund if hierarchical details are missing
+    //     const refundAmount = withdrawalRequest.amount + (paymentDetails.handlingFee || 0);
+    //     await prisma.walletTransaction.create({
+    //       data: {
+    //         userId: withdrawalRequest.userId,
+    //         type: TransactionType.TASK_INCOME,
+    //         amount: refundAmount,
+    //         balanceAfter: 0, // Not affecting walletBalance directly
+    //         description: `Withdrawal refund (fallback) - ${withdrawalRequest.paymentMethod} (Request rejected)`,
+    //         referenceId: `fallback-refund-${withdrawalRequestId}`,
+    //         status: TransactionStatus.COMPLETED,
+    //         metadata: JSON.stringify({
+    //           originalWithdrawalId: withdrawalRequestId,
+    //           refundType: "fallback",
+    //           refundReason: "Withdrawal request rejected",
+    //           originalAmount: withdrawalRequest.amount,
+    //           handlingFee: paymentDetails.handlingFee || 0,
+    //           isRefundTransaction: true,
+    //         }),
+    //       },
+    //     });
+    //   } else {
+    //     // Refund each commission type that was deducted
+    //     const deductionBreakdown = hierarchicalDetails.deductionBreakdown || {};
+
+    //     for (const [transactionType, deductionAmount] of Object.entries(deductionBreakdown)) {
+    //       if (deductionAmount && typeof deductionAmount === 'number' && deductionAmount > 0) {
+    //         // Find the commission name for this type
+    //         const commissionOrder = hierarchicalDetails.commissionDeductionOrder || [];
+    //         const commission = commissionOrder.find(c => c.type === transactionType);
+    //         const commissionName = commission?.name || transactionType;
+
+    //         await prisma.walletTransaction.create({
+    //           data: {
+    //             userId: withdrawalRequest.userId,
+    //             type: transactionType as any, // Use the same transaction type for refund
+    //             amount: deductionAmount, // Positive amount for refund
+    //             balanceAfter: 0, // Not affecting walletBalance directly
+    //             description: `Withdrawal refund to ${commissionName} - ${withdrawalRequest.paymentMethod} (Request rejected)`,
+    //             referenceId: `${transactionType.toLowerCase()}-refund-${withdrawalRequestId}`,
+    //             status: "COMPLETED" as any,
+    //             metadata: JSON.stringify({
+    //               originalWithdrawalId: withdrawalRequestId,
+    //               refundType: transactionType,
+    //               commissionName: commissionName,
+    //               refundReason: "Withdrawal request rejected",
+    //               originalDeductionAmount: deductionAmount,
+    //               isRefundTransaction: true,
+    //             }),
+    //           },
+    //         });
+    //       }
+    //     }
+    //   }
+    // }
 
     // Update withdrawal request
     const updatedRequest = await prisma.withdrawalRequest.update({

@@ -1,5 +1,38 @@
 import { NextResponse } from "next/server";
-import { checkDatabaseConnection, getDatabaseConnectionStatus } from "@/lib/db";
+import { db } from "@/lib/db";
+
+// Simple database health check function
+async function checkDatabaseConnection() {
+  try {
+    // Perform a simple query to check connection
+    await db.$queryRaw`SELECT 1`;
+    return {
+      healthy: true,
+      latency: 0,
+      error: null
+    };
+  } catch (error: any) {
+    return {
+      healthy: false,
+      latency: 0,
+      error: error.message
+    };
+  }
+}
+
+// Simple connection status function
+function getDatabaseConnectionStatus() {
+  try {
+    // Check if Prisma client is initialized
+    return {
+      connected: !!db,
+    };
+  } catch {
+    return {
+      connected: false,
+    };
+  }
+}
 
 export async function GET() {
   const startTime = Date.now();

@@ -175,6 +175,48 @@ export async function GET(request: NextRequest) {
       new Date(),
     );
 
+    // Calculate previous periods for trending comparison
+    const previousDay = new Date(yesterday);
+    previousDay.setDate(previousDay.getDate() - 1);
+    
+    const previousWeekStart = new Date(startOfWeek);
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+    
+    const previousMonthStart = new Date(startOfMonth);
+    previousMonthStart.setMonth(previousMonthStart.getMonth() - 1);
+    const previousMonthEnd = new Date(startOfMonth);
+
+    // Calculate earnings for previous periods
+    const previousDayEarnings = calculateEarningsByType(
+      allEarningTransactions,
+      previousDay,
+      yesterday,
+    );
+    const previousWeekEarnings = calculateEarningsByType(
+      allEarningTransactions,
+      previousWeekStart,
+      startOfWeek,
+    );
+    const previousMonthEarnings = calculateEarningsByType(
+      allEarningTransactions,
+      previousMonthStart,
+      previousMonthEnd,
+    );
+
+    // Calculate trending status
+    const calculateTrend = (current: number, previous: number) => {
+      if (current > previous) return 'up';
+      if (current < previous) return 'down';
+      return 'same';
+    };
+
+    const trendingData = {
+      today: calculateTrend(todayEarnings.totalEarning, previousDayEarnings.totalEarning),
+      yesterday: calculateTrend(yesterdayEarnings.totalEarning, previousDayEarnings.totalEarning),
+      thisWeek: calculateTrend(weekEarnings.totalEarning, previousWeekEarnings.totalEarning),
+      thisMonth: calculateTrend(monthEarnings.totalEarning, previousMonthEarnings.totalEarning),
+    };
+
     // Get current user wallet information
     const currentUser = await db.user.findUnique({
       where: { id: user.id },
@@ -204,7 +246,7 @@ export async function GET(request: NextRequest) {
           thisMonth: monthEarnings.totalEarning,
           allTime: allTimeEarnings.totalEarning,
         },
-
+        trending: trendingData,
         detailed: {
           today: todayEarnings,
           yesterday: yesterdayEarnings,
@@ -212,47 +254,6 @@ export async function GET(request: NextRequest) {
           thisMonth: monthEarnings,
           allTime: allTimeEarnings,
         },
-
-        breakdown: {
-          // 1. Daily Task Commission
-          dailyTaskCommission: allTimeEarnings.dailyTaskCommission,
-
-          // 2. Referral Invite Commission (10%-3%-1%)
-          referralInviteCommission: allTimeEarnings.referralInviteCommission,
-
-          // 3. Referral Task Commission (8%-3%-1%)
-          referralTaskCommission: allTimeEarnings.referralTaskCommission,
-
-          // 4. USDT Top-up Bonus (3%)
-          topupBonus: allTimeEarnings.topupBonus,
-
-          // 5. Special Commission
-          specialCommission: allTimeEarnings.specialCommission,
-
-          // Total Earnings = sum of ONLY the 5 categories above
-          totalEarning: allTimeEarnings.totalEarning,
-        },
-
-        security: {
-          totalRefunds: userSecurityRefund,
-          refundHistory: [], // Can be populated from securityRefundRequest table if needed for detailed history
-        },
-
-        wallet: {
-          currentBalance: currentUser?.walletBalance || 0, // Only topup balance
-          securityDeposited: currentUser?.depositPaid || 0, // Level deposit amount
-          commissionWallet: allTimeEarnings.totalEarning, // Commission earnings (matches Total Earnings)
-          totalAvailableForWithdrawal: allTimeEarnings.totalEarning + userSecurityRefund, // Total Earnings + Security Refund
-        },
-
-        recentTransactions: allEarningTransactions.slice(0, 20).map((t) => ({
-          id: t.id,
-          type: t.type,
-          amount: t.amount,
-          description: t.description,
-          createdAt: t.createdAt,
-          status: t.status,
-        })),
       },
     };
 

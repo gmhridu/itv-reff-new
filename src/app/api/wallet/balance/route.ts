@@ -2,187 +2,193 @@ import { NextRequest, NextResponse } from "next/server";
 import { authMiddleware } from "@/lib/api/api-auth";
 import { db } from "@/lib/db";
 
+// --- Constants ---
+const EARNING_TYPES = [
+  "TASK_INCOME",
+  "REFERRAL_REWARD_A",
+  "REFERRAL_REWARD_B",
+  "REFERRAL_REWARD_C",
+  "MANAGEMENT_BONUS_A",
+  "MANAGEMENT_BONUS_B",
+  "MANAGEMENT_BONUS_C",
+  "TOPUP_BONUS",
+  "SPECIAL_COMMISSION",
+] as const;
+
+const PERIODS = [
+  "today",
+  "yesterday",
+  "thisWeek",
+  "thisMonth",
+  "allTime",
+] as const;
+type Period = (typeof PERIODS)[number];
+
+// --- Helpers ---
+const sumAmount = (res: { _sum: { amount: number | null } }) =>
+  res._sum.amount || 0;
+
+async function aggregateEarnings(
+  userId: string,
+  types: readonly string[] = EARNING_TYPES,
+  dateFilter: any = {}
+) {
+  return db.walletTransaction.aggregate({
+    where: {
+      userId,
+      type: { in: types as any },
+      status: "COMPLETED",
+      ...(Object.keys(dateFilter).length ? { createdAt: dateFilter } : {}),
+    },
+    _sum: { amount: true },
+  });
+}
+
+function getDateRanges() {
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const startOfYesterday = new Date(startOfDay);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const startOfWeek = new Date(startOfDay);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+  const startOfMonth = new Date(startOfDay);
+  startOfMonth.setDate(1);
+
+  return { now, startOfDay, startOfYesterday, startOfWeek, startOfMonth };
+}
+
+async function getEarningsTrend(userId: string, amount: number) {
+  try {
+    const { now } = getDateRanges();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const prev = await aggregateEarnings(userId, EARNING_TYPES, {
+      gte: yesterday,
+      lt: now,
+    });
+    const previousAmount = sumAmount(prev);
+
+    if (amount > previousAmount) return "up";
+    if (amount < previousAmount) return "down";
+    return "neutral";
+  } catch (err) {
+    console.error("Trend error:", err);
+    return "neutral";
+  }
+}
+
+// --- API Route ---
 export async function GET(request: NextRequest) {
   try {
     const user = await authMiddleware(request);
-
-    if (!user) {
+    if (!user)
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
-    }
 
-    // Get fresh user data
     const freshUser = await db.user.findUnique({
       where: { id: user.id },
       select: {
         id: true,
         name: true,
         phone: true,
-        walletBalance: true, // Current Balance (topup balance only)
-        commissionBalance: true, // Commission wallet
-        depositPaid: true, // Security Deposited
-        securityRefund: true, // Security refund amount available for withdrawal
+        walletBalance: true,
+        commissionBalance: true,
+        depositPaid: true,
+        securityRefund: true,
       },
     });
 
-    if (!freshUser) {
+    if (!freshUser)
       return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
-    // Calculate ONLY the 5 specified earning types for Total Earnings
-    const earningTransactions = await db.walletTransaction.aggregate({
-      where: {
-        userId: user.id,
-        type: {
-          in: [
-            "TASK_INCOME", // 1. Daily Task Commission
-            "REFERRAL_REWARD_A", // 2. Referral Invite Commission - Level A (10%)
-            "REFERRAL_REWARD_B", // 2. Referral Invite Commission - Level B (3%)
-            "REFERRAL_REWARD_C", // 2. Referral Invite Commission - Level C (1%)
-            "MANAGEMENT_BONUS_A", // 3. Referral Task Commission - Level A (8%)
-            "MANAGEMENT_BONUS_B", // 3. Referral Task Commission - Level B (3%)
-            "MANAGEMENT_BONUS_C", // 3. Referral Task Commission - Level C (1%)
-            "TOPUP_BONUS", // 4. USDT Top-up Bonus (3%)
-            "SPECIAL_COMMISSION", // 5. Special Commission
-          ] as any,
-        },
-        status: "COMPLETED",
-      },
-      _sum: {
-        amount: true,
-      },
-    });
-
-    // Get breakdown of each earning type with retry logic
+    // --- Earnings breakdown ---
     const [
-      dailyTaskCommission,
-      referralInviteCommission,
-      referralTaskCommission,
-      usdtTopupBonus,
+      totalAgg,
+      dailyTask,
+      referralInvite,
+      referralTask,
+      topupBonus,
       specialCommission,
     ] = await Promise.all([
-      // 1. Daily Task Commission
-      db.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: "TASK_INCOME",
-          status: "COMPLETED",
-        },
-        _sum: { amount: true },
-      }),
-
-      // 2. Referral Invite Commission (Multi-level)
-      db.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: {
-            in: [
-              "REFERRAL_REWARD_A",
-              "REFERRAL_REWARD_B",
-              "REFERRAL_REWARD_C",
-            ],
-          },
-          status: "COMPLETED",
-        },
-        _sum: { amount: true },
-      }),
-
-      // 3. Referral Task Commission (Multi-level)
-      db.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: {
-            in: [
-              "MANAGEMENT_BONUS_A",
-              "MANAGEMENT_BONUS_B",
-              "MANAGEMENT_BONUS_C",
-            ],
-          },
-          status: "COMPLETED",
-        },
-        _sum: { amount: true },
-      }),
-
-      // 4. USDT Top-up Bonus
-      db.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: "TOPUP_BONUS",
-          status: "COMPLETED",
-        },
-        _sum: { amount: true },
-      }),
-
-      // 5. Special Commission
-      db.walletTransaction.aggregate({
-        where: {
-          userId: user.id,
-          type: "SPECIAL_COMMISSION",
-          status: "COMPLETED",
-        },
-        _sum: { amount: true },
-      }),
+      aggregateEarnings(user.id),
+      aggregateEarnings(user.id, ["TASK_INCOME"]),
+      aggregateEarnings(user.id, [
+        "REFERRAL_REWARD_A",
+        "REFERRAL_REWARD_B",
+        "REFERRAL_REWARD_C",
+      ]),
+      aggregateEarnings(user.id, [
+        "MANAGEMENT_BONUS_A",
+        "MANAGEMENT_BONUS_B",
+        "MANAGEMENT_BONUS_C",
+      ]),
+      aggregateEarnings(user.id, ["TOPUP_BONUS"]),
+      aggregateEarnings(user.id, ["SPECIAL_COMMISSION"]),
     ]);
 
-    // Calculate actual total earnings from transactions
-    const actualTotalEarnings = earningTransactions._sum.amount || 0;
-
-    // Get security refund from user table (accumulated approved refunds)
+    const actualTotalEarnings = sumAmount(totalAgg);
     const userSecurityRefund = freshUser.securityRefund || 0;
 
-    // According to requirements:
-    // - Current Balance = Only topup balance (NOT part of Total Earnings or Total Available for Withdrawal)
-    // - Security Deposited = Level deposit amounts (NOT part of Total Earnings or Total Available for Withdrawal)
-    // - Total Earnings = ONLY the 5 specified commission types
-    // - Total Available for Withdrawal = Total Earnings + Security Refund
+    // --- Period earnings ---
+    const { startOfDay, startOfYesterday, startOfWeek, startOfMonth } =
+      getDateRanges();
 
+    const [today, yesterday, thisWeek, thisMonth] = await Promise.all([
+      aggregateEarnings(user.id, EARNING_TYPES, { gte: startOfDay }),
+      aggregateEarnings(user.id, EARNING_TYPES, {
+        gte: startOfYesterday,
+        lt: startOfDay,
+      }),
+      aggregateEarnings(user.id, EARNING_TYPES, { gte: startOfWeek }),
+      aggregateEarnings(user.id, EARNING_TYPES, { gte: startOfMonth }),
+    ]);
+
+    const amounts = {
+      today: sumAmount(today),
+      yesterday: sumAmount(yesterday),
+      thisWeek: sumAmount(thisWeek),
+      thisMonth: sumAmount(thisMonth),
+      allTime: actualTotalEarnings,
+    };
+
+    const trends = await Promise.all(
+      (Object.entries(amounts) as [Period, number][]).map(([period, amt]) =>
+        getEarningsTrend(user.id, amt)
+      )
+    );
+
+    // --- Response ---
     return NextResponse.json({
       userName: freshUser.name || "",
       userPhone: freshUser.phone || "",
       currentBalance: freshUser.walletBalance || 0,
       securityDeposited: freshUser.depositPaid || 0,
-      commissionBalance: freshUser.commissionBalance || 0,
-      securityRefund: freshUser.securityRefund || 0,
+      commissionBalance: actualTotalEarnings,
+      securityRefund: userSecurityRefund,
       totalEarnings: actualTotalEarnings,
-      totalAvailableForWithdrawal: freshUser.commissionBalance + freshUser.securityRefund,
+      totalAvailableForWithdrawal: actualTotalEarnings + userSecurityRefund,
       earningsBreakdown: {
-        dailyTaskCommission: dailyTaskCommission._sum.amount || 0,
-        referralInviteCommission: referralInviteCommission._sum.amount || 0,
-        referralTaskCommission: referralTaskCommission._sum.amount || 0,
-        usdtTopupBonus: usdtTopupBonus._sum.amount || 0,
-        specialCommission: specialCommission._sum.amount || 0,
+        dailyTaskCommission: sumAmount(dailyTask),
+        referralInviteCommission: sumAmount(referralInvite),
+        referralTaskCommission: sumAmount(referralTask),
+        usdtTopupBonus: sumAmount(topupBonus),
+        specialCommission: sumAmount(specialCommission),
       },
-
-      // Legacy field for backward compatibility
-      grandTotal: actualTotalEarnings + userSecurityRefund, // Same as totalAvailableForWithdrawal
+      recentEarnings: Object.fromEntries(
+        (Object.entries(amounts) as [Period, number][]).map(
+          ([period, amount], i) => [period, { amount, trend: trends[i] }]
+        )
+      ),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Get wallet balance error:", error);
-
-    // Handle specific database connection errors
-    if (
-      error.message?.includes("Database connection failed") ||
-      error.message?.includes("Can't reach database server")
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Database temporarily unavailable. Please try again in a few moments.",
-          code: "DB_CONNECTION_ERROR",
-        },
-        { status: 503 },
-      );
-    }
-
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        details:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
-      { status: 500 },
+      { error: "Internal server error" },
+      { status: 500 }
     );
   }
 }

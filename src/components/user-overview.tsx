@@ -19,14 +19,15 @@ import {
   Users,
   Target,
   Star,
-  Plus,
   RefreshCw,
   CheckCircle,
   AlertCircle,
+  ArrowUp,
+  ArrowDown,
+  Minus,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import {
   Card,
   CardContent,
@@ -45,12 +46,43 @@ interface UserNavigationBarItem {
 }
 
 interface WalletData {
+  userName: string;
+  userPhone: string;
   currentBalance: number; // Only topup balance (NOT part of earnings or withdrawal)
   securityDeposited: number; // Level deposit amount (NOT part of earnings or withdrawal)
   commissionBalance: number; // Commission earnings (legacy field)
   totalEarnings: number; // ONLY the 5 specified earning types
   securityRefund: number; // Security refunds (separate from earnings)
-  grandTotal: number; // Total Available for Withdrawal = totalEarnings + securityRefund
+  totalAvailableForWithdrawal: number;
+  earningsBreakdown: {
+    dailyTaskCommission: number;
+    referralInviteCommission: number;
+    referralTaskCommission: number;
+    usdtTopupBonus: number;
+    specialCommission: number;
+  };
+  recentEarnings: {
+    yesterday: {
+      amount: number;
+      trend: 'up' | 'down' | 'neutral';
+    };
+    today: {
+      amount: number;
+      trend: 'up' | 'down' | 'neutral';
+    };
+    thisWeek: {
+      amount: number;
+      trend: 'up' | 'down' | 'neutral';
+    };
+    thisMonth: {
+      amount: number;
+      trend: 'up' | 'down' | 'neutral';
+    };
+    allTime: {
+      amount: number;
+      trend: 'up' | 'down' | 'neutral';
+    };
+  };
 }
 
 interface EarningsData {
@@ -139,24 +171,17 @@ const userNavigationBar: UserNavigationBarItem[] = [
 
 const UserOverview = () => {
   const [walletData, setWalletData] = useState<WalletData | null>(null);
-  const [earningsData, setEarningsData] = useState<EarningsData | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setError(null);
-        await Promise.all([
-          fetchWalletData(),
-          fetchEarningsData(),
-          fetchUserProfile(),
-        ]);
+        await fetchWalletData();
       } catch (err) {
         setError("Failed to load user data. Please try again.");
         console.error("Error loading user data:", err);
@@ -188,50 +213,6 @@ const UserOverview = () => {
     }
   };
 
-  const fetchEarningsData = async () => {
-    try {
-      const response = await fetch("/api/user/earnings");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setEarningsData(data);
-        } else {
-          throw new Error(data.error || "Failed to load earnings data");
-        }
-      } else {
-        throw new Error(`Failed to fetch earnings data: ${response.status}`);
-      }
-    } catch (error) {
-      console.error("Error fetching earnings data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load earnings data",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const fetchUserProfile = async () => {
-    try {
-      const response = await fetch("/api/user/profile");
-      if (response.ok) {
-        const data = await response.json();
-        setUserProfile(data.user);
-      } else {
-        throw new Error(`Failed to fetch user profile: ${response.status}`);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load user profile",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
   // Get initials for avatar
   const getUserInitials = (name: string | null | undefined) => {
     if (!name) return "UN";
@@ -249,11 +230,7 @@ const UserOverview = () => {
   const refreshData = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([
-        fetchWalletData(),
-        fetchEarningsData(),
-        fetchUserProfile(),
-      ]);
+      await fetchWalletData();
       toast({
         title: "Data refreshed",
         description: "Your information has been updated successfully.",
@@ -272,25 +249,29 @@ const UserOverview = () => {
   const earningsItems = [
     {
       type: "Yesterday's earnings",
-      amount: earningsData?.data?.summary?.yesterday || 0,
+      amount: walletData?.recentEarnings?.yesterday?.amount || 0,
+      trend: walletData?.recentEarnings?.yesterday?.trend || 'neutral',
       icon: Calendar,
       gradient: "from-emerald-500 to-teal-600",
     },
     {
       type: "Today's earnings",
-      amount: earningsData?.data?.summary?.today || 0,
+      amount: walletData?.recentEarnings?.today?.amount || 0,
+      trend: walletData?.recentEarnings?.today?.trend || 'neutral',
       icon: TrendingUp,
       gradient: "from-blue-500 to-indigo-600",
     },
     {
       type: "This month's earnings",
-      amount: earningsData?.data?.summary?.thisMonth || 0,
+      amount: walletData?.recentEarnings?.thisMonth?.amount || 0,
+      trend: walletData?.recentEarnings?.thisMonth?.trend || 'neutral',
       icon: Calendar,
       gradient: "from-purple-500 to-pink-600",
     },
     {
       type: "This week's earnings",
-      amount: earningsData?.data?.summary?.thisWeek || 0,
+      amount: walletData?.recentEarnings?.thisWeek?.amount || 0,
+      trend: walletData?.recentEarnings?.thisWeek?.trend || 'neutral',
       icon: Calendar,
       gradient: "from-orange-500 to-red-600",
     },
@@ -299,7 +280,7 @@ const UserOverview = () => {
   const commissionBreakdown = [
     {
       type: "Daily Task Commission",
-      amount: earningsData?.data?.breakdown?.dailyTaskCommission || 0,
+      amount: walletData?.earningsBreakdown?.dailyTaskCommission || 0,
       icon: Target,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
@@ -307,28 +288,28 @@ const UserOverview = () => {
     {
       type: "Referral Invite Commission",
       amount:
-        earningsData?.data?.breakdown?.referralInviteCommission?.total || 0,
+        walletData?.earningsBreakdown?.referralInviteCommission || 0,
       icon: Users,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
     {
       type: "Referral Task Commission",
-      amount: earningsData?.data?.breakdown?.referralTaskCommission?.total || 0,
+      amount: walletData?.earningsBreakdown?.referralTaskCommission || 0,
       icon: Share,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
     },
     {
       type: "USDT Top-up Bonus (3%)",
-      amount: earningsData?.data?.breakdown?.topupBonus || 0,
+      amount: walletData?.earningsBreakdown?.usdtTopupBonus || 0,
       icon: Gift,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },
     {
       type: "Special Commission",
-      amount: earningsData?.data?.breakdown?.specialCommission || 0,
+      amount: walletData?.earningsBreakdown?.specialCommission || 0,
       icon: Star,
       color: "text-yellow-600",
       bgColor: "bg-yellow-50",
@@ -381,7 +362,7 @@ const UserOverview = () => {
               <Avatar className="w-20 h-20 border-4 border-white/30 shadow-lg">
                 <AvatarImage src="avatar.jpg" />
                 <AvatarFallback className="text-xl font-bold bg-gradient-to-br from-yellow-400 to-orange-500 text-white">
-                  {getUserInitials(userProfile?.name)}
+                  {getUserInitials(walletData?.userName)}
                 </AvatarFallback>
               </Avatar>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 border-2 border-white rounded-full flex items-center justify-center">
@@ -391,12 +372,12 @@ const UserOverview = () => {
             <div className="text-center">
               <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
                 <h2 className="text-lg font-semibold text-white">
-                  {userProfile?.name || "User"}
+                  {walletData?.userName || "User"}
                 </h2>
               </div>
               <div className="flex items-center justify-center gap-2 bg-white/20 px-3 py-1 rounded-full mt-1">
                 <span className="text-blue-100 text-sm">
-                  {userProfile ? formatPhoneNumber(userProfile.phone) : "****"}
+                  {walletData?.userPhone ? formatPhoneNumber(walletData?.userPhone) : "****"}
                 </span>
                 <Button
                   variant="ghost"
@@ -478,7 +459,7 @@ const UserOverview = () => {
                   {loading ? (
                     <span className="inline-block w-16 h-5 bg-white/30 animate-pulse rounded"></span>
                   ) : (
-                    earningsData?.data?.wallet?.commissionWallet?.toFixed(2) ||
+                    walletData?.commissionBalance?.toFixed(2) ||
                     "0.00"
                   )}
                 </p>
@@ -494,7 +475,7 @@ const UserOverview = () => {
                   {loading ? (
                     <span className="inline-block w-16 h-5 bg-white/30 animate-pulse rounded"></span>
                   ) : (
-                    earningsData?.data?.wallet?.securityDeposited?.toFixed(2) ||
+                    walletData?.securityDeposited?.toFixed(2) ||
                     "0.00"
                   )}
                 </p>
@@ -514,7 +495,7 @@ const UserOverview = () => {
                   </div>
                   <p className="text-3xl font-bold text-yellow-200 mb-2">
                     PKR{" "}
-                    {earningsData?.data?.wallet?.totalAvailableForWithdrawal?.toFixed(
+                    {walletData?.totalAvailableForWithdrawal?.toFixed(
                       2
                     ) || "0.00"}
                   </p>
@@ -531,7 +512,7 @@ const UserOverview = () => {
                       <span>
                         + Security Refund: PKR{" "}
                         {(
-                          earningsData?.data?.security?.totalRefunds || 0
+                          walletData?.securityRefund ? walletData?.securityRefund : 0
                         ).toFixed(2)}
                       </span>
                     </div>
@@ -665,7 +646,7 @@ const UserOverview = () => {
                   <div className="text-right">
                     <p className="font-bold text-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                       PKR{" "}
-                      {earningsData?.data?.breakdown?.totalEarning?.toLocaleString(
+                      {walletData?.totalEarnings?.toLocaleString(
                         undefined,
                         {
                           minimumFractionDigits: 2,
@@ -694,7 +675,7 @@ const UserOverview = () => {
                         Security Refund
                       </p>
                       <p className="text-sm text-gray-600">
-                        {(earningsData?.data?.security?.totalRefunds || 0) > 0
+                        {(walletData?.securityRefund || 0) > 0
                           ? "Approved refunds from previous level upgrades (added to withdrawal only)"
                           : "No refunds available yet - upgrade your level to unlock"}
                       </p>
@@ -704,26 +685,26 @@ const UserOverview = () => {
                     <p className="font-bold text-2xl text-green-600">
                       PKR{" "}
                       {(
-                        earningsData?.data?.security?.totalRefunds || 0
+                        walletData?.securityRefund || 0
                       )?.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
                     </p>
                     <p className="text-xs text-green-600 mt-1">
-                      {(earningsData?.data?.security?.totalRefunds || 0) > 0
+                      {(walletData?.securityRefund || 0) > 0
                         ? "Added to withdrawal (not current balance)"
                         : "Available after level upgrade"}
                     </p>
                   </div>
                 </div>
-                {(earningsData?.data?.security?.totalRefunds || 0) > 0 && (
+                {(walletData?.securityRefund || 0) > 0 && (
                   <div className="mt-3 p-2 bg-white/60 rounded border-l-4 border-green-400">
                     <div className="flex items-center gap-2 text-sm text-green-800">
                       <CheckCircle className="w-4 h-4" />
                       <span className="font-medium">
                         Security deposits from{" "}
-                        {earningsData?.data?.security?.refundHistory?.length ||
+                        {walletData?.securityRefund ||
                           "previous"}{" "}
                         level upgrade(s) refunded and added to withdrawal availability
                       </span>
@@ -760,7 +741,7 @@ const UserOverview = () => {
                         <span className="font-medium">
                           PKR{" "}
                           {(
-                            earningsData?.data?.security?.totalRefunds || 0
+                            walletData?.securityRefund || 0
                           ).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
@@ -772,7 +753,7 @@ const UserOverview = () => {
                           <span>📊 Total Available for Withdrawal:</span>
                           <span className="text-lg">
                             PKR{" "}
-                            {earningsData?.data?.wallet?.totalAvailableForWithdrawal?.toLocaleString(
+                            {walletData?.totalAvailableForWithdrawal?.toLocaleString(
                               undefined,
                               {
                                 minimumFractionDigits: 2,
@@ -787,7 +768,7 @@ const UserOverview = () => {
                   <div className="text-right">
                     <p className="font-bold text-3xl mb-2">
                       PKR{" "}
-                      {earningsData?.data?.wallet?.totalAvailableForWithdrawal?.toLocaleString(
+                      {walletData?.totalAvailableForWithdrawal?.toLocaleString(
                         undefined,
                         {
                           minimumFractionDigits: 2,
@@ -875,14 +856,31 @@ const UserOverview = () => {
                       <TrendingUp className="w-3 h-3 mr-1" />
                       <span>Last 24h</span>
                     </div>
-                    {earning.amount > 0 && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-emerald-200 text-emerald-700"
-                      >
-                        +{((earning.amount / 1000) * 100).toFixed(1)}%
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {earning.amount > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-emerald-200 text-emerald-700"
+                        >
+                          +{((earning.amount / 1000) * 100).toFixed(1)}%
+                        </Badge>
+                      )}
+                      {earning.trend === 'up' && (
+                        <div className="flex items-center text-xs text-green-600">
+                          <ArrowUp className="w-3 h-3" />
+                        </div>
+                      )}
+                      {earning.trend === 'down' && (
+                        <div className="flex items-center text-xs text-red-600">
+                          <ArrowDown className="w-3 h-3" />
+                        </div>
+                      )}
+                      {earning.trend === 'neutral' && (
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Minus className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -935,15 +933,6 @@ const UserOverview = () => {
                         <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs px-2 py-0.5">
                           NEW
                         </Badge>
-                        {(earningsData?.data?.security?.totalRefunds || 0) >
-                          0 && (
-                          <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-0.5">
-                            PKR{" "}
-                            {(
-                              earningsData?.data?.security?.totalRefunds || 0
-                            ).toFixed(0)}
-                          </Badge>
-                        )}
                       </div>
                     )}
                   </div>

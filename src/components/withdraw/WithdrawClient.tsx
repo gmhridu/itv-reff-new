@@ -30,17 +30,9 @@ import { useBankCards } from "@/hooks/useBankCards";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { WithdrawalHistory } from "./WithdrawalHistory";
-import { useNotifications } from "@/hooks/use-notifications";
 import { useWithdrawalInfo } from "@/hooks/useWithdrawalConfig";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 
 export const WithdrawClient = () => {
   const { bankCards, loading: isLoadingCards, refetch } = useBankCards();
@@ -53,13 +45,13 @@ export const WithdrawClient = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // State management
-  const [selectedWallet, setSelectedWallet] = useState("Commission Wallet");
   const [selectedMethod, setSelectedMethod] = useState("");
   const [amount, setAmount] = useState("");
   const [showNoBankCardsModal, setShowNoBankCardsModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successModalData, setSuccessModalData] = useState<any>(null);
   const [walletBalances, setWalletBalances] = useState({
+    canWithdraw: false,
     mainWallet: 0,
     commissionWallet: 0,
     totalEarnings: 0,
@@ -74,20 +66,9 @@ export const WithdrawClient = () => {
   const [usdtAddress, setUsdtAddress] = useState("");
   const [usdtHolderName, setUsdtHolderName] = useState("");
   const [isAddingUsdtWallet, setIsAddingUsdtWallet] = useState(false);
-
-  // Initialize notifications hook with current user
-  const { refetch: refetchNotifications } = useNotifications({
-    userId: currentUser?.id || "",
-  });
-
   // Use predefined amounts from configuration
   const predefinedAmounts = withdrawalConfig?.predefinedAmounts || [
     500, 3000, 10000, 30000, 70000, 100000, 250000, 500000,
-  ];
-
-  const walletOptions = [
-    { value: "Main Wallet", label: "Main Wallet" },
-    { value: "Commission Wallet", label: "Commission Wallet" },
   ];
 
   // Fetch current user and wallet balances on component mount
@@ -126,7 +107,6 @@ export const WithdrawClient = () => {
     }
   };
 
-  // Refresh bank cards when window gains focus (user returns from bank-card page)
   useEffect(() => {
     const handleFocus = () => {
       refetch();
@@ -234,10 +214,6 @@ export const WithdrawClient = () => {
     setAmount(value.toString());
   };
 
-  const handleWalletSelect = (wallet: string) => {
-    setSelectedWallet("Commission Wallet");
-  };
-
   const handleMethodSelect = (method: string) => {
     setSelectedMethod(method);
   };
@@ -297,7 +273,7 @@ export const WithdrawClient = () => {
     const isUsdtWithdrawal = isUsdtMethod();
     const calculation = calculateDisplayFees?.(
       withdrawalAmount,
-      isUsdtWithdrawal,
+      isUsdtWithdrawal
     );
     const totalRequired = calculation?.totalDeduction || withdrawalAmount;
 
@@ -353,21 +329,8 @@ export const WithdrawClient = () => {
             variant: "default",
           });
         }
-
-        // Reset form
         setAmount("");
-
-        // Refresh wallet balances
         fetchWalletBalances();
-
-        // Refresh notifications to show the new withdrawal notification
-        try {
-          setTimeout(() => {
-            refetchNotifications();
-          }, 1000); // Small delay to ensure notification is created
-        } catch (error) {
-          console.log("Failed to refresh notifications:", error);
-        }
       } else {
         toast({
           title: "Withdrawal Failed",
@@ -617,7 +580,7 @@ export const WithdrawClient = () => {
                                       ? `${card.accountNumber.slice(0, 6)}...${card.accountNumber.slice(-6)}`
                                       : card.accountNumber);
                                   return displayName === selectedMethod;
-                                })?.bankName || "",
+                                })?.bankName || ""
                               )}
                           </span>
                           <div>
@@ -925,7 +888,12 @@ export const WithdrawClient = () => {
             <Button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
               onClick={handleSubmit}
-              disabled={!amount || isLoadingCards || isSubmitting}
+              disabled={
+                !amount ||
+                isLoadingCards ||
+                isSubmitting ||
+                !walletBalances.canWithdraw
+              }
             >
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
@@ -936,6 +904,20 @@ export const WithdrawClient = () => {
                 "Submit"
               )}
             </Button>
+
+            {/* Warning message when user cannot withdraw */}
+            {!walletBalances.canWithdraw && (
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">Withdrawal Not Available</span>
+                </div>
+                <p>
+                  You are currently unable to make withdrawals. This may be due
+                  to you have pending withdrawal requests.
+                </p>
+              </div>
+            )}
 
             {/* Balance warning for current selection */}
             {amount && !isUsdtMethod() && (
