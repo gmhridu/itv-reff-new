@@ -523,9 +523,7 @@ const UserOverview = () => {
                       <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
                       <span>
                         Total Earnings (5 Types): PKR{" "}
-                        {earningsData?.data?.breakdown?.totalEarning?.toFixed(
-                          2
-                        ) || "0.00"}
+                        {walletData?.commissionBalance?.toFixed(2) || "0.00"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-yellow-200/90">
@@ -750,7 +748,7 @@ const UserOverview = () => {
                         <span className="font-medium">
                           PKR{" "}
                           {(
-                            earningsData?.data?.breakdown?.totalEarning || 0
+                            walletData?.commissionBalance || 0
                           ).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,

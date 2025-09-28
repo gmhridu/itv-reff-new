@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       where: { id: user.id },
       select: {
         id: true,
+        name: true,
+        phone: true,
         walletBalance: true, // Current Balance (topup balance only)
         commissionBalance: true, // Commission wallet
         depositPaid: true, // Security Deposited
@@ -137,17 +139,14 @@ export async function GET(request: NextRequest) {
     // - Total Available for Withdrawal = Total Earnings + Security Refund
 
     return NextResponse.json({
-      // Wallet balances
-      currentBalance: freshUser.walletBalance || 0, // Only topup balance after admin approval
-      securityDeposited: freshUser.depositPaid || 0, // Level subscription deposit amounts
-      commissionBalance: actualTotalEarnings, // Commission earnings (matches Total Earnings)
-      securityRefund: userSecurityRefund, // Approved security refunds (stored separately)
-
-      // Total calculations
-      totalEarnings: actualTotalEarnings, // Only the 5 specified earning types
-      totalAvailableForWithdrawal: actualTotalEarnings + userSecurityRefund, // Total Earnings + Security Refund
-
-      // Detailed breakdown of Total Earnings (5 types only)
+      userName: freshUser.name || "",
+      userPhone: freshUser.phone || "",
+      currentBalance: freshUser.walletBalance || 0,
+      securityDeposited: freshUser.depositPaid || 0,
+      commissionBalance: freshUser.commissionBalance || 0,
+      securityRefund: freshUser.securityRefund || 0,
+      totalEarnings: actualTotalEarnings,
+      totalAvailableForWithdrawal: freshUser.commissionBalance + freshUser.securityRefund,
       earningsBreakdown: {
         dailyTaskCommission: dailyTaskCommission._sum.amount || 0,
         referralInviteCommission: referralInviteCommission._sum.amount || 0,

@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 export async function POST(request: NextRequest) {
   try {
     // Verify the request is authorized (simple secret key check)
-    const headersList = headers();
+    const headersList = await headers();
     const authHeader = headersList.get("authorization");
     const cronSecret = process.env.CRON_SECRET || "default-cron-secret";
 
@@ -36,9 +36,9 @@ export async function POST(request: NextRequest) {
     await db.systemLog.create({
       data: {
         level: "INFO",
-        category: "TASK_BONUS",
+        component: "TASK_BONUS",
         message: `Daily task bonus processing completed`,
-        details: JSON.stringify({
+        metadata: JSON.stringify({
           date: targetDate.toISOString(),
           processed: result.processed,
           successful: result.successful,
@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
     await db.systemLog.create({
       data: {
         level: "ERROR",
-        category: "TASK_BONUS",
+        component: "TASK_BONUS",
         message: `Failed to process daily task bonuses`,
-        details: JSON.stringify({
+        metadata: JSON.stringify({
           error: error instanceof Error ? error.message : "Unknown error",
           stack: error instanceof Error ? error.stack : undefined,
         }),

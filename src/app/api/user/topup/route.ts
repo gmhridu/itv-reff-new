@@ -171,9 +171,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check maximum topup amount
-    if (parsedAmount > 1000000) {
+    if (parsedAmount > 10000000) {
       return NextResponse.json(
-        { success: false, error: "Maximum topup amount is 1,000,000 PKR" },
+        { success: false, error: "Maximum topup amount is 10,000,000 PKR" },
         { status: 400 },
       );
     }
