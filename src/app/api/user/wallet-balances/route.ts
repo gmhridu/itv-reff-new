@@ -38,9 +38,15 @@ export async function GET(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
+    // if user has pending withdrawal request
+    const withdrawalRequest = await db.withdrawalRequest.findFirst({
+      where: { userId: user.id, status: "PENDING" },
+    });
+
     response = NextResponse.json({
       success: true,
       walletBalances: {
+        canWithdraw: !withdrawalRequest,
         mainWallet: freshUser.walletBalance || 0,
         commissionWallet: freshUser.commissionBalance,
         totalEarnings: freshUser.commissionBalance,

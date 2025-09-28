@@ -51,6 +51,7 @@ export const WithdrawClient = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successModalData, setSuccessModalData] = useState<any>(null);
   const [walletBalances, setWalletBalances] = useState({
+    canWithdraw: false,
     mainWallet: 0,
     commissionWallet: 0,
     totalEarnings: 0,
@@ -69,7 +70,7 @@ export const WithdrawClient = () => {
   const predefinedAmounts = withdrawalConfig?.predefinedAmounts || [
     500, 3000, 10000, 30000, 70000, 100000, 250000, 500000,
   ];
-  
+
   // Fetch current user and wallet balances on component mount
   useEffect(() => {
     fetchCurrentUser();
@@ -887,7 +888,12 @@ export const WithdrawClient = () => {
             <Button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
               onClick={handleSubmit}
-              disabled={!amount || isLoadingCards || isSubmitting}
+              disabled={
+                !amount ||
+                isLoadingCards ||
+                isSubmitting ||
+                !walletBalances.canWithdraw
+              }
             >
               {isSubmitting ? (
                 <div className="flex items-center gap-2">
@@ -898,6 +904,20 @@ export const WithdrawClient = () => {
                 "Submit"
               )}
             </Button>
+
+            {/* Warning message when user cannot withdraw */}
+            {!walletBalances.canWithdraw && (
+              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">Withdrawal Not Available</span>
+                </div>
+                <p>
+                  You are currently unable to make withdrawals. This may be due
+                  to you have pending withdrawal requests.
+                </p>
+              </div>
+            )}
 
             {/* Balance warning for current selection */}
             {amount && !isUsdtMethod() && (
