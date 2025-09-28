@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       });
 
       const currentBalance = balance._sum.amount || 0;
-      commissionBalances[commission.type] = Math.max(0, currentBalance); // Ensure no negative balances
+      commissionBalances[commission.type] = Math.max(0, currentBalance);
       totalCommissionBalance += commissionBalances[commission.type];
     }
 

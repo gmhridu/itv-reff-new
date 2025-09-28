@@ -20,12 +20,12 @@ model User {
   status                 UserStatus              @default(ACTIVE)
   ipAddress              String?
   deviceId               String?
-  walletBalance          Float                   @default(0)
+  walletBalance          Float                   @default(0) //current balance
   totalEarnings          Float                   @default(0)
   currentPositionId      String?
   positionStartDate      DateTime?
   positionEndDate        DateTime?
-  depositPaid            Float                   @default(0)
+  depositPaid            Float                   @default(0) //security deposit
   isIntern               Boolean                 @default(true)
   failedLoginAttempts    Int?                    @default(0)
   lastFailedLogin        DateTime?
@@ -33,8 +33,8 @@ model User {
   lastLoginAt            DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
-  commissionBalance      Float                   @default(0)
-  securityRefund         Float                   @default(0)
+  commissionBalance      Float                   @default(0) //commission balance
+  securityRefund         Float                   @default(0) //security refund
   fundPassword           String?
   activityLogs           ActivityLog[]
   bankCards              BankCard[]
