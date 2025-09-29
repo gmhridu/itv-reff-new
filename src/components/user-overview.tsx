@@ -353,13 +353,13 @@ const UserOverview = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 w-full overflow-x-hidden">
       {/* Header Section */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg pb-4">
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between p-3 sm:p-4">
           <div className="flex flex-col items-center justify-center gap-3 flex-1">
             <div className="relative">
-              <Avatar className="w-20 h-20 border-4 border-white/30 shadow-lg">
+              <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white/30 shadow-lg">
                 <AvatarImage src="avatar.jpg" />
                 <AvatarFallback className="text-xl font-bold bg-gradient-to-br from-yellow-400 to-orange-500 text-white">
                   {getUserInitials(walletData?.userName)}
@@ -371,7 +371,7 @@ const UserOverview = () => {
             </div>
             <div className="text-center">
               <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
-                <h2 className="text-lg font-semibold text-white">
+                <h2 className="text-base sm:text-lg font-semibold text-white">
                   {walletData?.userName || "User"}
                 </h2>
               </div>
@@ -404,8 +404,8 @@ const UserOverview = () => {
       </div>
 
       {/* Wallet Balance Section - Redesigned */}
-      <div className="mx-4 mt-6">
-        <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-xl">
+      <div className="px-4 mt-4 sm:mt-6">
+        <Card className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-xl w-full max-w-full overflow-hidden">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-white">
@@ -448,7 +448,7 @@ const UserOverview = () => {
             </div>
 
             {/* Commission Balance & Security Deposited - Enhanced */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white/15 rounded-lg p-3 border border-white/5">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-green-100 text-xs">Commission Wallet</p>
@@ -484,16 +484,16 @@ const UserOverview = () => {
             </div>
 
             {/* Total Available for Withdrawal - Premium Design */}
-            <div className="bg-gradient-to-r from-yellow-400/25 via-orange-400/20 to-red-400/15 border-2 border-yellow-300/40 rounded-xl p-5 shadow-inner">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
+            <div className="bg-gradient-to-r from-yellow-400/25 via-orange-400/20 to-red-400/15 border-2 border-yellow-300/40 rounded-xl p-4 sm:p-5 shadow-inner w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="w-5 h-5 text-yellow-200" />
-                    <p className="text-yellow-100 text-base font-semibold">
+                    <DollarSign className="w-5 h-5 text-yellow-200 flex-shrink-0" />
+                    <p className="text-yellow-100 text-sm sm:text-base font-semibold leading-tight">
                       Total Available for Withdrawal
                     </p>
                   </div>
-                  <p className="text-3xl font-bold text-yellow-200 mb-2">
+                  <p className="text-2xl sm:text-3xl font-bold text-yellow-200 mb-2">
                     PKR{" "}
                     {walletData?.totalAvailableForWithdrawal?.toFixed(
                       2
@@ -501,15 +501,15 @@ const UserOverview = () => {
                   </p>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-xs text-yellow-200/90">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span>
+                      <div className="w-2 h-2 bg-blue-400 rounded-full flex-shrink-0"></div>
+                      <span className="leading-tight">
                         Total Earnings (5 Types): PKR{" "}
                         {walletData?.commissionBalance?.toFixed(2) || "0.00"}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-yellow-200/90">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span>
+                      <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
+                      <span className="leading-tight">
                         + Security Refund: PKR{" "}
                         {(
                           walletData?.securityRefund ? walletData?.securityRefund : 0
@@ -518,9 +518,9 @@ const UserOverview = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-16 h-16 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full flex items-center justify-center shadow-lg">
-                    <Wallet className="w-8 h-8 text-white" />
+                <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full flex items-center justify-center shadow-lg">
+                    <Wallet className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                   </div>
                   <span className="text-xs text-yellow-200 font-medium">
                     Ready to Withdraw
@@ -533,8 +533,8 @@ const UserOverview = () => {
       </div>
 
       {/* Total Earning Table - As per requirements */}
-      <div className="mx-4 mt-6">
-        <Card>
+      <div className="px-4 mt-4 sm:mt-6">
+        <Card className="w-full max-w-full overflow-hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-600" />
@@ -549,54 +549,54 @@ const UserOverview = () => {
               {commissionBreakdown.map((commission, index) => (
                 <div
                   key={commission.type}
-                  className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-all duration-200 border border-gray-100 hover:border-gray-200 hover:shadow-sm"
+                  className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-gray-100 hover:to-gray-50 transition-all duration-200 border border-gray-100 hover:border-gray-200 hover:shadow-sm w-full"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                     <div
-                      className={`w-12 h-12 ${commission.bgColor} rounded-xl flex items-center justify-center shadow-sm border border-white/50`}
+                      className={`w-10 h-10 sm:w-12 sm:h-12 ${commission.bgColor} rounded-xl flex items-center justify-center shadow-sm border border-white/50 flex-shrink-0`}
                     >
                       <commission.icon
-                        className={`w-6 h-6 ${commission.color}`}
+                        className={`w-5 h-5 sm:w-6 sm:h-6 ${commission.color}`}
                       />
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-base">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 text-sm sm:text-base leading-tight break-words overflow-hidden text-ellipsis">
                         {commission.type}
                       </p>
                       {commission.type === "Referral Invite Commission" && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                           💰 10% → 3% → 1% (multi-level invite bonus)
                         </p>
                       )}
                       {commission.type === "Referral Task Commission" && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                           📈 8% → 3% → 1% (task completion bonus)
                         </p>
                       )}
                       {commission.type === "Daily Task Commission" && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                           🎯 Earnings from completing daily video tasks
                         </p>
                       )}
                       {commission.type === "USDT Top-up Bonus (3%)" && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                           ⚡ Extra 3% bonus on USDT TRC20 top-ups
                         </p>
                       )}
                       {commission.type === "Special Commission" && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                           ⭐ Special promotions & blessed bonuses
                         </p>
                       )}
                       {commission.type === "Security Refund" && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
                           🛡️ Refunds from previous level security deposits
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-xl text-gray-900">
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-lg sm:text-xl text-gray-900 break-all overflow-hidden">
                       PKR{" "}
                       {commission.amount.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -616,17 +616,17 @@ const UserOverview = () => {
               ))}
 
               {/* Total Earning Summary - Enhanced */}
-              <div className="border-t-2 border-gradient-to-r from-blue-200 via-purple-200 to-blue-200 pt-6 mt-8">
-                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl border border-blue-200 shadow-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                      <DollarSign className="w-8 h-8 text-white" />
+              <div className="border-t-2 border-gradient-to-r from-blue-200 via-purple-200 to-blue-200 pt-4 sm:pt-6 mt-6 sm:mt-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl border border-blue-200 shadow-lg gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                      <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     </div>
-                    <div>
-                      <p className="font-bold text-xl text-gray-900 mb-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-lg sm:text-xl text-gray-900 mb-1">
                         Total Earning
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs sm:text-sm text-gray-600 leading-tight">
                         📊 All commission types combined from your activities
                       </p>
                       <div className="flex items-center gap-2 mt-2">
@@ -636,15 +636,15 @@ const UserOverview = () => {
                             Actively earning
                           </span>
                         </div>
-                        <span className="text-gray-400">•</span>
-                        <span className="text-xs text-blue-600 font-medium">
+                        <span className="text-gray-400 hidden sm:inline">•</span>
+                        <span className="text-xs text-blue-600 font-medium hidden sm:inline">
                           Updated in real-time
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  <div className="text-left sm:text-right">
+                    <p className="font-bold text-2xl sm:text-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
                       PKR{" "}
                       {walletData?.totalEarnings?.toLocaleString(
                         undefined,
@@ -654,7 +654,7 @@ const UserOverview = () => {
                         }
                       ) || "0.00"}
                     </p>
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full mt-2">
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full mt-2 inline-block">
                       <span className="text-xs font-medium">
                         Total Commissions
                       </span>
@@ -664,25 +664,25 @@ const UserOverview = () => {
               </div>
 
               {/* Security Refund Section - Enhanced */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-white" />
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                      <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                     </div>
-                    <div>
-                      <p className="font-bold text-lg text-gray-900">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-base sm:text-lg text-gray-900 mb-1">
                         Security Refund
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs sm:text-sm text-gray-600 leading-tight">
                         {(walletData?.securityRefund || 0) > 0
                           ? "Approved refunds from previous level upgrades (added to withdrawal only)"
                           : "No refunds available yet - upgrade your level to unlock"}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-2xl text-green-600">
+                  <div className="text-left sm:text-right flex-shrink-0">
+                    <p className="font-bold text-xl sm:text-2xl text-green-600 mb-1">
                       PKR{" "}
                       {(
                         walletData?.securityRefund || 0
@@ -691,7 +691,7 @@ const UserOverview = () => {
                         maximumFractionDigits: 2,
                       })}
                     </p>
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="text-xs text-green-600">
                       {(walletData?.securityRefund || 0) > 0
                         ? "Added to withdrawal (not current balance)"
                         : "Available after level upgrade"}
@@ -700,9 +700,9 @@ const UserOverview = () => {
                 </div>
                 {(walletData?.securityRefund || 0) > 0 && (
                   <div className="mt-3 p-2 bg-white/60 rounded border-l-4 border-green-400">
-                    <div className="flex items-center gap-2 text-sm text-green-800">
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="font-medium">
+                    <div className="flex items-start gap-2 text-xs sm:text-sm text-green-800">
+                      <CheckCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span className="font-medium leading-tight">
                         Security deposits from{" "}
                         {walletData?.securityRefund ||
                           "previous"}{" "}
@@ -714,19 +714,19 @@ const UserOverview = () => {
               </div>
 
               {/* Final Total Available for Withdrawal - Enhanced */}
-              <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white rounded-lg p-5 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="w-6 h-6" />
-                      <p className="font-bold text-xl">
+              <div className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 text-white rounded-lg p-4 sm:p-5 shadow-lg w-full">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+                      <p className="font-bold text-lg sm:text-xl leading-tight">
                         Total Amount Available for Withdrawal
                       </p>
                     </div>
-                    <div className="space-y-1 text-sm text-yellow-100">
-                      <div className="flex items-center justify-between">
-                        <span>💰 Total Earnings (5 Types Only):</span>
-                        <span className="font-medium">
+                    <div className="space-y-2 text-sm text-yellow-100">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <span className="flex-shrink-0">💰 Total Earnings (5 Types Only):</span>
+                        <span className="font-medium sm:text-right">
                           PKR{" "}
                           {(
                             walletData?.commissionBalance || 0
@@ -736,9 +736,9 @@ const UserOverview = () => {
                           })}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>🛡️ Security Refund:</span>
-                        <span className="font-medium">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <span className="flex-shrink-0">🛡️ Security Refund:</span>
+                        <span className="font-medium sm:text-right">
                           PKR{" "}
                           {(
                             walletData?.securityRefund || 0
@@ -748,10 +748,10 @@ const UserOverview = () => {
                           })}
                         </span>
                       </div>
-                      <div className="border-t border-yellow-300/30 pt-1 mt-2">
-                        <div className="flex items-center justify-between font-semibold">
-                          <span>📊 Total Available for Withdrawal:</span>
-                          <span className="text-lg">
+                      <div className="border-t border-yellow-300/30 pt-2 mt-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 font-semibold">
+                          <span className="flex-shrink-0">📊 Total Available for Withdrawal:</span>
+                          <span className="text-lg sm:text-right">
                             PKR{" "}
                             {walletData?.totalAvailableForWithdrawal?.toLocaleString(
                               undefined,
@@ -765,8 +765,8 @@ const UserOverview = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-3xl mb-2">
+                  <div className="flex flex-col items-start lg:items-end gap-2 flex-shrink-0">
+                    <p className="font-bold text-2xl sm:text-3xl">
                       PKR{" "}
                       {walletData?.totalAvailableForWithdrawal?.toLocaleString(
                         undefined,
@@ -790,14 +790,14 @@ const UserOverview = () => {
       </div>
 
       {/* Quick Earnings Overview - Enhanced */}
-      <div className="mx-4 mt-8">
+      <div className="px-4 mt-6 sm:mt-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-gray-900">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
                 Recent Earnings
               </h3>
               <p className="text-sm text-gray-600">
@@ -811,14 +811,14 @@ const UserOverview = () => {
         </div>
 
         {/* Regular earnings - 2 columns Enhanced */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           {earningsItems.map((earning, index) => {
             const IconComponent = earning.icon;
 
             return (
               <div
                 key={earning.type}
-                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 hover:border-gray-200 relative overflow-hidden"
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 hover:border-gray-200 relative overflow-hidden"
               >
                 {/* Background decoration */}
                 <div
@@ -844,7 +844,7 @@ const UserOverview = () => {
                       </div>
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900 mb-3">
+                  <p className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
                     PKR{" "}
                     {earning.amount.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -890,15 +890,15 @@ const UserOverview = () => {
       </div>
 
       {/* Navigation Section - Updated with Security Refund */}
-      <div className="mx-4 mt-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">
+      <div className="px-4 mt-4 sm:mt-6">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
           Quick Actions
         </h3>
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden pb-3 mb-10">
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden pb-3 mb-10 w-full max-w-full">
           {userNavigationBar.map((item, index) => (
             <Link key={index} href={item.href}>
               <div
-                className={`flex items-center justify-between p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
+                className={`flex items-center justify-between p-3 sm:p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
                   index !== userNavigationBar.length - 1
                     ? "border-b border-gray-100"
                     : ""
@@ -906,7 +906,7 @@ const UserOverview = () => {
               >
                 <div className="flex items-center">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center mr-3 ${
                       item.label === "Support"
                         ? "bg-purple-100"
                         : item.label === "Security Refund"
@@ -915,7 +915,7 @@ const UserOverview = () => {
                     }`}
                   >
                     <item.icon
-                      className={`w-5 h-5 ${
+                      className={`w-4 h-4 sm:w-5 sm:h-5 ${
                         item.label === "Support"
                           ? "text-purple-600"
                           : item.label === "Security Refund"

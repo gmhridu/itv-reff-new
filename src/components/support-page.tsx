@@ -80,17 +80,6 @@ const SupportPage = () => {
       bgColor: "bg-green-100",
       action: handleWhatsAppContact,
     },
-    {
-      id: "telegram",
-      name: "Telegram",
-      description: "Connect with us on Telegram",
-      icon: MessageCircle,
-      contact: "@itv_support",
-      availability: "24/7 Available",
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
-      action: handleTelegramContact,
-    },
   ];
 
   const faqItems = [
@@ -163,7 +152,7 @@ const SupportPage = () => {
             Contact Options
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
             {supportOptions.map((option) => (
               <Card
                 key={option.id}
@@ -243,7 +232,7 @@ const SupportPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4">
                 <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageCircle className="w-4 h-4 text-green-600" />
@@ -252,17 +241,6 @@ const SupportPage = () => {
                     </span>
                   </div>
                   <span className="text-sm sm:text-base font-semibold text-green-600">
-                    24/7 (2-4h response)
-                  </span>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-                  <div className="flex items-center gap-2 mb-1">
-                    <MessageCircle className="w-4 h-4 text-blue-600" />
-                    <span className="text-xs sm:text-sm font-medium text-gray-700">
-                      Telegram
-                    </span>
-                  </div>
-                  <span className="text-sm sm:text-base font-semibold text-blue-600">
                     24/7 (2-4h response)
                   </span>
                 </div>
