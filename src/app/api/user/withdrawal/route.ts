@@ -10,7 +10,6 @@ import {
 } from "@/lib/admin/notification-service";
 import { NotificationService } from "@/lib/notification-service";
 import { withdrawalConfigService } from "@/lib/admin/withdrawal-config-service";
-import { TransactionType, TransactionStatus } from "@prisma/client";
 
 export async function POST(request: NextRequest) {
   let response: NextResponse;

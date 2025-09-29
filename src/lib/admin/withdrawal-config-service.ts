@@ -187,7 +187,7 @@ export class WithdrawalConfigService {
     }
 
     // check if user has enough balance
-    const totalAvailableBalance = user.walletBalance + user.commissionBalance;
+    const totalAvailableBalance = user.securityRefund + user.commissionBalance;
     if (totalAvailableBalance < amount) {
       return {
         isValid: false,
