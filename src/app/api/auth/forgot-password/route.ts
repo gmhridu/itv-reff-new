@@ -1,72 +1,95 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { validateEmail } from '@/lib/security';
-import { EmailService } from '@/lib/email-service';
-import crypto from 'crypto';
+import { WhatsAppOTPService } from '@/lib/whatsapp-otp-service';
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
 });
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 DEBUG: Forgot password API called');
     const body = await request.json();
+    console.log('🔍 DEBUG: Request body:', body);
 
     // Validate input
     const validatedData = forgotPasswordSchema.parse(body);
+    console.log('🔍 DEBUG: Validated phone number:', validatedData.phone);
 
-    // Additional security validation
-    if (!validateEmail(validatedData.email)) {
+    // Validate phone number format
+    if (!WhatsAppOTPService.validatePhoneNumber(validatedData.phone)) {
+      console.error('❌ DEBUG: Phone number validation failed');
       return NextResponse.json(
-        { error: 'Invalid email address' },
+        { error: 'Invalid phone number format' },
         { status: 400 }
       );
     }
+    console.log('🔍 DEBUG: Phone number format is valid');
 
     // Check if user exists
+    console.log('🔍 DEBUG: Checking if user exists with phone:', validatedData.phone);
     const user = await db.user.findUnique({
-      where: { email: validatedData.email },
+      where: { phone: validatedData.phone },
     });
+    console.log('🔍 DEBUG: User found:', user ? 'YES' : 'NO');
+    if (user) {
+      console.log('🔍 DEBUG: User status:', user.status);
+      console.log('🔍 DEBUG: User ID:', user.id);
+    }
 
-    // Always return success even if user doesn't exist (to prevent email enumeration)
-    // But only send actual email if user exists
+    // Always return success even if user doesn't exist (to prevent phone enumeration)
+    // But only send actual OTP if user exists
     if (user && user.status === 'ACTIVE') {
       try {
-        // Generate a secure reset token
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-        // Store the reset token in the database
-        await db.passwordReset.create({
-          data: {
-            userId: user.id,
-            token: resetToken,
-            expiresAt,
-          }
-        });
-
-        // Send the password reset email
-        const emailResult = await EmailService.sendPasswordResetEmail(
-          user.email!,
-          resetToken
-        );
-
-        if (!emailResult.success) {
-          console.error('Failed to send password reset email:', emailResult.error);
-          // Don't return error to user to prevent email enumeration
-        } else {
-          console.log(`Password reset email sent successfully to ${user.email}`);
+        // Check rate limiting
+        const rateLimitCheck = WhatsAppOTPService.checkRateLimit(validatedData.phone);
+        if (!rateLimitCheck.allowed) {
+          const remainingTime = rateLimitCheck.remainingTime || 60;
+          return NextResponse.json(
+            {
+              error: `Too many OTP requests. Please try again in ${remainingTime} seconds.`,
+              retryAfter: remainingTime
+            },
+            { status: 429 }
+          );
         }
 
-      } catch (emailError) {
-        console.error('Error processing password reset:', emailError);
-        // Don't return error to user to prevent email enumeration
+        // Send OTP via WhatsApp
+        const otpResult = await WhatsAppOTPService.sendPasswordResetOTP(validatedData.phone);
+
+        if (otpResult.success && otpResult.otp) {
+          // Store OTP in database for verification
+          const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+          await db.whatsAppOTP.create({
+            data: {
+              userId: user.id,
+              phone: validatedData.phone,
+              otp: otpResult.otp,
+              expiresAt,
+            }
+          });
+
+          console.log(`Password reset OTP sent successfully to ${validatedData.phone}`);
+
+          // In development, log the OTP for testing
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🔐 DEVELOPMENT OTP for ${validatedData.phone}: ${otpResult.otp}`);
+          }
+        } else {
+          console.error('Failed to send WhatsApp OTP:', otpResult.error);
+          // Don't return error to user to prevent phone enumeration
+        }
+
+      } catch (otpError) {
+        console.error('Error processing password reset OTP:', otpError);
+        // Don't return error to user to prevent phone enumeration
       }
     }
 
     return NextResponse.json({
-      message: 'If an account exists with this email, a password reset link has been sent.',
+      message: 'If an account exists with this phone number, a password reset code has been sent via WhatsApp.',
     });
 
   } catch (error) {

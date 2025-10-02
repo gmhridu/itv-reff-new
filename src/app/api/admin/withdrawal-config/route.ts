@@ -174,7 +174,6 @@ export async function POST(request: NextRequest) {
       const validation = await withdrawalConfigService.validateWithdrawal(
         userId,
         parseFloat(amount),
-        walletType,
         paymentMethodId,
       );
 
@@ -212,38 +211,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "check-user-daily-limit") {
-      const body = await request.json();
-      const { userId } = body;
+       const body = await request.json();
+       const { userId } = body;
 
-      if (!userId) {
-        response = NextResponse.json(
-          { error: "User ID is required" },
-          { status: 400 },
-        );
-        return addAPISecurityHeaders(response);
-      }
+       if (!userId) {
+         response = NextResponse.json(
+           { error: "User ID is required" },
+           { status: 400 },
+         );
+         return addAPISecurityHeaders(response);
+       }
 
-      const dailyCount =
-        await withdrawalConfigService.getUserDailyWithdrawalCount(userId);
-      const canWithdraw =
-        await withdrawalConfigService.canUserWithdrawToday(userId);
-      const config = await withdrawalConfigService.getWithdrawalConfig();
+       const dailyCount =
+         await withdrawalConfigService.getUserDailyWithdrawalCount(userId);
+       const canWithdraw =
+         await withdrawalConfigService.canUserWithdrawToday(userId);
 
-      response = NextResponse.json({
-        success: true,
-        data: {
-          dailyCount,
-          maxDailyWithdrawals: config.maxDailyWithdrawals,
-          canWithdrawToday: canWithdraw,
-          remainingWithdrawals: Math.max(
-            0,
-            config.maxDailyWithdrawals - dailyCount,
-          ),
-        },
-      });
+       response = NextResponse.json({
+         success: true,
+         data: {
+           dailyCount,
+           maxDailyWithdrawals: 1, // Fixed at 1 withdrawal per day
+           canWithdrawToday: canWithdraw,
+           remainingWithdrawals: canWithdraw ? 1 : 0, // Either 1 or 0
+         },
+       });
 
-      return addAPISecurityHeaders(response);
-    }
+       return addAPISecurityHeaders(response);
+     }
 
     response = NextResponse.json({ error: "Invalid action" }, { status: 400 });
     return addAPISecurityHeaders(response);

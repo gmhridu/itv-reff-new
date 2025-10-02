@@ -197,7 +197,7 @@ export class WithdrawalConfigService {
       };
     }
 
-    // Check daily withdrawal limit
+    // Check if user has already made a withdrawal today (one withdrawal per day rule)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -210,16 +210,13 @@ export class WithdrawalConfigService {
           gte: today,
           lt: tomorrow,
         },
-        status: {
-          in: ["PENDING", "APPROVED", "PROCESSED"],
-        },
       },
     });
 
-    if (todaysWithdrawals >= config.maxDailyWithdrawals) {
+    if (todaysWithdrawals >= 1) {
       return {
         isValid: false,
-        error: `Daily withdrawal limit exceeded. Maximum ${config.maxDailyWithdrawals} withdrawals per day.`,
+        error: "You can only make one withdrawal request per day. Please try again tomorrow.",
       };
     }
 
@@ -347,20 +344,16 @@ export class WithdrawalConfigService {
           gte: today,
           lt: tomorrow,
         },
-        status: {
-          in: ["PENDING", "APPROVED", "PROCESSED"],
-        },
       },
     });
   }
 
   /**
-   * Check if user can make withdrawal today
+   * Check if user can make withdrawal today (one withdrawal per day rule)
    */
   async canUserWithdrawToday(userId: string): Promise<boolean> {
-    const config = await this.getWithdrawalConfig();
     const todaysCount = await this.getUserDailyWithdrawalCount(userId);
-    return todaysCount < config.maxDailyWithdrawals;
+    return todaysCount < 1; // Can withdraw only if no withdrawals today
   }
 }
 

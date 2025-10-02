@@ -29,6 +29,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -594,18 +595,23 @@ function SystemSettingsCard({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxDailyWithdrawals">Max Daily Withdrawals</Label>
-              <Input
-                id="maxDailyWithdrawals"
-                type="number"
-                value={formData.maxDailyWithdrawals}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    maxDailyWithdrawals: Number(e.target.value),
-                  }))
-                }
-              />
+              <Label htmlFor="maxDailyWithdrawals">Daily Withdrawal Limit</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="maxDailyWithdrawals"
+                  type="number"
+                  value="1"
+                  readOnly
+                  className="bg-gray-50 text-gray-500"
+                  title="Fixed at 1 withdrawal per day"
+                />
+                <Badge variant="secondary" className="text-xs">
+                  Fixed Limit
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600">
+                Users can make only one withdrawal request per day. This limit cannot be changed.
+              </p>
             </div>
           </div>
 

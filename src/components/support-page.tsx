@@ -39,34 +39,14 @@ const SupportPage = () => {
 
   const handleWhatsAppContact = () => {
     const phoneNumber = "+923001234567"; // Replace with your actual WhatsApp number
-    const message = "Hello! I need help with my ITV account.";
+    const message = "Hello! I need help with my ICL FINANCE account.";
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
       message,
     )}`;
     window.open(whatsappUrl, "_blank");
   };
 
-  const handleTelegramContact = () => {
-    const telegramUsername = "itv_support"; // Replace with your actual Telegram username
-    const telegramUrl = `https://t.me/${telegramUsername}`;
-    window.open(telegramUrl, "_blank");
-  };
 
-  const handleEmailContact = () => {
-    const email = "support@itv.com"; // Replace with your actual support email
-    const subject = "Support Request - ITV Account";
-    const body =
-      "Hello,\n\nI need assistance with my ITV account.\n\nPlease describe your issue:\n\n\nThank you.";
-    const mailtoUrl = `mailto:${email}?subject=${encodeURIComponent(
-      subject,
-    )}&body=${encodeURIComponent(body)}`;
-    window.open(mailtoUrl, "_self");
-  };
-
-  const handlePhoneContact = () => {
-    const phoneNumber = "+923001234567"; // Replace with your actual phone number
-    window.open(`tel:${phoneNumber}`, "_self");
-  };
 
   const supportOptions: SupportOption[] = [
     {

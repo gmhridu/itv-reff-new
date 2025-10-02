@@ -329,18 +329,24 @@ export const WithdrawalConfigManagement = () => {
 
             <div className="space-y-2">
               <Label htmlFor="maxDailyWithdrawals">
-                Max Daily Withdrawals per User
+                Daily Withdrawal Limit
               </Label>
-              <Input
-                id="maxDailyWithdrawals"
-                type="number"
-                value={formData.maxDailyWithdrawals}
-                onChange={(e) =>
-                  handleInputChange("maxDailyWithdrawals", e.target.value)
-                }
-                min="1"
-                max="50"
-              />
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="maxDailyWithdrawals"
+                  type="number"
+                  value="1"
+                  readOnly
+                  className="bg-gray-50 text-gray-500"
+                  title="Fixed at 1 withdrawal per day"
+                />
+                <Badge variant="secondary" className="text-xs">
+                  Fixed Limit
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600">
+                Users can make only one withdrawal request per day. This limit cannot be changed.
+              </p>
             </div>
 
             <div className="space-y-2">

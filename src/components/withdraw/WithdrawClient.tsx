@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowRight,
   CreditCard,
@@ -50,6 +50,9 @@ export const WithdrawClient = () => {
   const [showNoBankCardsModal, setShowNoBankCardsModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successModalData, setSuccessModalData] = useState<any>(null);
+  const [dailyLimitInfo, setDailyLimitInfo] = useState<any>(null);
+  const [isCheckingLimit, setIsCheckingLimit] = useState(false);
+  const dailyLimitCheckInProgress = useRef(false);
   const [walletBalances, setWalletBalances] = useState({
     canWithdraw: false,
     mainWallet: 0,
@@ -62,6 +65,7 @@ export const WithdrawClient = () => {
   const [isLoadingBalances, setIsLoadingBalances] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usdtToPkrRate, setUsdtToPkrRate] = useState<number>(295);
+  const withdrawalInProgress = useRef(false);
   const [showUsdtForm, setShowUsdtForm] = useState(false);
   const [usdtAddress, setUsdtAddress] = useState("");
   const [usdtHolderName, setUsdtHolderName] = useState("");
@@ -77,6 +81,13 @@ export const WithdrawClient = () => {
     fetchWalletBalances();
     fetchUsdtRate();
   }, []);
+
+  // Check daily withdrawal limit when user is loaded
+  useEffect(() => {
+    if (currentUser) {
+      checkDailyWithdrawalLimit();
+    }
+  }, [currentUser]);
 
   // Set default selection when bank cards are loaded
   useEffect(() => {
@@ -198,7 +209,53 @@ export const WithdrawClient = () => {
     }
   };
 
+  // Check daily withdrawal limit
+  const checkDailyWithdrawalLimit = async () => {
+    if (!currentUser) return;
+
+    // Prevent multiple simultaneous requests
+    if (dailyLimitCheckInProgress.current) {
+      console.log("Daily limit check already in progress, skipping duplicate request");
+      return;
+    }
+
+    dailyLimitCheckInProgress.current = true;
+    setIsCheckingLimit(true);
+
+    try {
+      const response = await fetch(
+        "/api/admin/withdrawal-config?action=check-user-daily-limit",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: currentUser.id,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setDailyLimitInfo(data.data);
+      } else {
+        console.error("Failed to check daily limit:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error checking daily limit:", error);
+    } finally {
+      dailyLimitCheckInProgress.current = false;
+      setIsCheckingLimit(false);
+    }
+  };
+
   const handleAmountSelect = (value: number) => {
+    // Check daily limit first - only show card warning, no toast
+    if (dailyLimitInfo && !dailyLimitInfo.canWithdrawToday) {
+      return;
+    }
+
     // Use the correct Total Available for Withdrawal balance
     const totalAvailable = walletBalances.totalAvailableForWithdrawal || 0;
 
@@ -232,6 +289,12 @@ export const WithdrawClient = () => {
   };
 
   const handleSubmit = async () => {
+    // Prevent multiple simultaneous withdrawal requests
+    if (withdrawalInProgress.current) {
+      console.log("Withdrawal already in progress, please wait...");
+      return;
+    }
+
     if (!selectedMethod) {
       toast({
         title: "Error",
@@ -252,6 +315,11 @@ export const WithdrawClient = () => {
         description: "Please enter withdrawal amount.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Check daily limit before proceeding - only show card warning, no toast
+    if (dailyLimitInfo && !dailyLimitInfo.canWithdrawToday) {
       return;
     }
 
@@ -290,6 +358,7 @@ export const WithdrawClient = () => {
       return;
     }
 
+    withdrawalInProgress.current = true;
     setIsSubmitting(true);
 
     try {
@@ -331,6 +400,8 @@ export const WithdrawClient = () => {
         }
         setAmount("");
         fetchWalletBalances();
+        // Check daily limit again immediately after successful withdrawal
+        checkDailyWithdrawalLimit();
       } else {
         toast({
           title: "Withdrawal Failed",
@@ -347,6 +418,7 @@ export const WithdrawClient = () => {
         variant: "destructive",
       });
     } finally {
+      withdrawalInProgress.current = false;
       setIsSubmitting(false);
     }
   };
@@ -823,13 +895,14 @@ export const WithdrawClient = () => {
                     </div>
                     <hr className="border-blue-200" />
                     <div className="flex justify-between font-medium">
-                      <span className="text-gray-900">Total Deduction:</span>
-                      <span className="text-blue-600">
-                        PKR {(parseFloat(amount) * 1.1).toLocaleString()}
+                      <span className="text-gray-900">You'll Receive:</span>
+                      <span className="text-green-600">
+                        PKR {(parseFloat(amount) * 0.9).toLocaleString()}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 mt-2">
-                      Processing: 0-72 hours • Fee included in deduction
+                      Processing: 0-72 hours • Total deduction: PKR{" "}
+                      {(parseFloat(amount) * 1.1).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -892,7 +965,10 @@ export const WithdrawClient = () => {
                 !amount ||
                 isLoadingCards ||
                 isSubmitting ||
-                !walletBalances.canWithdraw
+                withdrawalInProgress.current ||
+                isCheckingLimit ||
+                !walletBalances.canWithdraw ||
+                (dailyLimitInfo && !dailyLimitInfo.canWithdrawToday)
               }
             >
               {isSubmitting ? (
@@ -919,6 +995,34 @@ export const WithdrawClient = () => {
               </div>
             )}
 
+            {/* Daily limit reached warning */}
+            {dailyLimitInfo && !dailyLimitInfo.canWithdrawToday && (
+              <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="font-medium">Daily Limit Reached</span>
+                </div>
+                <p>
+                  You have already made {dailyLimitInfo.dailyCount} withdrawal
+                  request(s) today. You can only make 1 withdrawal request per
+                  day. Please try again tomorrow.
+                </p>
+              </div>
+            )}
+
+            {/* Loading state for daily limit check */}
+            {isCheckingLimit && !dailyLimitInfo && (
+              <div className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="font-medium">Checking Daily Limit</span>
+                </div>
+                <p>
+                  Please wait while we verify your withdrawal eligibility...
+                </p>
+              </div>
+            )}
+
             {/* Balance warning for current selection */}
             {amount && !isUsdtMethod() && (
               <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
@@ -928,16 +1032,16 @@ export const WithdrawClient = () => {
                     PKR {parseFloat(amount).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between items-center mb-1">
-                  <span>Handling Fee (10%):</span>
-                  <span className="font-medium">
-                    PKR {(parseFloat(amount) * 0.1).toLocaleString()}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Handling Fee (10%):</span>
+                  <span className="text-red-600">
+                    -PKR {(parseFloat(amount) * 0.1).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between items-center border-t pt-1">
-                  <span className="font-medium">Total Deduction:</span>
-                  <span className="font-semibold">
-                    PKR {(parseFloat(amount) * 1.1).toLocaleString()}
+                  <span className="font-medium">You'll Receive:</span>
+                  <span className="font-semibold text-green-600">
+                    PKR {(parseFloat(amount) * 0.9).toLocaleString()}
                   </span>
                 </div>
               </div>

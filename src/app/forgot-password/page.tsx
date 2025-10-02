@@ -13,21 +13,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Mail,
+  Phone,
   ArrowLeft,
   ArrowRight,
   CheckCircle,
   Clock,
   KeyRound,
+  MessageCircle,
 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isOTPSent, setIsOTPSent] = useState(false);
 
   const getFullYear = () => {
     return new Date().getFullYear();
@@ -35,29 +36,46 @@ export default function ForgotPasswordPage() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔍 DEBUG: Forgot password form submitted');
+    console.log('🔍 DEBUG: Phone number entered:', phone);
+
     setIsLoading(true);
     setError("");
     setSuccess("");
 
+    // Concatenate the country code prefix with the entered digits
+    const fullPhoneNumber = `+92${phone}`;
+    console.log('🔍 DEBUG: Full phone number with country code:', fullPhoneNumber);
+
     try {
+      console.log('🔍 DEBUG: Calling forgot-password API...');
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ phone: fullPhoneNumber }),
       });
 
+      console.log('🔍 DEBUG: API response status:', response.status);
       const data = await response.json();
+      console.log('🔍 DEBUG: API response data:', data);
 
       if (response.ok) {
-        setSuccess("Password reset link has been sent to your email.");
-        setIsEmailSent(true);
+        console.log('✅ DEBUG: API call successful');
+        setSuccess("Password reset code has been sent to your WhatsApp.");
+        setIsOTPSent(true);
+        // Redirect to OTP verification page after 2 seconds with full international number
+        setTimeout(() => {
+          const fullPhoneNumber = `+92${phone}`;
+          router.push(`/verify-otp?phone=${encodeURIComponent(fullPhoneNumber)}`);
+        }, 2000);
       } else {
-        setError(data.error || "Failed to send reset link");
+        console.error('❌ DEBUG: API call failed:', data);
+        setError(data.error || "Failed to send reset code");
       }
     } catch (error) {
-      console.error("Reset password error:", error);
+      console.error("❌ DEBUG: Network error:", error);
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
@@ -94,7 +112,7 @@ export default function ForgotPasswordPage() {
               Reset Password
             </CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-400 text-base">
-              We'll send you a link to reset your password
+              We'll send you a verification code via WhatsApp
             </CardDescription>
           </CardHeader>
 
@@ -113,27 +131,40 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            {!isEmailSent ? (
+            {!isOTPSent ? (
               <form onSubmit={handleResetPassword} className="space-y-5">
                 <div className="space-y-2">
                   <Label
-                    htmlFor="email"
+                    htmlFor="phone"
                     className="text-slate-700 dark:text-slate-300 font-medium"
                   >
-                    Email Address *
+                    Phone Number *
                   </Label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 w-5 h-5 transition-colors duration-200" />
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2 z-10">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium text-sm select-none">
+                        +92
+                      </span>
+                      <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
+                    </div>
+                    {/* <Phone className="absolute left-16 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 w-5 h-5 transition-colors duration-200" /> */}
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="bg-slate-50/50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-emerald-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 pl-12 h-12 rounded-xl transition-all duration-200"
+                      id="phone"
+                      type="tel"
+                      placeholder="3xx xxxxxxx"
+                      value={phone}
+                      onChange={(e) => {
+                        // Remove any non-digit characters and limit to 10 digits
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setPhone(value);
+                      }}
+                      className="bg-slate-50/50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 focus:border-emerald-500 dark:focus:border-emerald-400 focus:ring-emerald-500/20 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 pl-20 pr-4 h-12 rounded-xl transition-all duration-200"
                       required
                     />
                   </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Enter your 10-digit mobile number without country code
+                  </p>
                 </div>
 
                 <Button
@@ -148,7 +179,7 @@ export default function ForgotPasswordPage() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-center">
-                      <span>Send Reset Link</span>
+                      <span>Send Verification Code</span>
                       <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
                     </div>
                   )}
@@ -158,28 +189,27 @@ export default function ForgotPasswordPage() {
               <div className="text-center space-y-6">
                 <div className="flex justify-center">
                   <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
-                    <CheckCircle className="h-12 w-12 text-emerald-600 dark:text-emerald-400" />
+                    <MessageCircle className="h-12 w-12 text-emerald-600 dark:text-emerald-400" />
                   </div>
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                    Email Sent!
+                    Code Sent!
                   </h3>
                   <p className="text-slate-600 dark:text-slate-400 text-sm">
-                    We've sent a password reset link to{" "}
+                    We've sent a verification code to{" "}
                     <span className="font-medium text-slate-900 dark:text-slate-100">
-                      {email}
+                      {phone}
                     </span>
                   </p>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl p-4 text-blue-600 dark:text-blue-400 text-sm">
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-xl p-4 text-green-600 dark:text-green-400 text-sm">
                   <div className="flex items-start gap-3">
                     <Clock className="h-5 w-5 mt-0.5 flex-shrink-0" />
                     <div className="text-left">
-                      <p className="font-medium mb-2">Check your email</p>
+                      <p className="font-medium mb-2">Check your WhatsApp</p>
                       <p className="text-xs leading-relaxed">
-                        The reset link will expire in 15 minutes. If you don't
-                        see the email, check your spam folder.
+                        The verification code will expire in 10 minutes. Make sure your WhatsApp is active.
                       </p>
                     </div>
                   </div>
@@ -189,12 +219,12 @@ export default function ForgotPasswordPage() {
                     variant="outline"
                     className="w-full bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl h-11 transition-all duration-200 cursor-pointer"
                     onClick={() => {
-                      setIsEmailSent(false);
+                      setIsOTPSent(false);
                       setSuccess("");
-                      setEmail("");
+                      setPhone("");
                     }}
                   >
-                    Try another email
+                    Try another phone number
                   </Button>
                   <Button
                     variant="ghost"
@@ -207,7 +237,7 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            {!isEmailSent && (
+            {!isOTPSent && (
               <>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -234,7 +264,7 @@ export default function ForgotPasswordPage() {
         </Card>
 
         {/* Help Section */}
-        {!isEmailSent && (
+        {!isOTPSent && (
           <div className="mt-8 space-y-4">
             <div className="text-center">
               <h3 className="text-slate-900 dark:text-slate-100 font-medium mb-4">
@@ -243,16 +273,16 @@ export default function ForgotPasswordPage() {
               <div className="space-y-2 text-slate-600 dark:text-slate-400 text-sm bg-slate-50/50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200/50 dark:border-slate-700/50">
                 <p className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></span>
-                  Make sure you're using the email address associated with your
+                  Make sure you're using the phone number associated with your
                   account
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></span>
-                  Check your spam or junk folder
+                  Ensure WhatsApp is installed and active on your phone
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-2 flex-shrink-0"></span>
-                  The reset link will expire in 15 minutes
+                  The verification code will expire in 10 minutes
                 </p>
               </div>
             </div>

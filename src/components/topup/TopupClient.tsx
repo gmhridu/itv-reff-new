@@ -637,30 +637,32 @@ export function TopupClient() {
                                   </h4>
                                 </div>
                                 <div className="space-y-2 text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">
+                                  <div className="space-y-2">
+                                    <span className="font-medium text-sm">
                                       Wallet Address:
                                     </span>
-                                    <span className="font-mono text-xs bg-white px-2 py-1 rounded">
-                                      {
-                                        getSelectedWalletDetails()
-                                          ?.usdtWalletAddress
-                                      }
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0 cursor-pointer"
-                                      onClick={() =>
-                                        handleCopy(
-                                          getSelectedWalletDetails()
-                                            ?.usdtWalletAddress || "",
-                                        )
-                                      }
-                                    >
-                                      <Copy className="w-3 h-3" />
-                                    </Button>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-mono text-xs bg-white p-2 rounded border break-all sm:break-normal sm:text-sm">
+                                          {getSelectedWalletDetails()?.usdtWalletAddress}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 px-3 cursor-pointer flex-shrink-0 sm:w-auto w-full"
+                                        onClick={() =>
+                                          handleCopy(
+                                            getSelectedWalletDetails()
+                                              ?.usdtWalletAddress || "",
+                                          )
+                                        }
+                                      >
+                                        <Copy className="w-3 h-3 sm:mr-1" />
+                                        <span className="sm:inline hidden">Copy</span>
+                                      </Button>
+                                    </div>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <span className="font-medium">Name:</span>
@@ -676,14 +678,14 @@ export function TopupClient() {
                                       <span className="font-medium text-sm">
                                         QR Code:
                                       </span>
-                                      <div className="mt-2">
+                                      <div className="mt-2 flex justify-center sm:justify-start">
                                         <img
                                           src={
                                             getSelectedWalletDetails()
                                               ?.qrCodeUrl
                                           }
                                           alt="USDT Wallet QR Code"
-                                          className="w-32 h-32 border-2 border-orange-300 rounded-lg"
+                                          className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-orange-300 rounded-lg"
                                         />
                                       </div>
                                     </div>
@@ -749,25 +751,32 @@ export function TopupClient() {
                                       : "EasyPaisa"}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">Number:</span>
-                                  <span className="font-mono">
-                                    {getSelectedWalletDetails()?.walletNumber}
+                                <div className="space-y-2">
+                                  <span className="font-medium text-sm">
+                                    Number:
                                   </span>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 cursor-pointer"
-                                    onClick={() =>
-                                      handleCopy(
-                                        getSelectedWalletDetails()
-                                          ?.walletNumber || "",
-                                      )
-                                    }
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                  </Button>
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-mono text-sm bg-white p-2 rounded border break-all sm:break-normal">
+                                        {getSelectedWalletDetails()?.walletNumber}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-3 cursor-pointer flex-shrink-0 sm:w-auto w-full"
+                                      onClick={() =>
+                                        handleCopy(
+                                          getSelectedWalletDetails()
+                                            ?.walletNumber || "",
+                                        )
+                                      }
+                                    >
+                                      <Copy className="w-3 h-3 sm:mr-1" />
+                                      <span className="sm:inline hidden">Copy</span>
+                                    </Button>
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">Name:</span>
@@ -783,13 +792,13 @@ export function TopupClient() {
                                     <span className="font-medium text-sm">
                                       QR Code:
                                     </span>
-                                    <div className="mt-2">
+                                    <div className="mt-2 flex justify-center sm:justify-start">
                                       <img
                                         src={
                                           getSelectedWalletDetails()?.qrCodeUrl
                                         }
                                         alt="Payment QR Code"
-                                        className="w-32 h-32 border-2 border-blue-300 rounded-lg"
+                                        className="w-24 h-24 sm:w-32 sm:h-32 border-2 border-blue-300 rounded-lg"
                                       />
                                     </div>
                                   </div>
@@ -1082,22 +1091,28 @@ export function TopupClient() {
                                   <span>
                                     {request.selectedWallet.walletType ===
                                     "USDT_TRC20" ? (
-                                      <>
-                                        USDT (TRC20) -{" "}
-                                        {request.selectedWallet.usdtWalletAddress?.substring(
-                                          0,
-                                          10,
-                                        )}
-                                        ...
-                                      </>
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                                        <span>USDT (TRC20)</span>
+                                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all sm:break-normal">
+                                          {request.selectedWallet.usdtWalletAddress?.substring(
+                                            0,
+                                            20,
+                                          )}
+                                          ...
+                                        </span>
+                                      </div>
                                     ) : (
-                                      <>
-                                        {request.selectedWallet.walletType ===
-                                        "JAZZCASH"
-                                          ? "JazzCash"
-                                          : "EasyPaisa"}{" "}
-                                        - {request.selectedWallet.walletNumber}
-                                      </>
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                                        <span>
+                                          {request.selectedWallet.walletType ===
+                                          "JAZZCASH"
+                                            ? "JazzCash"
+                                            : "EasyPaisa"}
+                                        </span>
+                                        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded break-all sm:break-normal">
+                                          {request.selectedWallet.walletNumber}
+                                        </span>
+                                      </div>
                                     )}
                                   </span>
                                   {request.selectedWallet.walletType ===
@@ -1136,23 +1151,28 @@ export function TopupClient() {
                               )}
 
                               {request.transactionId && (
-                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                  <span className="font-medium">
+                                <div className="space-y-2">
+                                  <span className="font-medium text-sm text-gray-600">
                                     Transaction ID:
                                   </span>
-                                  <span className="font-mono">
-                                    {request.transactionId}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 cursor-pointer"
-                                    onClick={() =>
-                                      handleCopy(request.transactionId || "")
-                                    }
-                                  >
-                                    <Copy className="w-3 h-3" />
-                                  </Button>
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-mono text-xs bg-gray-100 p-2 rounded border break-all sm:break-normal sm:text-sm">
+                                        {request.transactionId}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-3 cursor-pointer flex-shrink-0 sm:w-auto w-full"
+                                      onClick={() =>
+                                        handleCopy(request.transactionId || "")
+                                      }
+                                    >
+                                      <Copy className="w-3 h-3 sm:mr-1" />
+                                      <span className="sm:inline hidden">Copy</span>
+                                    </Button>
+                                  </div>
                                 </div>
                               )}
                             </div>

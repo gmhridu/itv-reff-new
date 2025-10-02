@@ -57,6 +57,7 @@ model User {
   withdrawalRequests     WithdrawalRequest[]
   securityRefundRequests SecurityRefundRequest[]
   passwordResets         PasswordReset[]
+  whatsappOTPs           WhatsAppOTP[]
 
   @@map("users")
 }
@@ -691,18 +692,38 @@ enum SecurityRefundStatus {
 }
 
 model PasswordReset {
-  id        String    @id @default(cuid())
-  userId    String
-  token     String    @unique
-  expiresAt DateTime
-  used      Boolean   @default(false)
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+   id        String    @id @default(cuid())
+   userId    String
+   token     String    @unique
+   expiresAt DateTime
+   used      Boolean   @default(false)
+   usedAt    DateTime?
+   createdAt DateTime  @default(now())
+   updatedAt DateTime  @updatedAt
+   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([token])
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("password_resets")
+   @@index([token])
+   @@index([userId])
+   @@index([expiresAt])
+   @@map("password_resets")
+}
+
+model WhatsAppOTP {
+   id        String    @id @default(cuid())
+   userId    String
+   phone     String
+   otp       String
+   expiresAt DateTime
+   used      Boolean   @default(false)
+   usedAt    DateTime?
+   attempts  Int       @default(0)
+   createdAt DateTime  @default(now())
+   updatedAt DateTime  @updatedAt
+   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+   @@index([phone])
+   @@index([otp])
+   @@index([userId])
+   @@index([expiresAt])
+   @@map("whatsapp_otps")
 }
