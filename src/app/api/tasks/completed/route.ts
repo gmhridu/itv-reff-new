@@ -73,18 +73,16 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get today's completed tasks count
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Get today's completed tasks count (after 12 AM reset)
+    const now = new Date();
+    const todayAtMidnight = new Date(now);
+    todayAtMidnight.setHours(0, 0, 0, 0);
 
     const todayTasksCount = await db.userVideoTask.count({
       where: {
         userId: user.id,
         watchedAt: {
-          gte: today,
-          lt: tomorrow,
+          gte: todayAtMidnight,
         },
       },
     });
@@ -185,26 +183,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if task already completed today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Check if task already completed after 12 AM today
+    const now = new Date();
+    const todayAtMidnight = new Date(now);
+    todayAtMidnight.setHours(0, 0, 0, 0);
 
+    // If current time is before 12 AM today, use existing logic
+    if (now < todayAtMidnight) {
+      return NextResponse.json(
+        { error: "Tasks reset at 12 AM daily" },
+        { status: 400 },
+      );
+    }
+
+    // Check if task already completed after 12 AM today
     const existingTask = await db.userVideoTask.findFirst({
       where: {
         userId: user.id,
         videoId,
         watchedAt: {
-          gte: today,
-          lt: tomorrow,
+          gte: todayAtMidnight,
         },
       },
     });
 
     if (existingTask) {
       return NextResponse.json(
-        { error: "Task already completed today" },
+        { error: "Task already completed today after 12 AM reset" },
         { status: 400 },
       );
     }

@@ -54,8 +54,8 @@ export class TaskBonusService {
     const targetDate = date || new Date();
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // For 12 AM reset, we check from start of day to now (not end of day)
+    const endOfDay = targetDate;
 
     try {
       // Get user with their plan and position information
@@ -150,19 +150,16 @@ export class TaskBonusService {
         };
       }
 
-      // Check if bonus already processed for this date
+      // Check if bonus already processed for this date (after 12 AM reset)
       const targetDate = date || new Date();
       const startOfDay = new Date(targetDate);
       startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(targetDate);
-      endOfDay.setHours(23, 59, 59, 999);
 
       const existingBonus = await db.taskManagementBonus.findFirst({
         where: {
           subordinateId: userId,
           taskDate: {
-            gte: startOfDay,
-            lte: endOfDay
+            gte: startOfDay
           }
         }
       });
@@ -350,8 +347,8 @@ export class TaskBonusService {
     const targetDate = date || new Date();
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // For 12 AM reset, we check from start of day to now (not end of day)
+    const endOfDay = targetDate;
 
     let processed = 0;
     let successful = 0;

@@ -182,8 +182,8 @@ export class PositionService {
     const targetDate = date || new Date();
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // For 12 AM reset, we check from start of day to now (not end of day)
+    const endOfDay = targetDate;
 
     const tasksCompleted = await db.userVideoTask.count({
       where: {

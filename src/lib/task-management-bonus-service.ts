@@ -333,7 +333,8 @@ export class TaskManagementBonusService {
         now.getMonth(),
         now.getDate()
       );
-      const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      // For 12 AM reset, we check from start of day to now (not end of day)
+      const todayEnd = now;
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
       const result: SubordinateActivity[] = [];
