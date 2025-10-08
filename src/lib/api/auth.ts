@@ -142,6 +142,7 @@ export async function resetFailedLogins(userId: string): Promise<void> {
   });
 }
 
+
 export async function authenticateUser(
   phone: string,
   password: string,

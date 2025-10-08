@@ -27,27 +27,33 @@ class RateLimiter {
     }
   }
 
-  private getClientIdentifier(request: NextRequest): string {
+  private getClientIdentifier(request: NextRequest, phone?: string): string {
     // Use multiple identifiers for better security
-    const ip = request.headers.get('x-forwarded-for') || 
-               request.headers.get('x-real-ip') || 
+    const ip = request.headers.get('x-forwarded-for') ||
+               request.headers.get('x-real-ip') ||
                'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
-    
+
+    // For admin logins with phone number, use phone as primary identifier
+    if (phone) {
+      return `admin_${phone}`;
+    }
+
     // Create a hash of IP + User Agent for privacy
     return `${ip.split(',')[0]}_${userAgent.substring(0, 50)}`;
   }
 
   public checkRateLimit(
-    request: NextRequest, 
+    request: NextRequest,
     options: {
       windowMs: number;
       maxAttempts: number;
       blockDurationMs?: number;
       skipSuccessfulRequests?: boolean;
+      phone?: string; // For admin login rate limiting
     }
   ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
-    const identifier = this.getClientIdentifier(request);
+    const identifier = this.getClientIdentifier(request, options.phone);
     const now = Date.now();
     const { windowMs, maxAttempts, blockDurationMs = 15 * 60 * 1000 } = options;
 
@@ -79,9 +85,9 @@ class RateLimiter {
     if (entry.count > maxAttempts) {
       entry.blocked = true;
       entry.blockUntil = now + blockDurationMs;
-      
+
       this.store.set(identifier, entry);
-      
+
       return {
         allowed: false,
         remaining: 0,
@@ -100,12 +106,12 @@ class RateLimiter {
     };
   }
 
-  public recordSuccess(request: NextRequest, skipReset: boolean = false) {
+  public recordSuccess(request: NextRequest, skipReset: boolean = false, phone?: string) {
     if (skipReset) return;
-    
-    const identifier = this.getClientIdentifier(request);
+
+    const identifier = this.getClientIdentifier(request, phone);
     const entry = this.store.get(identifier);
-    
+
     if (entry && !entry.blocked) {
       // Reset count on successful authentication
       entry.count = 0;

@@ -1,4 +1,4 @@
-import { authenticateAdmin, checkAccountLockout } from "@/lib/api/auth";
+import { authenticateAdmin } from "@/lib/api/auth";
 import { db } from "@/lib/db";
 import { RATE_LIMITS, rateLimiter } from "@/lib/rate-limiter";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
@@ -24,7 +24,14 @@ export async function POST(request: NextRequest) {
   );
 
   try {
-    const rateLimit = rateLimiter.checkRateLimit(request, RATE_LIMITS.LOGIN);
+    const body = await request.json();
+    const validatedData = adminLoginSchema.parse(body);
+
+    // Apply rate limiting using phone number for admin logins
+    const rateLimit = rateLimiter.checkRateLimit(request, {
+      ...RATE_LIMITS.LOGIN,
+      phone: validatedData.phone
+    });
 
     if (!rateLimit.allowed) {
       response = NextResponse.json(
@@ -43,22 +50,6 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    const body = await request.json();
-    const validatedData = adminLoginSchema.parse(body);
-
-    const lockoutStatus = await checkAccountLockout(validatedData.phone);
-    if (lockoutStatus.locked) {
-      response = NextResponse.json(
-        {
-          success: false,
-          error:
-            "Account is temporarily locked due to too many failed attempts",
-          lockoutUntil: lockoutStatus.lockoutUntil,
-        },
-        { status: 423 },
-      );
-      return addAPISecurityHeaders(response);
-    }
 
     const ipAddress =
       request.headers.get("x-forwarded-for") ||
@@ -75,7 +66,6 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid phone number or password",
-          remainingAttempts: Math.max(0, 5 - (lockoutStatus.attempts + 1)),
         },
         {
           status: 401,
@@ -84,9 +74,9 @@ export async function POST(request: NextRequest) {
       return addAPISecurityHeaders(response);
     }
 
-    const tokens = SecureTokenManager.generateTokenPair(admin.id, admin.email);
+    const tokens = SecureTokenManager.generateTokenPair(admin.id, admin.id);
 
-    rateLimiter.recordSuccess(request);
+    rateLimiter.recordSuccess(request, false, validatedData.phone);
 
     response = NextResponse.json({
       success: true,
