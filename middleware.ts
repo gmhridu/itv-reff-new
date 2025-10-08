@@ -64,8 +64,9 @@ export async function middleware(req: NextRequest) {
     pathname === "/" ||
     pathname === "/register" ||
     pathname === "/forgot-password";
-  const isAdminLoginPage = pathname === "/admin/login";
-  const isAdminRoute = pathname.startsWith("/admin") && !isAdminLoginPage;
+  const isBannedPage = pathname === "/banned";
+  const isAdminLoginPage = pathname === "/4brothers/admin/login";
+  const isAdminRoute = pathname.startsWith("/4brothers/admin") && !isAdminLoginPage;
   const protectedPaths = [
     "/dashboard",
     "/settings",
@@ -96,7 +97,7 @@ export async function middleware(req: NextRequest) {
       const admin = await AdminMiddleware.authenticateAdmin(req);
       if (!admin) {
         const response = NextResponse.redirect(
-          new URL("/admin/login", req.url),
+          new URL("/4brothers/admin/login", req.url),
         );
         response.cookies.set("admin_redirect_after_login", pathname, {
           path: "/",
@@ -109,7 +110,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.next();
     } catch (error) {
       console.error("Admin route protection error:", error);
-      const response = NextResponse.redirect(new URL("/admin/login", req.url));
+      const response = NextResponse.redirect(new URL("/4brothers/admin/login", req.url));
       response.cookies.set("admin_redirect_after_login", pathname, {
         path: "/",
         httpOnly: true,
@@ -128,7 +129,7 @@ export async function middleware(req: NextRequest) {
         const redirectPath = req.cookies.get(
           "admin_redirect_after_login",
         )?.value;
-        const targetUrl = redirectPath || "/admin/analytics";
+        const targetUrl = redirectPath || "/4brothers/admin/analytics";
         const response = NextResponse.redirect(new URL(targetUrl, req.url));
         response.cookies.delete("admin_redirect_after_login");
         return response;
@@ -153,6 +154,20 @@ export async function middleware(req: NextRequest) {
         return refreshResponse;
       }
       // If refresh is successful, the response has the new cookies.
+      // We need to verify the new token and check if user is banned
+      const newToken = refreshResponse.cookies.get("access_token")?.value;
+      if (newToken) {
+        const newPayload = SecureTokenManager.verifyAccessToken(newToken);
+        if (newPayload) {
+          const isBanned = await SecureTokenManager.isUserBanned(newPayload.userId);
+          if (isBanned) {
+            const response = NextResponse.redirect(new URL("/banned", req.url));
+            response.cookies.delete("access_token");
+            response.cookies.delete("refresh-token");
+            return response;
+          }
+        }
+      }
       // We rewrite this response to the original URL to continue the user's request.
       return NextResponse.rewrite(req.url);
     }
@@ -169,10 +184,62 @@ export async function middleware(req: NextRequest) {
   }
 
   if (userPayload) {
+    // Check if user is banned
+    const isBanned = await SecureTokenManager.isUserBanned(userPayload.userId);
+    if (isBanned) {
+      // Clear all auth cookies for banned users
+      const response = NextResponse.redirect(new URL("/banned", req.url));
+      response.cookies.delete("access_token");
+      response.cookies.delete("refresh-token");
+      return response;
+    }
+
     if (isAuthPage) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
+  }
+
+  // Enhanced check for banned users trying to access auth pages
+  // This handles cases where banned users try to access login/register pages
+  if (isAuthPage && token) {
+    try {
+      // Try to verify the token to check if user is banned
+      const payload = SecureTokenManager.verifyAccessToken(token);
+      if (payload) {
+        const isBanned = await SecureTokenManager.isUserBanned(payload.userId);
+        if (isBanned) {
+          const response = NextResponse.redirect(new URL("/banned", req.url));
+          response.cookies.delete("access_token");
+          response.cookies.delete("refresh-token");
+          return response;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking banned status for auth page:", error);
+    }
+  }
+
+  // Additional security: Check for banned users via refresh token on login page
+  // This catches edge cases where access token might be expired but refresh token exists
+  if (isAuthPage && !token) {
+    const refreshToken = req.cookies.get("refresh-token")?.value;
+    if (refreshToken) {
+      try {
+        const refreshPayload = SecureTokenManager.verifyRefreshToken(refreshToken);
+        if (refreshPayload) {
+          const isBanned = await SecureTokenManager.isUserBanned(refreshPayload.userId);
+          if (isBanned) {
+            const response = NextResponse.redirect(new URL("/banned", req.url));
+            response.cookies.delete("access_token");
+            response.cookies.delete("refresh-token");
+            return response;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking banned status via refresh token:", error);
+      }
+    }
   }
 
   if (isProtectedRoute || isProtectedApiRoute) {
@@ -197,6 +264,22 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
+  // Security check for banned page - ensure only banned users can access it
+  if (isBannedPage && token) {
+    try {
+      const payload = SecureTokenManager.verifyAccessToken(token);
+      if (payload) {
+        const isBanned = await SecureTokenManager.isUserBanned(payload.userId);
+        if (!isBanned) {
+          // Non-banned user trying to access banned page, redirect to dashboard
+          return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+      }
+    } catch (error) {
+      console.error("Error checking banned page access:", error);
+    }
+  }
+
   if (isAdminLoginPage && token) {
     try {
       const admin = await AdminMiddleware.authenticateAdmin(req);
@@ -204,7 +287,7 @@ export async function middleware(req: NextRequest) {
         const redirectPath = req.cookies.get(
           "admin_redirect_after_login",
         )?.value;
-        const targetUrl = redirectPath || "/admin/analytics";
+        const targetUrl = redirectPath || "/4brothers/admin/analytics";
         const response = NextResponse.redirect(new URL(targetUrl, req.url));
         response.cookies.delete("admin_redirect_after_login");
         return response;
@@ -222,6 +305,7 @@ export const config = {
     "/",
     "/register",
     "/forgot-password",
+    "/banned",
     "/dashboard/:path*",
     "/settings/:path*",
     "/profile/:path*",

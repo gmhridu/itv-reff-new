@@ -77,10 +77,10 @@ export function NavUser({
       if (response.ok) {
         // Check if this is an admin user based on role
         const isAdmin = user.role && (user.role === "ADMIN" || user.role === "SUPER_ADMIN");
-        
+
         // Redirect to appropriate login page
         if (isAdmin) {
-          window.location.href = "/admin/login";
+          window.location.href = "/4brothers/admin/login";
         } else {
           window.location.href = "/";
         }

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 export default async function AdminLoginPage() {
   const admin = await getAdminFromServer();
 
-  if (admin) redirect("/admin/analytics");
+  if (admin) redirect("/4brothers/admin/analytics");
 
   return <AdminLogin loginAction={adminLoginAction} />;
 }

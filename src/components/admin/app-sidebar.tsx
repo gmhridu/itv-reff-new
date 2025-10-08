@@ -55,50 +55,50 @@ const data = {
   getNavMain: (pendingCounts: PendingCounts) => [
     {
       title: "Analytics",
-      url: "/admin/analytics",
+      url: "/4brothers/admin/analytics",
       icon: BarChart3,
     },
     {
       title: "Video Management",
-      url: "/admin/video-upload",
+      url: "/4brothers/admin/video-upload",
       icon: Upload,
     },
     {
       title: "Slider Management",
-      url: "/admin/slider-management",
+      url: "/4brothers/admin/slider-management",
       icon: Image,
     },
     {
       title: "Announcements Management",
-      url: "/admin/announcements",
+      url: "/4brothers/admin/announcements",
       icon: MicIcon,
     },
     {
       title: "Topup Management",
-      url: "/admin/topup-management",
+      url: "/4brothers/admin/topup-management",
       icon: ArrowUpCircle,
       badge: pendingCounts.topup > 0 ? pendingCounts.topup : undefined,
     },
     {
       title: "Withdrawal Management",
-      url: "/admin/withdrawal-management",
+      url: "/4brothers/admin/withdrawal-management",
       icon: ArrowDownCircle,
       badge:
         pendingCounts.withdrawal > 0 ? pendingCounts.withdrawal : undefined,
     },
     {
       title: "Security Refunds",
-      url: "/admin/security-refunds",
+      url: "/4brothers/admin/security-refunds",
       icon: Shield,
     },
     {
       title: "User Management",
-      url: "/admin/user-management",
+      url: "/4brothers/admin/user-management",
       icon: Users,
     },
     {
       title: "Settings",
-      url: "/admin/settings",
+      url: "/4brothers/admin/settings",
       icon: Settings,
     },
   ],

@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { db } from './db';
+import { UserStatus } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
   throw new Error('JWT_SECRET environment variable is required');
@@ -37,7 +39,7 @@ class TokenBlacklist {
   private cleanup() {
     // Remove tokens that would have expired anyway
     const now = Math.floor(Date.now() / 1000);
-    
+
     for (const token of this.blacklistedTokens) {
       try {
         const decoded = jwt.decode(token) as any;
@@ -84,7 +86,7 @@ export class SecureTokenManager {
 
   public static generateTokenPair(userId: string, email: string): TokenPair {
     const sessionId = this.generateSessionId();
-    
+
     const accessTokenPayload: JWTPayload = {
       userId,
       email,
@@ -200,6 +202,19 @@ export class SecureTokenManager {
     // and blacklist them. For now, we'll implement a basic version.
     tokenBlacklist.blacklistSession(`user:${userId}`);
   }
+
+  public static async isUserBanned(userId: string): Promise<boolean> {
+    try {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { status: true }
+      });
+      return user?.status === UserStatus.BANNED;
+    } catch (error) {
+      console.error('Error checking user ban status:', error);
+      return false;
+    }
+  }
 }
 
 // Legacy compatibility functions
@@ -213,7 +228,7 @@ export function verifyToken(token: string): { userId: string; email: string } | 
   if (!payload) {
     return null;
   }
-  
+
   return {
     userId: payload.userId,
     email: payload.email

@@ -38,7 +38,7 @@ const SupportPage = () => {
   const router = useRouter();
 
   const handleWhatsAppContact = () => {
-    const phoneNumber = "+923001234567"; // Replace with your actual WhatsApp number
+    const phoneNumber = "+17039636681"; // Replace with your actual WhatsApp number
     const message = "Hello! I need help with my ICL FINANCE account.";
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
       message,
@@ -54,7 +54,7 @@ const SupportPage = () => {
       name: "WhatsApp",
       description: "Get instant help via WhatsApp chat",
       icon: MessageCircle,
-      contact: "+92 300 1234567",
+      contact: "+17039636681",
       availability: "24/7 Available",
       color: "text-green-600",
       bgColor: "bg-green-100",

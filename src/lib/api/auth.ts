@@ -670,7 +670,7 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
         "admin_redirect_after_login",
       )?.value;
       const redirectPath = validateRedirectPath(
-        rawRedirectPath || "/admin/analytics",
+        rawRedirectPath || "/4brothers/admin/analytics",
       );
 
       cookieStore.delete("admin_redirect_after_login");
