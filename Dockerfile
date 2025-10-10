@@ -10,6 +10,9 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --only=production && npm cache clean --force
 
+# Install runtime dependencies needed for scheduler (node-cron)
+RUN npm install node-cron
+
 # Install dev dependencies for build
 FROM base AS dev-deps
 RUN apk add --no-cache libc6-compat
@@ -35,6 +38,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV INITIALIZE_SCHEDULER=true
 
 # Create nextjs user
 RUN addgroup --system --gid 1001 nodejs

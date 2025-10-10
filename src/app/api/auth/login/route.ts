@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { SecureTokenManager } from "@/lib/token-manager";
-import { rateLimiter, RATE_LIMITS } from "@/lib/rate-limiter";
 import { addAPISecurityHeaders } from "@/lib/security-headers";
 import { db } from "@/lib/db";
 import {
@@ -24,21 +23,6 @@ export async function POST(request: NextRequest) {
   );
 
   try {
-    // Apply rate limiting
-    const rateLimit = rateLimiter.checkRateLimit(request, RATE_LIMITS.LOGIN);
-    if (!rateLimit.allowed) {
-      response = NextResponse.json(
-        {
-          success: false,
-          error: rateLimit.blocked
-            ? "Too many failed attempts. Account temporarily blocked."
-            : "Too many requests. Please try again later.",
-          retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000),
-        },
-        { status: 429 },
-      );
-      return addAPISecurityHeaders(response);
-    }
 
     const body = await request.json();
     const validatedData = loginSchema.parse(body);
@@ -109,8 +93,6 @@ export async function POST(request: NextRequest) {
     // Generate secure token pair
     const tokens = SecureTokenManager.generateTokenPair(user.id, user.phone);
 
-    // Record successful login
-    rateLimiter.recordSuccess(request);
 
     // Create response with user data and tokens
     response = NextResponse.json({

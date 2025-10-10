@@ -1,5 +1,6 @@
 // server.ts - Next.js Standalone + Socket.IO
 import { setupSocket } from "@/lib/socket";
+import { initializeScheduler } from "@/lib/scheduler-init";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import next from "next";
@@ -55,7 +56,7 @@ async function initNextApp() {
  */
 function createHttpServer(nextApp: any) {
   const handle = nextApp.getRequestHandler();
-  
+
   return createServer((req, res) => {
     // Skip socket.io requests from Next.js handler
     if (req.url?.startsWith("/api/socketio")) {
@@ -87,12 +88,12 @@ function configureSocketIO(server: any) {
 function setupGracefulShutdown(server: any) {
   const shutdown = (signal: string) => {
     console.log(`${signal} received, shutting down gracefully`);
-    
+
     server.close(() => {
       console.log("HTTP server closed");
       process.exit(0);
     });
-    
+
     // Force shutdown after 10 seconds
     setTimeout(() => {
       console.error("Could not close connections in time, forcefully shutting down");
@@ -120,25 +121,28 @@ function logServerInfo() {
 async function createCustomServer() {
   try {
     console.log(`Starting server in ${SERVER_CONFIG.environment} mode...`);
-    
+
     // Initialize Next.js app
     const nextApp = await initNextApp();
-    
+
     // Create HTTP server
     const server = createHttpServer(nextApp);
-    
+
     // Setup Socket.IO
     const io = configureSocketIO(server);
     setupSocket(io);
-    
+
+    // Initialize daily task scheduler
+    initializeScheduler();
+
     // Setup graceful shutdown
     setupGracefulShutdown(server);
-    
+
     // Start server
     server.listen(SERVER_CONFIG.port, SERVER_CONFIG.hostname, () => {
       logServerInfo();
     });
-    
+
   } catch (error) {
     console.error("Server startup error:", error);
     process.exit(1);
