@@ -28,19 +28,19 @@ export async function POST(request: NextRequest) {
     const validatedData = loginSchema.parse(body);
 
     // Check account lockout
-    const lockoutStatus = await checkAccountLockout(validatedData.phone);
-    if (lockoutStatus.locked) {
-      response = NextResponse.json(
-        {
-          success: false,
-          error:
-            "Account is temporarily locked due to too many failed attempts",
-          lockoutUntil: lockoutStatus.lockoutUntil,
-        },
-        { status: 423 },
-      );
-      return addAPISecurityHeaders(response);
-    }
+    // const lockoutStatus = await checkAccountLockout(validatedData.phone);
+    // if (lockoutStatus.locked) {
+    //   response = NextResponse.json(
+    //     {
+    //       success: false,
+    //       error:
+    //         "Account is temporarily locked due to too many failed attempts",
+    //       lockoutUntil: lockoutStatus.lockoutUntil,
+    //     },
+    //     { status: 423 },
+    //   );
+    //   return addAPISecurityHeaders(response);
+    // }
 
     // Get client IP
     const ipAddress =
@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: "Invalid phone number or password",
-          remainingAttempts: Math.max(0, 5 - (lockoutStatus.attempts + 1)),
         },
         { status: 401 },
       );
