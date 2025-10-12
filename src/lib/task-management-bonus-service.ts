@@ -55,6 +55,21 @@ export class TaskManagementBonusService {
     taskDate: Date = new Date()
   ): Promise<BonusDistributionResult> {
     try {
+      // Check if the user who completed the task is an intern
+      const subordinateUser = await db.user.findUnique({
+        where: { id: subordinateUserId },
+        select: { isIntern: true }
+      });
+
+      // If the subordinate is an intern, skip management bonus distribution
+      if (subordinateUser?.isIntern) {
+        return {
+          success: true,
+          totalBonusDistributed: 0,
+          bonusBreakdown: {}
+        };
+      }
+
       // Get the subordinate's upline hierarchy
       const hierarchy = await db.referralHierarchy.findMany({
         where: { userId: subordinateUserId },
