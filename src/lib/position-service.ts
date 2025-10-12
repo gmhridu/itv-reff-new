@@ -59,7 +59,34 @@ export class PositionService {
 
     if (!user) return null;
 
-    // Since we're removing validityDays, positions never expire
+    // Check if user is intern and has exceeded the 4-day limit
+    if (user.isIntern && user.positionStartDate) {
+      const startDate = new Date(user.positionStartDate);
+      const currentDate = new Date();
+      
+      // Calculate the difference in days
+      const timeDiff = currentDate.getTime() - startDate.getTime();
+      const daysSinceStart = Math.floor(timeDiff / (1000 * 3600 * 24));
+      
+      // Intern position expires after 4 days (from day 5 onward, no tasks)
+      if (daysSinceStart >= 4) {
+        return {
+          user,
+          position: user.currentPosition,
+          isExpired: true,
+          daysRemaining: 0
+        };
+      } else {
+        return {
+          user,
+          position: user.currentPosition,
+          isExpired: false,
+          daysRemaining: 4 - daysSinceStart
+        };
+      }
+    }
+
+    // For non-intern positions, they don't expire
     const isExpired = false;
     const daysRemaining = Infinity;
 
@@ -209,8 +236,8 @@ export class PositionService {
       return { canComplete: false, reason: 'No active position found' };
     }
 
-    if (userPosition.isExpired) {
-      return { canComplete: false, reason: 'Position has expired' };
+    if (userPosition.user.isIntern && userPosition.isExpired) {
+      return { canComplete: false, reason: 'Intern position work duration expired. Please upgrade to continue earning.' };
     }
 
     const tasksCompleted = await this.getDailyTasksCompleted(userId);
