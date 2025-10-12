@@ -1,32 +1,36 @@
-# Use Node.js 20 as base image
+# Base image
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies
+# Copy package files
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+
+# Install production dependencies only (skip postinstall scripts like prisma generate)
+RUN npm ci --only=production --ignore-scripts && npm cache clean --force
 
 # Install dev dependencies for build
 FROM base AS dev-deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+COPY prisma ./prisma
+RUN npm ci && npm cache clean --force
 
-# Rebuild the source code only when needed
+
+# Builder stage
 FROM base AS builder
 WORKDIR /app
+
+# Copy node_modules from dev-deps
 COPY --from=dev-deps /app/node_modules ./node_modules
+
+# Copy rest of the app
 COPY . .
 
-# Generate Prisma Client
+# Generate Prisma Client and build Next.js application
 RUN npx prisma generate
-
-# Build Next.js application
 RUN npm run build
 
 # Production image
@@ -36,33 +40,26 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Create nextjs user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
-# Copy necessary files
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/server.ts ./server.ts
-COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/middleware.ts ./middleware.ts
+# Copy standalone output from builder
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./ 
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static 
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public 
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma 
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json 
 
-# Install production runtime dependencies
-COPY --from=deps /app/node_modules ./node_modules
+# Copy production node_modules (without re-running postinstall)
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# Change ownership
+# Ensure correct permissions
 RUN chown -R nextjs:nodejs /app
 USER nextjs
 
-# Expose port 3000 (KEEP AS 3000)
+# Expose port
 EXPOSE 3000
 
-# Health check (using port 3000)
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "server.js"]

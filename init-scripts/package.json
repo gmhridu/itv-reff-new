@@ -1,0 +1,11 @@
+{
+  "name": "itv-reff-init-scripts",
+  "version": "1.0.0",
+  "description": "Database initialization scripts for ITV-Reff project",
+  "scripts": {
+    "init": "echo 'Initialization scripts are run automatically by Docker'"
+  },
+  "keywords": ["postgresql", "init", "docker", "database"],
+  "author": "ITV-Reff Team",
+  "license": "MIT"
+}
