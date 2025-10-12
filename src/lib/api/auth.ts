@@ -142,6 +142,42 @@ export async function resetFailedLogins(userId: string): Promise<void> {
   });
 }
 
+// Utility function to clear lockout status for all users
+export async function clearAllLockoutStatus(): Promise<number> {
+  const result = await db.user.updateMany({
+    where: {
+      OR: [
+        { lockedUntil: { not: null } },
+        { failedLoginAttempts: { gt: 0 } }
+      ]
+    },
+    data: {
+      failedLoginAttempts: 0,
+      lastFailedLogin: null,
+      lockedUntil: null,
+    },
+  });
+  return result.count;
+}
+
+// Utility function to clear lockout status for a specific phone number
+export async function clearLockoutStatusByPhone(phone: string): Promise<boolean> {
+  try {
+    const result = await db.user.updateMany({
+      where: { phone },
+      data: {
+        failedLoginAttempts: 0,
+        lastFailedLogin: null,
+        lockedUntil: null,
+      },
+    });
+    return result.count > 0;
+  } catch (error) {
+    console.error("Error clearing lockout status:", error);
+    return false;
+  }
+}
+
 
 export async function authenticateUser(
   phone: string,
