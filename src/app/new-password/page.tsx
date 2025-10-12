@@ -136,7 +136,7 @@ function NewPasswordForm() {
       }
     } catch (error) {
       console.error("Password reset error:", error);
-      setError("Network error. Please try again.");
+      setError("Please try again.");
     } finally {
       setIsLoading(false);
     }

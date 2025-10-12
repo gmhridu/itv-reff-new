@@ -616,7 +616,7 @@ export async function loginAction(prevState: any, formData: FormData) {
     // Log actual errors only
     console.error("Login action error:", error);
     return {
-      error: "Network error. Please try again.",
+      error: "Please try again.",
     };
   }
 }
@@ -698,7 +698,7 @@ export async function adminLoginAction(prevState: any, formData: FormData) {
     // Log actual errors only
     console.error("Login action error:", error);
     return {
-      error: "Network error. Please try again.",
+      error: "Please try again.",
     };
   }
 }
@@ -811,7 +811,7 @@ export async function registerAction(prevState: any, formData: FormData) {
 
     console.error("Registration action error:", error);
     return {
-      error: "Network error. Please try again.",
+      error: "Please try again.",
     };
   }
 }
