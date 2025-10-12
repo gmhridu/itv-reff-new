@@ -172,6 +172,21 @@ export class TaskBonusService {
         };
       }
 
+      // Check if the user who completed the task is an intern
+      const subordinateUser = await db.user.findUnique({
+        where: { id: userId },
+        select: { isIntern: true }
+      });
+
+      if (subordinateUser?.isIntern) {
+        return {
+          success: true,
+          message: 'Task bonus processed (no referral commissions for intern users)',
+          dailyEarnings: completionStatus.dailyEarnings,
+          completionStatus
+        };
+      }
+
       // Get user's referral hierarchy
       const hierarchyLevels = await db.referralHierarchy.findMany({
         where: { userId },

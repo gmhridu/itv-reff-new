@@ -124,7 +124,7 @@ function VerifyOTPForm() {
       }
     } catch (error) {
       console.error("Resend OTP error:", error);
-      setError("Network error. Please try again.");
+      setError("Please try again.");
       setCountdown(0);
     } finally {
       setIsResending(false);
@@ -167,7 +167,7 @@ function VerifyOTPForm() {
       }
     } catch (error) {
       console.error("OTP verification error:", error);
-      setError("Network error. Please try again.");
+      setError("Please try again.");
     } finally {
       setIsLoading(false);
     }

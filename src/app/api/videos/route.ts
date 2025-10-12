@@ -32,14 +32,17 @@ export async function GET(request: NextRequest) {
 
 
 
-    // If user cannot complete more tasks, return empty array
-    if (!canCompleteTask.canComplete) {
+    // If user cannot complete more tasks, return empty array with specific messaging
+    if (!canCompleteTask.canComplete || (userPosition.user.isIntern && userPosition.isExpired)) {
+      const isInternExpired = userPosition.user.isIntern && userPosition.isExpired;
+      
       return NextResponse.json({
         videos: [],
         dailyTaskLimit,
         tasksCompletedToday,
         canCompleteTask: false,
-        reason: canCompleteTask.reason
+        reason: canCompleteTask.reason,
+        isInternExpired
       });
     }
 

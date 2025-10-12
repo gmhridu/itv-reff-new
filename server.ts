@@ -1,9 +1,9 @@
 // server.ts - Next.js Standalone + Socket.IO
 import { setupSocket } from "@/lib/socket";
-import { initializeScheduler } from "@/lib/scheduler-init";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import next from "next";
+import { userVideoTaskCleanupService } from "@/lib/user-video-task-cleanup-service";
 
 // Environment configuration
 const NODE_ENV = process.env.NODE_ENV || "development";
@@ -132,11 +132,11 @@ async function createCustomServer() {
     const io = configureSocketIO(server);
     setupSocket(io);
 
-    // Initialize daily task scheduler
-    initializeScheduler();
-
     // Setup graceful shutdown
     setupGracefulShutdown(server);
+
+    // Start the user video task cleanup service
+    userVideoTaskCleanupService.start();
 
     // Start server
     server.listen(SERVER_CONFIG.port, SERVER_CONFIG.hostname, () => {

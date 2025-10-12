@@ -76,7 +76,7 @@ export default function ForgotPasswordPage() {
       }
     } catch (error) {
       console.error("❌ DEBUG: Network error:", error);
-      setError("Network error. Please try again.");
+      setError("Please try again.");
     } finally {
       setIsLoading(false);
     }
