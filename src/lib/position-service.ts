@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { PositionLevel, User } from '@prisma/client';
+import { getStartOfDayInTimezone, toUTCFromDateInTimezone } from '@/lib/timezone-utils';
 
 export interface PositionIncomeCalculation {
   dailyIncome: number;
@@ -207,8 +208,13 @@ export class PositionService {
 
   static async getDailyTasksCompleted(userId: string, date?: Date): Promise<number> {
     const targetDate = date || new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    
+    // Get the start of the current day in the configured timezone
+    const startOfDay = getStartOfDayInTimezone(targetDate);
+    
+    // Convert to UTC for database query
+    const startOfDayUTC = toUTCFromDateInTimezone(startOfDay);
+    
     // For 12 AM reset, we check from start of day to now (not end of day)
     const endOfDay = targetDate;
 
@@ -216,7 +222,7 @@ export class PositionService {
       where: {
         userId,
         watchedAt: {
-          gte: startOfDay,
+          gte: startOfDayUTC,
           lte: endOfDay
         }
       }

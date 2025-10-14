@@ -5,6 +5,7 @@ import { NotificationService } from "@/lib/notification-service";
 import { NotificationType, NotificationSeverity } from "@prisma/client";
 import { ReferralService } from "@/lib/referral-service";
 import { TaskBonusService } from "@/lib/task-bonus-service";
+import { getStartOfDayInTimezone, toUTCFromDateInTimezone } from "@/lib/timezone-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,14 +76,18 @@ export async function GET(request: NextRequest) {
 
     // Get today's completed tasks count (after 12 AM reset)
     const now = new Date();
-    const todayAtMidnight = new Date(now);
-    todayAtMidnight.setHours(0, 0, 0, 0);
+    
+    // Get the start of the current day in the configured timezone
+    const todayAtMidnight = getStartOfDayInTimezone(now);
+    
+    // Convert to UTC for database query
+    const todayAtMidnightUTC = toUTCFromDateInTimezone(todayAtMidnight);
 
     const todayTasksCount = await db.userVideoTask.count({
       where: {
         userId: user.id,
         watchedAt: {
-          gte: todayAtMidnight,
+          gte: todayAtMidnightUTC,
         },
       },
     });
@@ -179,37 +184,6 @@ export async function POST(request: NextRequest) {
     if (!videoId || !watchDuration) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 },
-      );
-    }
-
-    // Check if task already completed after 12 AM today
-    const now = new Date();
-    const todayAtMidnight = new Date(now);
-    todayAtMidnight.setHours(0, 0, 0, 0);
-
-    // If current time is before 12 AM today, use existing logic
-    if (now < todayAtMidnight) {
-      return NextResponse.json(
-        { error: "Tasks reset at 12 AM daily" },
-        { status: 400 },
-      );
-    }
-
-    // Check if task already completed after 12 AM today
-    const existingTask = await db.userVideoTask.findFirst({
-      where: {
-        userId: user.id,
-        videoId,
-        watchedAt: {
-          gte: todayAtMidnight,
-        },
-      },
-    });
-
-    if (existingTask) {
-      return NextResponse.json(
-        { error: "Task already completed today after 12 AM reset" },
         { status: 400 },
       );
     }
