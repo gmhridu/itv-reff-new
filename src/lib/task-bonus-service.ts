@@ -12,6 +12,7 @@
 
 import { db } from "@/lib/db";
 import { TransactionType } from "@prisma/client";
+import { getStartOfDayInTimezone, toUTCFromDateInTimezone } from "@/lib/timezone-utils";
 
 interface TaskCompletionStatus {
   userId: string;
@@ -52,8 +53,13 @@ export class TaskBonusService {
     date?: Date
   ): Promise<TaskCompletionStatus> {
     const targetDate = date || new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    
+    // Get the start of the current day in the configured timezone
+    const startOfDay = getStartOfDayInTimezone(targetDate);
+    
+    // Convert to UTC for database query
+    const startOfDayUTC = toUTCFromDateInTimezone(startOfDay);
+    
     // For 12 AM reset, we check from start of day to now (not end of day)
     const endOfDay = targetDate;
 
@@ -96,7 +102,7 @@ export class TaskBonusService {
         where: {
           userId,
           watchedAt: {
-            gte: startOfDay,
+            gte: startOfDayUTC,
             lte: endOfDay
           },
           isVerified: true
@@ -360,8 +366,13 @@ export class TaskBonusService {
     totalBonusDistributed: number;
   }> {
     const targetDate = date || new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    
+    // Get the start of the current day in the configured timezone
+    const startOfDay = getStartOfDayInTimezone(targetDate);
+    
+    // Convert to UTC for database query
+    const startOfDayUTC = toUTCFromDateInTimezone(startOfDay);
+    
     // For 12 AM reset, we check from start of day to now (not end of day)
     const endOfDay = targetDate;
 
@@ -375,7 +386,7 @@ export class TaskBonusService {
       const usersWithTasks = await db.userVideoTask.findMany({
         where: {
           watchedAt: {
-            gte: startOfDay,
+            gte: startOfDayUTC,
             lte: endOfDay
           },
           isVerified: true

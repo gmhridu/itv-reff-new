@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import * as cron from "node-cron";
+import { formatInTimezone, getCurrentTimeInTimezone } from "@/lib/timezone-utils";
 
 interface CleanupConfig {
   timezone: string;
@@ -22,8 +23,8 @@ export class UserVideoTaskCleanupService {
   // Asia/Karachi timezone configuration (UTC+5)
   private readonly config: CleanupConfig = {
     timezone: "Asia/Karachi",
-    cronExpression: "1 0 * * *", // Every day at 12:01 AM
-    enabled: process.env.NODE_ENV === "production",
+    cronExpression: "1 0 * * *",
+    enabled: true, 
   };
 
   private constructor() {
@@ -52,7 +53,7 @@ export class UserVideoTaskCleanupService {
 
     if (!this.config.enabled) {
       console.log(
-        "User Video Task Cleanup Service is disabled (development mode)"
+        "User Video Task Cleanup Service is disabled"
       );
       return;
     }
@@ -153,6 +154,8 @@ export class UserVideoTaskCleanupService {
 
     try {
       console.log("=== Starting User Video Task Cleanup ===");
+      console.log(`Current time: ${new Date().toISOString()}`);
+      console.log(`Configured timezone time: ${formatInTimezone(getCurrentTimeInTimezone())}`);
 
       const deletedCount = await this.performCleanup();
 
@@ -167,9 +170,12 @@ export class UserVideoTaskCleanupService {
       // Log successful cleanup
       await this.logCleanupEvent(
         "COMPLETED",
-        `Daily cleanup completed successfully`,
+        `Daily cleanup completed successfully. Deleted ${deletedCount} records in ${executionTime}ms`,
         result
       );
+      
+      console.log(`=== User Video Task Cleanup Completed ===`);
+      console.log(`Deleted ${deletedCount} UserVideoTask records in ${executionTime}ms`);
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage =
