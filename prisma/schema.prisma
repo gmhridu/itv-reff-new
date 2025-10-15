@@ -7,6 +7,7 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id                     String                  @id @default(cuid())
   email                  String?                 @unique
@@ -23,6 +24,7 @@ model User {
   walletBalance          Float                   @default(0) //current balance
   totalEarnings          Float                   @default(0)
   currentPositionId      String?
+  previousPositionId     String?
   positionStartDate      DateTime?
   positionEndDate        DateTime?
   depositPaid            Float                   @default(0) //security deposit
@@ -50,7 +52,9 @@ model User {
   userPlan               UserPlan?
   userProfile            UserProfile?
   videoTasks             UserVideoTask[]
-  currentPosition        PositionLevel?          @relation(fields: [currentPositionId], references: [id])
+  currentPosition        PositionLevel?          @relation(name: "CurrentPosition", fields: [currentPositionId], references: [id], map: "user_current_position_fkey")
+  previousPosition       PositionLevel?          @relation(name: "PreviousPosition", fields: [previousPositionId], references: [id], map: "user_previous_position_fkey")
+  position               PositionLevel?          @relation("PositionUsers", fields: [currentPositionId], references: [id], map: "user_position_fkey")
   referrer               User?                   @relation("UserReferrals", fields: [referredBy], references: [id])
   referrals              User[]                  @relation("UserReferrals")
   transactions           WalletTransaction[]
@@ -97,8 +101,11 @@ model PositionLevel {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  users       User[]
+  users       User[]   @relation("PositionUsers")
   videos      Video[]
+
+  currentUsers  User[] @relation(name: "CurrentPosition")
+  previousUsers User[] @relation(name: "PreviousPosition")
 
   @@map("position_levels")
 }
@@ -692,38 +699,38 @@ enum SecurityRefundStatus {
 }
 
 model PasswordReset {
-   id        String    @id @default(cuid())
-   userId    String
-   token     String    @unique
-   expiresAt DateTime
-   used      Boolean   @default(false)
-   usedAt    DateTime?
-   createdAt DateTime  @default(now())
-   updatedAt DateTime  @updatedAt
-   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-   @@index([token])
-   @@index([userId])
-   @@index([expiresAt])
-   @@map("password_resets")
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_resets")
 }
 
 model WhatsAppOTP {
-   id        String    @id @default(cuid())
-   userId    String
-   phone     String
-   otp       String
-   expiresAt DateTime
-   used      Boolean   @default(false)
-   usedAt    DateTime?
-   attempts  Int       @default(0)
-   createdAt DateTime  @default(now())
-   updatedAt DateTime  @updatedAt
-   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String    @id @default(cuid())
+  userId    String
+  phone     String
+  otp       String
+  expiresAt DateTime
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-   @@index([phone])
-   @@index([otp])
-   @@index([userId])
-   @@index([expiresAt])
-   @@map("whatsapp_otps")
+  @@index([phone])
+  @@index([otp])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("whatsapp_otps")
 }
