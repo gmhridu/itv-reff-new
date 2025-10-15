@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       response = NextResponse.json(
         { success: false, error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
       return addAPISecurityHeaders(response);
     }
@@ -37,32 +37,39 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         currentPositionId: true,
+        previousPositionId: true,
         depositPaid: true,
         userPlan: {
           where: { status: "ACTIVE" },
           include: { plan: true },
         },
+        currentPosition: {
+          select: {
+            id: true,
+            name: true,
+            level: true,
+            deposit: true,
+          },
+        },
+        previousPosition: {
+          select: {
+            id: true,
+            name: true,
+            level: true,
+            deposit: true,
+          },
+        },
       },
     });
+
+    console.log("userWithDetails", userWithDetails);
 
     if (!userWithDetails) {
       response = NextResponse.json(
         { success: false, error: "User not found" },
-        { status: 404 },
+        { status: 404 }
       );
       return addAPISecurityHeaders(response);
-    }
-
-    // Get current position if user has one
-    let currentPosition: any = null;
-    if (userWithDetails.currentPositionId) {
-      try {
-        currentPosition = await db.positionLevel.findUnique({
-          where: { id: userWithDetails.currentPositionId },
-        });
-      } catch (error) {
-        console.warn("Position level not found:", error);
-      }
     }
 
     // Get security refund requests
@@ -73,7 +80,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       });
       // Convert null values to undefined to match interface
-      securityRefundRequests = (requests || []).map(request => ({
+      securityRefundRequests = (requests || []).map((request) => ({
         ...request,
         requestNote: request.requestNote ?? undefined,
         adminNotes: request.adminNotes ?? undefined,
@@ -86,53 +93,36 @@ export async function GET(request: NextRequest) {
 
     // Check if user has upgraded (has a position above Intern)
     const hasUpgraded =
-      currentPosition &&
-      currentPosition.name !== "Intern" &&
-      currentPosition.level > 0;
+      userWithDetails.currentPosition &&
+      userWithDetails.currentPosition.name !== "Intern" &&
+      userWithDetails.currentPosition.level > 0 &&
+      !!userWithDetails?.previousPosition?.level;
 
-    // Get previous level info if upgraded
-    let previousLevelDeposit = 0;
-    let canRequestRefund = false;
+    // Check if user hasn't already got refund for this level
+    const existingRefund = securityRefundRequests.find(
+      (req) =>
+        req.fromLevel === userWithDetails?.previousPosition?.level &&
+        req.status === "APPROVED"
+    );
 
-    if (hasUpgraded && currentPosition) {
-      const currentLevel = currentPosition.level;
-      const previousLevel = currentLevel - 1;
+    const pendingRefund = securityRefundRequests.find(
+      (req) =>
+        req.fromLevel === userWithDetails?.previousPosition?.level &&
+        req.status === "PENDING"
+    );
 
-      if (previousLevel > 0) {
-        // Get the previous level position details
-        try {
-          const previousPositionLevel = await db.positionLevel.findUnique({
-            where: { level: previousLevel },
-          });
-
-          if (previousPositionLevel) {
-            previousLevelDeposit = previousPositionLevel.deposit;
-          }
-        } catch (error) {
-          console.warn("Previous position level not found:", error);
-        }
-
-        // Check if user hasn't already got refund for this level
-        const existingRefund = securityRefundRequests.find(
-          (req) => req.fromLevel === previousLevel && req.status === "APPROVED",
-        );
-
-        const pendingRefund = securityRefundRequests.find(
-          (req) => req.fromLevel === previousLevel && req.status === "PENDING",
-        );
-
-        canRequestRefund = !existingRefund && !pendingRefund;
-      }
-    }
+    const canRequestRefund = !existingRefund && !pendingRefund;
 
     response = NextResponse.json({
       success: true,
       data: {
         hasUpgraded: hasUpgraded || false,
         canRequestRefund: canRequestRefund || false,
-        currentLevel: currentPosition?.level || 0,
-        currentLevelName: currentPosition?.name || "Intern",
-        previousLevelDeposit: previousLevelDeposit || 0,
+        currentLevel: userWithDetails.currentPosition?.level || 0,
+        currentLevelName: userWithDetails.currentPosition?.name || "Intern",
+        previousLevel: userWithDetails.previousPosition?.level || 0,
+        previousLevelName: userWithDetails.previousPosition?.name || "Intern",
+        previousLevelDeposit: userWithDetails.previousPosition?.deposit || 0,
         securityDeposited: userWithDetails.depositPaid || 0,
         refundRequests: securityRefundRequests,
       },
@@ -143,7 +133,7 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching security refund data:", error);
     response = NextResponse.json(
       { success: false, error: "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
     return addAPISecurityHeaders(response);
   }
@@ -157,7 +147,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       response = NextResponse.json(
         { success: false, error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
       return addAPISecurityHeaders(response);
     }
@@ -168,38 +158,54 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         currentPositionId: true,
+        previousPositionId: true,
         depositPaid: true,
         userPlan: {
           where: { status: "ACTIVE" },
           include: { plan: true },
         },
+        currentPosition: {
+          select: {
+            id: true,
+            name: true,
+            level: true,
+            deposit: true,
+          },
+        },
+        previousPosition: {
+          select: {
+            id: true,
+            name: true,
+            level: true,
+            deposit: true,
+          },
+        },
       },
     });
 
-    if (!userWithDetails || !userWithDetails.currentPositionId) {
+    if (!userWithDetails) {
       response = NextResponse.json(
         { success: false, error: "User position not found" },
-        { status: 404 },
+        { status: 404 }
       );
       return addAPISecurityHeaders(response);
     }
 
-    // Get current position
-    const currentPosition = await db.positionLevel.findUnique({
-      where: { id: userWithDetails.currentPositionId },
-    });
-
-    if (!currentPosition) {
+    if (
+      !userWithDetails.currentPosition ||
+      !userWithDetails.previousPosition
+    ) {
       response = NextResponse.json(
-        { success: false, error: "Current position not found" },
-        { status: 404 },
+        { success: false, error: "Position not found" },
+        { status: 404 }
       );
       return addAPISecurityHeaders(response);
     }
 
     // Check if user has upgraded
     const hasUpgraded =
-      currentPosition.name !== "Intern" && currentPosition.level > 0;
+      userWithDetails?.currentPosition.name !== "Intern" &&
+      userWithDetails?.currentPosition.level > 0;
 
     if (!hasUpgraded) {
       response = NextResponse.json(
@@ -207,18 +213,18 @@ export async function POST(request: NextRequest) {
           success: false,
           error: "You are not eligible to refund your security",
         },
-        { status: 400 },
+        { status: 400 }
       );
       return addAPISecurityHeaders(response);
     }
 
-    const currentLevel = currentPosition.level;
-    const previousLevel = currentLevel - 1;
+    const currentLevel = userWithDetails.currentPosition.level;
+    const previousLevel = userWithDetails.previousPosition.level;
 
     if (previousLevel <= 0) {
       response = NextResponse.json(
         { success: false, error: "No previous level found for refund" },
-        { status: 400 },
+        { status: 400 }
       );
       return addAPISecurityHeaders(response);
     }
@@ -233,7 +239,7 @@ export async function POST(request: NextRequest) {
         },
       });
       // Convert null values to undefined to match interface
-      existingRefundRequests = (requests || []).map(request => ({
+      existingRefundRequests = (requests || []).map((request) => ({
         ...request,
         requestNote: request.requestNote ?? undefined,
         adminNotes: request.adminNotes ?? undefined,
@@ -245,7 +251,7 @@ export async function POST(request: NextRequest) {
 
     // Check for existing refund request for this level
     const existingRequest = existingRefundRequests.find(
-      (req) => req.fromLevel === previousLevel,
+      (req) => req.fromLevel === previousLevel
     );
 
     if (existingRequest) {
@@ -256,20 +262,7 @@ export async function POST(request: NextRequest) {
 
       response = NextResponse.json(
         { success: false, error: statusMessage },
-        { status: 400 },
-      );
-      return addAPISecurityHeaders(response);
-    }
-
-    // Get previous level position details
-    const previousPositionLevel = await db.positionLevel.findUnique({
-      where: { level: previousLevel },
-    });
-
-    if (!previousPositionLevel) {
-      response = NextResponse.json(
-        { success: false, error: "Previous level position not found" },
-        { status: 404 },
+        { status: 400 }
       );
       return addAPISecurityHeaders(response);
     }
@@ -282,7 +275,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           fromLevel: previousLevel,
           toLevel: currentLevel,
-          refundAmount: previousPositionLevel.deposit,
+          refundAmount: userWithDetails.previousPosition.deposit,
           status: "PENDING",
           requestNote: `Security deposit refund request from Level ${previousLevel} to Level ${currentLevel}`,
         },
@@ -291,7 +284,7 @@ export async function POST(request: NextRequest) {
       console.error("Error creating refund request:", error);
       response = NextResponse.json(
         { success: false, error: "Failed to create refund request" },
-        { status: 500 },
+        { status: 500 }
       );
       return addAPISecurityHeaders(response);
     }
@@ -302,7 +295,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: user.id,
           activity: "security_refund_request",
-          description: `Requested security refund of ${previousPositionLevel.deposit} PKR from Level ${previousLevel}`,
+          description: `Requested security refund of ${userWithDetails.previousPosition.deposit} PKR from Level ${previousLevel}`,
           ipAddress:
             request.headers.get("x-forwarded-for") ||
             request.headers.get("x-real-ip") ||
@@ -312,7 +305,7 @@ export async function POST(request: NextRequest) {
             refundRequestId: refundRequest?.id,
             fromLevel: previousLevel,
             toLevel: currentLevel,
-            refundAmount: previousPositionLevel.deposit,
+            refundAmount: userWithDetails.previousPosition.deposit,
           }),
         },
       });
@@ -331,7 +324,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating security refund request:", error);
     response = NextResponse.json(
       { success: false, error: "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
     return addAPISecurityHeaders(response);
   }
