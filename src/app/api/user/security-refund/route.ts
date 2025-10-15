@@ -121,7 +121,14 @@ export async function GET(request: NextRequest) {
           (req) => req.fromLevel === previousLevel && req.status === "PENDING",
         );
 
-        canRequestRefund = !existingRefund && !pendingRefund;
+        // NEW VALIDATION: Prevent refunds for direct upgrades from Intern
+        // Users who upgraded directly from Intern to any level cannot get refunds
+        // They must upgrade at least once more to be eligible for refunds
+        const hasUpgradedBeyondInitialLevel = securityRefundRequests.some(
+          (req) => req.status === "APPROVED"
+        );
+
+        canRequestRefund = !existingRefund && !pendingRefund && hasUpgradedBeyondInitialLevel;
       }
     }
 
@@ -256,6 +263,24 @@ export async function POST(request: NextRequest) {
 
       response = NextResponse.json(
         { success: false, error: statusMessage },
+        { status: 400 },
+      );
+      return addAPISecurityHeaders(response);
+    }
+
+    // NEW VALIDATION: Prevent refunds for direct upgrades from Intern
+    // Users who upgraded directly from Intern to any level cannot get refunds
+    // They must upgrade at least once more to be eligible for refunds
+    const hasUpgradedBeyondInitialLevel = existingRefundRequests.some(
+      (req) => req.status === "APPROVED"
+    );
+
+    if (!hasUpgradedBeyondInitialLevel) {
+      response = NextResponse.json(
+        {
+          success: false,
+          error: "You are not eligible for security refund. You must upgrade at least once more after your initial position purchase to be eligible for refunds.",
+        },
         { status: 400 },
       );
       return addAPISecurityHeaders(response);
