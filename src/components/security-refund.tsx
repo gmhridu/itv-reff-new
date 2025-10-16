@@ -28,10 +28,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "./ui/dialog";
-import {
-  Alert,
-  AlertDescription,
-} from "./ui/alert";
+import { Alert, AlertDescription } from "./ui/alert";
 
 interface SecurityRefundRequest {
   id: string;
@@ -50,6 +47,8 @@ interface SecurityRefundData {
   canRequestRefund: boolean;
   currentLevel: number;
   currentLevelName: string;
+  previousLevel: number;
+  previousLevelName: string;
   previousLevelDeposit: number;
   securityDeposited: number;
   refundRequests: SecurityRefundRequest[];
@@ -63,7 +62,8 @@ export default function SecurityRefund() {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<SecurityRefundRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] =
+    useState<SecurityRefundRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Fetch security refund data
@@ -228,7 +228,9 @@ export default function SecurityRefund() {
           size="sm"
           disabled={loading}
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
@@ -259,15 +261,15 @@ export default function SecurityRefund() {
               <p className="text-xs text-green-700">Current level deposit</p>
             </div>
 
-            {data.hasUpgraded && (
-              <div className="bg-orange-50 p-4 rounded-lg">
-                <p className="text-sm text-orange-600 mb-1">Available Refund</p>
-                <p className="text-lg font-bold text-orange-900">
-                  {formatCurrency(data.previousLevelDeposit)}
-                </p>
-                <p className="text-xs text-orange-700">From Level {data.currentLevel - 1}</p>
-              </div>
-            )}
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="text-sm text-orange-600 mb-1">Available Refund</p>
+              <p className="text-lg font-bold text-orange-900">
+                {formatCurrency(data.previousLevelDeposit)}
+              </p>
+              <p className="text-xs text-orange-700">
+                From Level {data.previousLevelName}
+              </p>
+            </div>
 
             <div className="bg-purple-50 p-4 rounded-lg">
               <p className="text-sm text-purple-600 mb-1">Total Requests</p>
@@ -275,7 +277,11 @@ export default function SecurityRefund() {
                 {data.refundRequests.length}
               </p>
               <p className="text-xs text-purple-700">
-                {data.refundRequests.filter(r => r.status === 'APPROVED').length} approved
+                {
+                  data.refundRequests.filter((r) => r.status === "APPROVED")
+                    .length
+                }{" "}
+                approved
               </p>
             </div>
           </div>
@@ -295,14 +301,17 @@ export default function SecurityRefund() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                You are not eligible to refund your security. You must upgrade to a higher level first to be eligible for security deposit refund.
+                You are not eligible to refund your security. You must upgrade
+                to another higher level first to be eligible for security
+                deposit refund.
               </AlertDescription>
             </Alert>
           ) : !data.canRequestRefund ? (
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                You have already requested or received a refund for your previous level security deposit.
+                You have already requested or received a refund for your
+                previous level security deposit.
               </AlertDescription>
             </Alert>
           ) : (
@@ -317,8 +326,9 @@ export default function SecurityRefund() {
                       Refund Available!
                     </h3>
                     <p className="text-green-800 mb-3">
-                      You have upgraded from Level {data.currentLevel - 1} to Level {data.currentLevel}.
-                      You can now request a refund of your previous level security deposit.
+                      You have upgraded from Level {data.previousLevelName} to
+                      Level {data.currentLevelName}. You can now request a
+                      refund of your previous level security deposit.
                     </p>
                     <div className="flex items-center gap-4 text-sm text-green-700">
                       <div className="flex items-center gap-2">
@@ -409,15 +419,21 @@ export default function SecurityRefund() {
                     {request.processedAt && (
                       <div className="flex items-center gap-2">
                         <CheckCircle className="w-3 h-3" />
-                        <span>Processed: {formatDate(request.processedAt)}</span>
+                        <span>
+                          Processed: {formatDate(request.processedAt)}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   {request.adminNotes && (
                     <div className="mt-3 p-3 bg-gray-50 rounded border-l-2 border-l-gray-300">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Admin Notes:</p>
-                      <p className="text-sm text-gray-600">{request.adminNotes}</p>
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Admin Notes:
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {request.adminNotes}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -436,7 +452,8 @@ export default function SecurityRefund() {
               Confirm Security Refund Request
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to request a refund of your Level {data.currentLevel - 1} security deposit?
+              Are you sure you want to request a refund of your Level{" "}
+              {data.previousLevelName} security deposit?
             </DialogDescription>
           </DialogHeader>
 
@@ -448,7 +465,7 @@ export default function SecurityRefund() {
                   {formatCurrency(data.previousLevelDeposit)}
                 </p>
                 <p className="text-xs text-green-600">
-                  From Level {data.currentLevel - 1} security deposit
+                  From Level {data.previousLevelName} security deposit
                 </p>
               </div>
             </div>
@@ -528,7 +545,9 @@ export default function SecurityRefund() {
               {/* Level Details */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Level Upgrade Information</CardTitle>
+                  <CardTitle className="text-base">
+                    Level Upgrade Information
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-center gap-4">
@@ -596,7 +615,9 @@ export default function SecurityRefund() {
                   </CardHeader>
                   <CardContent>
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                      <p className="text-orange-800">{selectedRequest.adminNotes}</p>
+                      <p className="text-orange-800">
+                        {selectedRequest.adminNotes}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -609,7 +630,9 @@ export default function SecurityRefund() {
                     <CardTitle className="text-base">Request Details</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600">{selectedRequest.requestNote}</p>
+                    <p className="text-gray-600">
+                      {selectedRequest.requestNote}
+                    </p>
                   </CardContent>
                 </Card>
               )}
