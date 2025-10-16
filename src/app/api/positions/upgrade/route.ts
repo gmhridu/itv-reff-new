@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!targetPositionId || !depositAmount) {
       return NextResponse.json(
         { error: "Target position ID and deposit amount are required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -29,13 +29,13 @@ export async function POST(request: NextRequest) {
     const upgradeResult = await PositionService.upgradePosition(
       user.id,
       targetPositionId,
-      depositAmount,
+      depositAmount
     );
 
     if (!upgradeResult.success) {
       return NextResponse.json(
         { error: upgradeResult.message },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -43,16 +43,16 @@ export async function POST(request: NextRequest) {
     if (upgradeResult.newPosition) {
       const referralResult = await ReferralService.processReferralQualification(
         user.id,
-        upgradeResult.newPosition.name,
+        upgradeResult.newPosition.name
       );
 
       if (referralResult.success && referralResult.rewards) {
         console.log(
-          `Position upgrade commissions distributed: ${referralResult.rewards.reduce((sum, r) => sum + r.amount, 0)} PKR`,
+          `Position upgrade commissions distributed: ${referralResult.rewards.reduce((sum, r) => sum + r.amount, 0)} PKR`
         );
       } else if (referralResult.reason) {
         console.log(
-          `Position upgrade commissions not processed: ${referralResult.reason}`,
+          `Position upgrade commissions not processed: ${referralResult.reason}`
         );
       }
 
@@ -60,20 +60,19 @@ export async function POST(request: NextRequest) {
       try {
         await UserNotificationService.notifyPositionUpgrade(
           user.id,
-          "Previous Position", // oldPosition not available in upgrade result
           upgradeResult.newPosition.name,
-          0, // No bonus amount in this case
+          0,
           [
             `${upgradeResult.newPosition.tasksPerDay} daily tasks`,
             `PKR ${upgradeResult.newPosition.unitPrice} per task`,
             `Level ${upgradeResult.newPosition.level} benefits`,
-          ],
+          ]
         );
         console.log(`Position upgrade notification sent to user ${user.id}`);
       } catch (notificationError) {
         console.error(
           "Failed to send position upgrade notification:",
-          notificationError,
+          notificationError
         );
       }
 
@@ -88,7 +87,8 @@ export async function POST(request: NextRequest) {
           unitPrice: upgradeResult.newPosition.unitPrice,
         },
         referralRewards: {
-          totalDistributed: referralResult.rewards?.reduce((sum, r) => sum + r.amount, 0) || 0,
+          totalDistributed:
+            referralResult.rewards?.reduce((sum, r) => sum + r.amount, 0) || 0,
           breakdown: referralResult.rewards || [],
         },
       });
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     console.error("Position upgrade error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
