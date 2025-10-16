@@ -1,5 +1,5 @@
-import { db } from '@/lib/db';
-import { PositionLevel, User } from '@prisma/client';
+import { db } from "@/lib/db";
+import { PositionLevel, User } from "@prisma/client";
 
 export interface PositionIncomeCalculation {
   dailyIncome: number;
@@ -11,26 +11,28 @@ export interface PositionUpgradeResult {
   success: boolean;
   message: string;
   newPosition?: PositionLevel;
+  previousPosition?: PositionLevel;
 }
 
 export class PositionService {
-
   static async getAllPositions(): Promise<PositionLevel[]> {
     return await db.positionLevel.findMany({
       where: { isActive: true },
-      orderBy: { level: 'asc' }
+      orderBy: { level: "asc" },
     });
   }
 
-  static async getPositionByLevel(level: number): Promise<PositionLevel | null> {
+  static async getPositionByLevel(
+    level: number
+  ): Promise<PositionLevel | null> {
     return await db.positionLevel.findUnique({
-      where: { level }
+      where: { level },
     });
   }
 
   static async getPositionByName(name: string): Promise<PositionLevel | null> {
     return await db.positionLevel.findUnique({
-      where: { name }
+      where: { name },
     });
   }
 
@@ -42,7 +44,7 @@ export class PositionService {
     return {
       dailyIncome,
       monthlyIncome,
-      annualIncome
+      annualIncome,
     };
   }
 
@@ -54,7 +56,7 @@ export class PositionService {
   } | null> {
     const user = await db.user.findUnique({
       where: { id: userId },
-      include: { currentPosition: true }
+      include: { currentPosition: true },
     });
 
     if (!user) return null;
@@ -63,25 +65,25 @@ export class PositionService {
     if (user.isIntern && user.positionStartDate) {
       const startDate = new Date(user.positionStartDate);
       const currentDate = new Date();
-      
+
       // Calculate the difference in days
       const timeDiff = currentDate.getTime() - startDate.getTime();
       const daysSinceStart = Math.floor(timeDiff / (1000 * 3600 * 24));
-      
+
       // Intern position expires after 4 days (from day 5 onward, no tasks)
       if (daysSinceStart >= 4) {
         return {
           user,
           position: user.currentPosition,
           isExpired: true,
-          daysRemaining: 0
+          daysRemaining: 0,
         };
       } else {
         return {
           user,
           position: user.currentPosition,
           isExpired: false,
-          daysRemaining: 4 - daysSinceStart
+          daysRemaining: 4 - daysSinceStart,
         };
       }
     }
@@ -94,7 +96,7 @@ export class PositionService {
       user,
       position: user.currentPosition,
       isExpired,
-      daysRemaining
+      daysRemaining,
     };
   }
 
@@ -106,26 +108,26 @@ export class PositionService {
     try {
       const user = await db.user.findUnique({
         where: { id: userId },
-        include: { currentPosition: true }
+        include: { currentPosition: true, previousPosition: true },
       });
 
       if (!user) {
-        return { success: false, message: 'User not found' };
+        return { success: false, message: "User not found" };
       }
 
       const targetPosition = await db.positionLevel.findUnique({
-        where: { id: targetPositionId }
+        where: { id: targetPositionId },
       });
 
       if (!targetPosition) {
-        return { success: false, message: 'Target position not found' };
+        return { success: false, message: "Target position not found" };
       }
 
       // Validate deposit amount
       if (depositAmount < targetPosition.deposit) {
         return {
           success: false,
-          message: `Insufficient deposit. Required: ${targetPosition.deposit} PKR`
+          message: `Insufficient deposit. Required: ${targetPosition.deposit} PKR`,
         };
       }
 
@@ -134,82 +136,77 @@ export class PositionService {
       if (targetPosition.level < currentLevel) {
         return {
           success: false,
-          message: 'Cannot downgrade position levels. You can only upgrade to the same or a higher position level.'
+          message:
+            "Cannot downgrade position levels. You can only upgrade to the same or a higher position level.",
         };
       }
-
-      // Allow upgrading to any higher position, not just the next level
-      // Removed the sequential upgrade restriction
 
       // Check wallet balance for deposit
       if (user.walletBalance < targetPosition.deposit) {
         return {
           success: false,
-          message: 'Insufficient wallet balance for deposit'
+          message: "Insufficient wallet balance for deposit",
         };
       }
 
       const startDate = new Date();
-      // Since we're removing validityDays, we don't set an end date
       const endDate = null;
 
-      // Perform upgrade transaction
       await db.$transaction(async (tx) => {
-        // Deduct deposit from wallet
         await tx.user.update({
           where: { id: userId },
           data: {
             walletBalance: { decrement: targetPosition.deposit },
             currentPositionId: targetPosition.id,
+            previousPositionId: user.currentPositionId,
             positionStartDate: startDate,
             positionEndDate: endDate,
-            depositPaid: { increment: targetPosition.deposit }, // Add to existing deposit instead of overwriting
-            isIntern: targetPosition.name === 'Intern'
-          }
+            depositPaid: { increment: targetPosition.deposit },
+            isIntern: targetPosition.name === "Intern",
+          },
         });
 
         // Record deposit transaction
         await tx.walletTransaction.create({
           data: {
             userId,
-            type: 'POSITION_DEPOSIT',
+            type: "POSITION_DEPOSIT",
             amount: -targetPosition.deposit,
             balanceAfter: user.walletBalance - targetPosition.deposit,
             description: `Position upgrade to ${targetPosition.name}`,
             referenceId: `POSITION_UPGRADE_${targetPosition.name}_${userId}_${Date.now()}`,
-            status: 'COMPLETED',
+            status: "COMPLETED",
             metadata: JSON.stringify({
               positionId: targetPosition.id,
               positionName: targetPosition.name,
-              previousPositionId: user.currentPositionId
-            })
-          }
+              previousPositionId: user.currentPositionId,
+            }),
+          },
         });
       });
 
       return {
         success: true,
         message: `Successfully upgraded to ${targetPosition.name}`,
-        newPosition: targetPosition
+        newPosition: targetPosition,
+        previousPosition: user?.previousPosition as PositionLevel,
       };
-
     } catch (error) {
-      console.error('Position upgrade error:', error);
-      return { success: false, message: 'Internal server error during upgrade' };
+      console.error("Position upgrade error:", error);
+      return {
+        success: false,
+        message: "Internal server error during upgrade",
+      };
     }
   }
 
-  static async checkAndExpirePositions(): Promise<void> {
-    // Since we're removing validityDays, this function is no longer needed
-    // Positions don't expire anymore
-    return;
-  }
-
-  static async getDailyTasksCompleted(userId: string, date?: Date): Promise<number> {
+  static async getDailyTasksCompleted(
+    userId: string,
+    date?: Date
+  ): Promise<number> {
     const targetDate = date || new Date();
     const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    // For 12 AM reset, we check from start of day to now (not end of day)
     const endOfDay = targetDate;
 
     const tasksCompleted = await db.userVideoTask.count({
@@ -217,9 +214,9 @@ export class PositionService {
         userId,
         watchedAt: {
           gte: startOfDay,
-          lte: endOfDay
-        }
-      }
+          lte: endOfDay,
+        },
+      },
     });
 
     return tasksCompleted;
@@ -233,18 +230,22 @@ export class PositionService {
     const userPosition = await this.getUserCurrentPosition(userId);
 
     if (!userPosition || !userPosition.position) {
-      return { canComplete: false, reason: 'No active position found' };
+      return { canComplete: false, reason: "No active position found" };
     }
 
     if (userPosition.user.isIntern && userPosition.isExpired) {
-      return { canComplete: false, reason: 'Intern position work duration expired. Please upgrade to continue earning.' };
+      return {
+        canComplete: false,
+        reason:
+          "Intern position work duration expired. Please upgrade to continue earning.",
+      };
     }
 
     const tasksCompleted = await this.getDailyTasksCompleted(userId);
     const tasksRemaining = userPosition.position.tasksPerDay - tasksCompleted;
 
     if (tasksRemaining <= 0) {
-      return { canComplete: false, reason: 'Daily task limit reached' };
+      return { canComplete: false, reason: "Daily task limit reached" };
     }
 
     return { canComplete: true, tasksRemaining };

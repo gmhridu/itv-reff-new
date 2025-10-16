@@ -306,14 +306,13 @@ export class UserNotificationService {
    */
   static async notifyPositionUpgrade(
     userId: string,
-    oldPosition: string,
     newPosition: string,
     bonusAmount?: number,
     newPrivileges?: string[],
   ) {
     const message = bonusAmount
-      ? `Excellent! You've been promoted from ${oldPosition} to ${newPosition} and received a bonus of PKR ${bonusAmount.toLocaleString()}! 🎉`
-      : `Congratulations! You've been promoted from ${oldPosition} to ${newPosition}! 🏆`;
+      ? `Excellent! You've been promoted  to ${newPosition} and received a bonus of PKR ${bonusAmount.toLocaleString()}! 🎉`
+      : `Congratulations! You've been promoted to ${newPosition}! 🏆`;
 
     return this.createNotification({
       userId,
@@ -323,7 +322,6 @@ export class UserNotificationService {
       severity: NotificationSeverity.SUCCESS,
       actionUrl: "/profile",
       metadata: {
-        oldPosition,
         newPosition,
         bonusAmount,
         newPrivileges,
