@@ -6,8 +6,11 @@ builder = "dockerfile"
 nixPkgs = ["nodejs_20", "bun"]
 
 [phases.install]
-cmd = "bun install --frozen-lockfile"
-
+cmd = """
+bun install --frozen-lockfile && \
+cp /usr/share/zoneinfo/Asia/Karachi /etc/localtime && \
+echo Asia/Karachi > /etc/timezone
+"""
 [phases.build]
 cmd = "bun run build"
 
