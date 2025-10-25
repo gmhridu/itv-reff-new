@@ -40,6 +40,10 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV INITIALIZE_SCHEDULER=true
 
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Karachi
+RUN cp /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Create nextjs user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
