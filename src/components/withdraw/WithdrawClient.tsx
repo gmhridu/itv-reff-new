@@ -215,7 +215,9 @@ export const WithdrawClient = () => {
 
     // Prevent multiple simultaneous requests
     if (dailyLimitCheckInProgress.current) {
-      console.log("Daily limit check already in progress, skipping duplicate request");
+      console.log(
+        "Daily limit check already in progress, skipping duplicate request"
+      );
       return;
     }
 
@@ -989,8 +991,9 @@ export const WithdrawClient = () => {
                   <span className="font-medium">Withdrawal Not Available</span>
                 </div>
                 <p>
-                  You are currently unable to make withdrawals. This may be due
-                  to you have pending withdrawal requests.
+                  You can't make a withdrawal right now. This may be because
+                  you've already made a withdrawal within the last 24 hours, or
+                  you have a pending withdrawal request.
                 </p>
               </div>
             )}

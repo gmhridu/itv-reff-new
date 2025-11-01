@@ -3,56 +3,44 @@ import type { NextRequest } from "next/server";
 import { AdminMiddleware } from "./src/lib/admin-middleware";
 import { SecureTokenManager } from "./src/lib/token-manager";
 
-async function handleTokenRefresh(
-  req: NextRequest,
-): Promise<NextResponse | null> {
+// 🔁 Handle token refresh
+async function handleTokenRefresh(req: NextRequest): Promise<NextResponse | null> {
   const refreshToken = req.cookies.get("refresh-token")?.value;
-  if (!refreshToken) {
-    return null;
-  }
+  if (!refreshToken) return null;
 
   try {
-    const response = await fetch(new URL("/api/auth/refresh", req.url), {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || req.nextUrl.origin;
+    const response = await fetch(`${baseUrl}/api/auth/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `refresh-token=${refreshToken}`,
-      },
-      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
     });
 
-    if (response.ok) {
-      const res = NextResponse.next({
-        request: {
-          headers: new Headers(req.headers),
-        },
+    if (!response.ok) return null;
+
+    const { accessToken, newRefreshToken } = await response.json();
+
+    // ✅ Create a new response and set cookies manually
+    const res = NextResponse.next();
+    res.cookies.set("access_token", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
+    if (newRefreshToken) {
+      res.cookies.set("refresh-token", newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
       });
-
-      // Forward the Set-Cookie header from the API response
-      const setCookie = response.headers.get("set-cookie");
-      if (setCookie) {
-        // Manually parse and set cookies because of Next.js limitations
-        const cookies = setCookie.split(", ");
-        for (const cookie of cookies) {
-          res.headers.append("Set-Cookie", cookie);
-        }
-      }
-
-      return res;
     }
 
-    // If refresh fails, clear all auth cookies and return redirect response
-    const res = NextResponse.redirect(new URL("/", req.url));
-    res.cookies.delete("access_token");
-    res.cookies.delete("refresh-token");
     return res;
   } catch (error) {
     console.error("Token refresh error:", error);
-    // On any error during refresh, clear auth cookies and redirect to login
-    const res = NextResponse.redirect(new URL("/", req.url));
-    res.cookies.delete("access_token");
-    res.cookies.delete("refresh-token");
-    return res;
+    return null;
   }
 }
 
@@ -67,6 +55,7 @@ export async function middleware(req: NextRequest) {
   const isBannedPage = pathname === "/banned";
   const isAdminLoginPage = pathname === "/4brothers/admin/login";
   const isAdminRoute = pathname.startsWith("/4brothers/admin") && !isAdminLoginPage;
+
   const protectedPaths = [
     "/dashboard",
     "/settings",
@@ -79,26 +68,23 @@ export async function middleware(req: NextRequest) {
     "/wallet",
     "/withdraw",
   ];
+
   const isApiRoute = pathname.startsWith("/api/");
   const isAdminApiRoute =
     pathname.startsWith("/api/admin") ||
     pathname.startsWith("/api/auth/getAdmin") ||
     pathname === "/api/auth/admin-test";
 
-  const isProtectedRoute = protectedPaths.some((path) =>
-    pathname.startsWith(path),
-  );
+  const isProtectedRoute = protectedPaths.some((path) => pathname.startsWith(path));
   const isProtectedApiRoute =
     isApiRoute && !pathname.startsWith("/api/auth/") && !isAdminApiRoute;
 
-  // Handle admin routes first - they should bypass regular user authentication
+  // 🧭 Admin routes
   if (isAdminRoute) {
     try {
       const admin = await AdminMiddleware.authenticateAdmin(req);
       if (!admin) {
-        const response = NextResponse.redirect(
-          new URL("/4brothers/admin/login", req.url),
-        );
+        const response = NextResponse.redirect(new URL("/4brothers/admin/login", req.url));
         response.cookies.set("admin_redirect_after_login", pathname, {
           path: "/",
           httpOnly: true,
@@ -121,14 +107,12 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Handle admin login page
+  // 🧩 Admin login page
   if (isAdminLoginPage && token) {
     try {
       const admin = await AdminMiddleware.authenticateAdmin(req);
       if (admin) {
-        const redirectPath = req.cookies.get(
-          "admin_redirect_after_login",
-        )?.value;
+        const redirectPath = req.cookies.get("admin_redirect_after_login")?.value;
         const targetUrl = redirectPath || "/4brothers/admin/analytics";
         const response = NextResponse.redirect(new URL(targetUrl, req.url));
         response.cookies.delete("admin_redirect_after_login");
@@ -139,161 +123,84 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Regular user authentication logic (only for non-admin routes)
-  let userPayload: any = null;
+  // 🧍 Regular user authentication
+  let userPayload: any = undefined;
   if (token) {
-    userPayload = SecureTokenManager.verifyAccessToken(token);
+    try {
+      userPayload = SecureTokenManager.verifyAccessToken(token);
+    } catch (err: any) {
+      if (err.name === "TokenExpiredError") userPayload = null; // signal expired
+      else userPayload = undefined; // invalid
+    }
   }
 
-  // If token exists but is invalid/expired, try to refresh it for any page
-  if (token && !userPayload) {
+  // 🔄 Try refresh if token expired
+  if (token && userPayload === null) {
     const refreshResponse = await handleTokenRefresh(req);
-    if (refreshResponse) {
-      // If refresh is successful, continue with the refreshed request
-      if (refreshResponse.status === 307) { // Redirect response
-        return refreshResponse;
-      }
-      // If refresh is successful, the response has the new cookies.
-      // We need to verify the new token and check if user is banned
-      const newToken = refreshResponse.cookies.get("access_token")?.value;
-      if (newToken) {
-        const newPayload = SecureTokenManager.verifyAccessToken(newToken);
-        if (newPayload) {
-          const isBanned = await SecureTokenManager.isUserBanned(newPayload.userId);
-          if (isBanned) {
-            const response = NextResponse.redirect(new URL("/banned", req.url));
-            response.cookies.delete("access_token");
-            response.cookies.delete("refresh-token");
-            return response;
-          }
-        }
-      }
-      // We rewrite this response to the original URL to continue the user's request.
-      return NextResponse.rewrite(req.url);
+
+    if (!refreshResponse) {
+      const res = NextResponse.redirect(new URL("/", req.url));
+      res.cookies.delete("access_token");
+      res.cookies.delete("refresh-token");
+      return res;
     }
 
-    // If refresh fails, redirect to login for any page
-    const loginUrl = new URL("/", req.url);
-    if (isProtectedRoute) {
-      loginUrl.searchParams.set("redirect_after_login", pathname);
-    }
-    const res = NextResponse.redirect(loginUrl);
+    // ✅ Successfully refreshed, allow next middleware / route
+    return refreshResponse;
+  }
+
+  // 🚪 Token invalid — redirect to login
+  if (token && userPayload === undefined) {
+    const res = NextResponse.redirect(new URL("/", req.url));
     res.cookies.delete("access_token");
     res.cookies.delete("refresh-token");
     return res;
   }
 
+  // ✅ Valid token → check banned status
   if (userPayload) {
-    // Check if user is banned
     const isBanned = await SecureTokenManager.isUserBanned(userPayload.userId);
     if (isBanned) {
-      // Clear all auth cookies for banned users
-      const response = NextResponse.redirect(new URL("/banned", req.url));
-      response.cookies.delete("access_token");
-      response.cookies.delete("refresh-token");
-      return response;
+      const res = NextResponse.redirect(new URL("/banned", req.url));
+      res.cookies.delete("access_token");
+      res.cookies.delete("refresh-token");
+      return res;
     }
 
     if (isAuthPage) {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
+
     return NextResponse.next();
   }
 
-  // Enhanced check for banned users trying to access auth pages
-  // This handles cases where banned users try to access login/register pages
-  if (isAuthPage && token) {
-    try {
-      // Try to verify the token to check if user is banned
-      const payload = SecureTokenManager.verifyAccessToken(token);
-      if (payload) {
-        const isBanned = await SecureTokenManager.isUserBanned(payload.userId);
-        if (isBanned) {
-          const response = NextResponse.redirect(new URL("/banned", req.url));
-          response.cookies.delete("access_token");
-          response.cookies.delete("refresh-token");
-          return response;
-        }
-      }
-    } catch (error) {
-      console.error("Error checking banned status for auth page:", error);
-    }
-  }
-
-  // Additional security: Check for banned users via refresh token on login page
-  // This catches edge cases where access token might be expired but refresh token exists
-  if (isAuthPage && !token) {
-    const refreshToken = req.cookies.get("refresh-token")?.value;
-    if (refreshToken) {
-      try {
-        const refreshPayload = SecureTokenManager.verifyRefreshToken(refreshToken);
-        if (refreshPayload) {
-          const isBanned = await SecureTokenManager.isUserBanned(refreshPayload.userId);
-          if (isBanned) {
-            const response = NextResponse.redirect(new URL("/banned", req.url));
-            response.cookies.delete("access_token");
-            response.cookies.delete("refresh-token");
-            return response;
-          }
-        }
-      } catch (error) {
-        console.error("Error checking banned status via refresh token:", error);
-      }
-    }
-  }
-
+  // 🧭 Handle unauthenticated users trying to access protected routes
   if (isProtectedRoute || isProtectedApiRoute) {
-    // If no token or refresh failed, redirect to login
-    const loginUrl = new URL("/", req.url);
-    if (isProtectedRoute) {
-      loginUrl.searchParams.set("redirect_after_login", pathname);
-    }
-    const res = NextResponse.redirect(loginUrl);
+    const res = NextResponse.redirect(new URL("/", req.url));
     res.cookies.delete("access_token");
     res.cookies.delete("refresh-token");
 
     if (isProtectedApiRoute) {
-      // For API routes, we still want to return a 401 for client-side handling
-      // but ensure the client redirects to login
       return NextResponse.json(
         { error: "Authentication required", redirect: "/" },
-        { status: 401 },
+        { status: 401 }
       );
     }
-
     return res;
   }
 
-  // Security check for banned page - ensure only banned users can access it
+  // 🛡️ Handle banned page (only banned users allowed)
   if (isBannedPage && token) {
     try {
       const payload = SecureTokenManager.verifyAccessToken(token);
       if (payload) {
         const isBanned = await SecureTokenManager.isUserBanned(payload.userId);
         if (!isBanned) {
-          // Non-banned user trying to access banned page, redirect to dashboard
           return NextResponse.redirect(new URL("/dashboard", req.url));
         }
       }
     } catch (error) {
       console.error("Error checking banned page access:", error);
-    }
-  }
-
-  if (isAdminLoginPage && token) {
-    try {
-      const admin = await AdminMiddleware.authenticateAdmin(req);
-      if (admin) {
-        const redirectPath = req.cookies.get(
-          "admin_redirect_after_login",
-        )?.value;
-        const targetUrl = redirectPath || "/4brothers/admin/analytics";
-        const response = NextResponse.redirect(new URL(targetUrl, req.url));
-        response.cookies.delete("admin_redirect_after_login");
-        return response;
-      }
-    } catch (error) {
-      console.error("Admin login page check error:", error);
     }
   }
 
@@ -305,6 +212,7 @@ export const config = {
     "/",
     "/register",
     "/forgot-password",
+    "/",
     "/banned",
     "/dashboard/:path*",
     "/settings/:path*",
@@ -316,7 +224,7 @@ export const config = {
     "/videos/:path*",
     "/wallet/:path*",
     "/withdraw/:path*",
-    "/admin/:path*",
+    "/4brothers/admin/:path*",
     "/api/:path*",
   ],
 };
