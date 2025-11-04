@@ -54,7 +54,7 @@ const SupportPage = () => {
       name: "WhatsApp",
       description: "Get instant help via WhatsApp chat",
       icon: MessageCircle,
-      contact: "+14058390735",
+      contact: "+923379780658",
       availability: "24/7 Available",
       color: "text-green-600",
       bgColor: "bg-green-100",
