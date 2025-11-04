@@ -2,7 +2,6 @@ import { db } from "@/lib/db";
 import * as cron from "node-cron";
 
 interface CleanupConfig {
-  timezone: string;
   cronExpression: string;
   enabled: boolean;
 }
@@ -17,20 +16,16 @@ interface CleanupResult {
 export class UserVideoTaskCleanupService {
   private static instance: UserVideoTaskCleanupService;
   private job: cron.ScheduledTask | null = null;
-  private isRunning: boolean = false;
+  private isRunning = false;
 
-  // Asia/Karachi timezone configuration (UTC+5)
   private readonly config: CleanupConfig = {
-    timezone: "Asia/Karachi",
-    cronExpression: "1 0 * * *", // Every day at 12:01 AM
-    enabled: process.env.NODE_ENV === "production",
+    cronExpression: "0 0 * * *",
+    enabled: true,
   };
 
   private constructor() {
     if (process.env.NODE_ENV === "development") {
-      console.log(
-        "User Video Task Cleanup Service initialized in development mode"
-      );
+      console.log("User Video Task Cleanup Service initialized (development mode)");
     }
   }
 
@@ -51,39 +46,20 @@ export class UserVideoTaskCleanupService {
     }
 
     if (!this.config.enabled) {
-      console.log(
-        "User Video Task Cleanup Service is disabled (development mode)"
-      );
+      console.log("User Video Task Cleanup Service disabled (development mode)");
       return;
     }
 
     try {
-      this.job = cron.schedule(
-        this.config.cronExpression,
-        this.cleanupUserVideoTasks.bind(this),
-        {
-          timezone: this.config.timezone,
-        }
-      );
+      this.job = cron.schedule(this.config.cronExpression, () => {
+        this.cleanupUserVideoTasks().catch(console.error);
+      });
 
-      console.log(
-        `User Video Task Cleanup Service started - Next run: ${this.getNextExecutionTime()}`
-      );
-      console.log(
-        `Timezone: ${this.config.timezone}, Cron: ${this.config.cronExpression}`
-      );
-
-      // Log service start to database
-      this.logCleanupEvent(
-        "STARTED",
-        `Cleanup service started with timezone ${this.config.timezone}`
-      );
+      console.log(`User Video Task Cleanup Service started - Next run: ${this.getNextExecutionTime()}`);
+      this.logCleanupEvent("STARTED", "Cleanup service started");
     } catch (error) {
       console.error("Failed to start User Video Task Cleanup Service:", error);
-      this.logCleanupEvent(
-        "ERROR",
-        `Failed to start cleanup service: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      this.logCleanupEvent("ERROR", `Failed to start service: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 
@@ -100,42 +76,32 @@ export class UserVideoTaskCleanupService {
   }
 
   /**
-   * Get the next scheduled execution time
+   * Get next scheduled run (approximation)
    */
   public getNextExecutionTime(): Date | null {
-    // Return next execution time (simplified for compatibility)
     if (!this.job) return null;
-    const nextRun = new Date();
-    nextRun.setDate(nextRun.getDate() + 1); // Tomorrow
-    nextRun.setHours(0, 1, 0, 0); // 12:01 AM
-    return nextRun;
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    next.setHours(0, 0, 0, 0);
+    return next;
   }
 
   /**
    * Get service status
    */
-  public getStatus(): {
-    isRunning: boolean;
-    nextExecution: Date | null;
-    timezone: string;
-    enabled: boolean;
-  } {
+  public getStatus() {
     return {
       isRunning: this.job !== null,
       nextExecution: this.getNextExecutionTime(),
-      timezone: this.config.timezone,
       enabled: this.config.enabled,
     };
   }
 
   private async performCleanup(): Promise<number> {
     try {
-      const deleteResult = await db.userVideoTask.deleteMany({});
-      const deletedCount = deleteResult.count;
-
-      console.log(`Deleted ${deletedCount} UserVideoTask records`);
-
-      return deletedCount;
+      const result = await db.userVideoTask.deleteMany({});
+      console.log(`Deleted ${result.count} UserVideoTask records`);
+      return result.count;
     } catch (error) {
       console.error("Error deleting UserVideoTask records:", error);
       throw error;
@@ -144,7 +110,7 @@ export class UserVideoTaskCleanupService {
 
   private async cleanupUserVideoTasks(): Promise<void> {
     if (this.isRunning) {
-      console.log("User video task cleanup already in progress, skipping...");
+      console.log("Cleanup already in progress, skipping...");
       return;
     }
 
@@ -155,8 +121,8 @@ export class UserVideoTaskCleanupService {
       console.log("=== Starting User Video Task Cleanup ===");
 
       const deletedCount = await this.performCleanup();
-
       const executionTime = Date.now() - startTime;
+
       const result: CleanupResult = {
         success: true,
         deletedCount,
@@ -164,32 +130,18 @@ export class UserVideoTaskCleanupService {
         executionTime,
       };
 
-      // Log successful cleanup
-      await this.logCleanupEvent(
-        "COMPLETED",
-        `Daily cleanup completed successfully`,
-        result
-      );
+      await this.logCleanupEvent("COMPLETED", "Cleanup completed successfully", result);
     } catch (error) {
-      const executionTime = Date.now() - startTime;
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-
-      console.error("=== User Video Task Cleanup Failed ===");
-      console.error("Error:", error);
-
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const result: CleanupResult = {
         success: false,
         deletedCount: 0,
         errors: [errorMessage],
-        executionTime,
+        executionTime: Date.now() - startTime,
       };
 
-      await this.logCleanupEvent(
-        "ERROR",
-        `Daily cleanup failed: ${errorMessage}`,
-        result
-      );
+      console.error("=== Cleanup Failed ===", error);
+      await this.logCleanupEvent("ERROR", `Cleanup failed: ${errorMessage}`, result);
     } finally {
       this.isRunning = false;
     }
@@ -203,7 +155,7 @@ export class UserVideoTaskCleanupService {
     try {
       await db.systemLog.create({
         data: {
-          level: "INFO",
+          level: eventType === "ERROR" ? "ERROR" : "INFO",
           component: "USER_VIDEO_TASK_CLEANUP",
           message: `[${eventType}] ${message}`,
           metadata: result ? JSON.stringify(result) : undefined,
@@ -215,5 +167,4 @@ export class UserVideoTaskCleanupService {
   }
 }
 
-export const userVideoTaskCleanupService =
-  UserVideoTaskCleanupService.getInstance();
+export const userVideoTaskCleanupService = UserVideoTaskCleanupService.getInstance();

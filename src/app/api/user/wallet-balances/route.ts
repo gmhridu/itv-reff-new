@@ -39,14 +39,34 @@ export async function GET(request: NextRequest) {
     }
 
     // if user has pending withdrawal request
-    const withdrawalRequest = await db.withdrawalRequest.findFirst({
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const panddingWithdrawalRequest = await db.withdrawalRequest.findFirst({
       where: { userId: user.id, status: "PENDING" },
     });
+
+    // check if user has any approved withdrawal request today
+    const approvedWithdrawalRequest = await db.withdrawalRequest.findFirst({
+      where: {
+        userId: user.id,
+        status: "APPROVED",
+        createdAt: {
+          gte: today,
+          lt: tomorrow,
+        },
+      },
+    });
+
+
+
 
     response = NextResponse.json({
       success: true,
       walletBalances: {
-        canWithdraw: !withdrawalRequest,
+        canWithdraw: !panddingWithdrawalRequest && !approvedWithdrawalRequest,
         mainWallet: freshUser.walletBalance || 0,
         commissionWallet: freshUser.commissionBalance,
         totalEarnings: freshUser.commissionBalance,
