@@ -48,7 +48,6 @@ model User {
   managementBonuses      TaskManagementBonus[]   @relation("UserManagementBonuses")
   TopupRequest           TopupRequest[]
   userAnnouncements      UserAnnouncement[]
-  userOffers             UserOffer[]
   userPlan               UserPlan?
   userProfile            UserProfile?
   videoTasks             UserVideoTask[]
@@ -267,9 +266,7 @@ model AdminUser {
   phone         String         @unique
   activityLogs  ActivityLog[]
   announcements Announcement[]
-  apiKeys       ApiKey[]
   auditLogs     AuditLog[]
-  fileUploads   FileUpload[]
   systemLogs    SystemLog[]
 
   @@map("admin_users")
@@ -346,25 +343,6 @@ model SystemNotification {
   @@map("system_notifications")
 }
 
-model FileUpload {
-  id               String         @id @default(cuid())
-  metadata         String?
-  createdAt        DateTime       @default(now())
-  fileName         String
-  filePath         String
-  fileSize         Int
-  isProcessed      Boolean        @default(false)
-  mimeType         String
-  originalName     String
-  processingStatus String?
-  updatedAt        DateTime       @updatedAt
-  uploadType       FileUploadType
-  uploadedBy       String?
-  uploader         AdminUser?     @relation(fields: [uploadedBy], references: [id])
-
-  @@map("file_uploads")
-}
-
 model ActivityLog {
   id          String     @id @default(cuid())
   activity    String
@@ -402,36 +380,6 @@ model SystemLog {
   @@index([component])
   @@index([createdAt])
   @@map("system_logs")
-}
-
-model DashboardCache {
-  id        String   @id @default(cuid())
-  data      String
-  cacheKey  String   @unique
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  updatedAt DateTime @updatedAt
-
-  @@index([cacheKey])
-  @@index([expiresAt])
-  @@map("dashboard_cache")
-}
-
-model ApiKey {
-  id          String     @id @default(cuid())
-  name        String
-  key         String     @unique
-  permissions String[]
-  metadata    String?
-  createdAt   DateTime   @default(now())
-  createdBy   String?
-  expiresAt   DateTime?
-  isActive    Boolean    @default(true)
-  lastUsedAt  DateTime?
-  updatedAt   DateTime   @updatedAt
-  creator     AdminUser? @relation(fields: [createdBy], references: [id])
-
-  @@map("api_keys")
 }
 
 model AdminWallet {
@@ -500,35 +448,11 @@ model Announcement {
   adminId           String
   admin             AdminUser          @relation(fields: [adminId], references: [id])
   userAnnouncements UserAnnouncement[]
-  userOffers        UserOffer[]
 
   @@index([isActive])
   @@index([scheduledAt])
   @@index([expiresAt])
   @@map("announcements")
-}
-
-model UserOffer {
-  id             String        @id @default(cuid())
-  userId         String
-  announcementId String?
-  offerType      String
-  offerValue     String
-  offerCode      String?
-  description    String?
-  isRedeemed     Boolean       @default(false)
-  redeemedAt     DateTime?
-  expiresAt      DateTime?
-  scheduledAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  announcement   Announcement? @relation(fields: [announcementId], references: [id])
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([isRedeemed])
-  @@index([expiresAt])
-  @@map("user_offers")
 }
 
 model SliderImage {
