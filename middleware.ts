@@ -48,6 +48,14 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get("access_token")?.value;
   const pathname = req.nextUrl.pathname;
 
+  // Check if maintenance mode is enabled
+  const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+
+  // If maintenance mode is on, redirect all routes except root to root
+  if (isMaintenanceMode && pathname !== "/") {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
   const isAuthPage =
     pathname === "/" ||
     pathname === "/register" ||

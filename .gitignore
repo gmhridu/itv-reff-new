@@ -50,3 +50,4 @@ server.log
 
 neon_backup.dump
 neon_backup.sql
+config.bat
